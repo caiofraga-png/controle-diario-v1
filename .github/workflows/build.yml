@@ -1,0 +1,41 @@
+```yaml
+name: Build CONTROLE DIÁRIO V1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Compilar TypeScript
+        run: npm run build
+
+      - name: Gerar instalador
+        run: npm run dist
+
+      - name: Publicar instalador
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONTROLE-DIARIO-V1
+          path: |
+            dist/*.exe
+            dist/*.msi
+          if-no-files-found: error
+```
