@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "CONTROLE DIÁRIO - aplicativo desktop",
+  "author": "Caio Fraga",
   "main": "out/main/main.js",
   "scripts": {
     "dev": "electron-vite",
