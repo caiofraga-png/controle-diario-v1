@@ -149,6 +149,28 @@ function validateConfigurationConsistency(config: Configuracao) {
   }
 }
 
+const KNOWN_TASK_CREATION: Record<string, string> = {
+  T001: `Pesquisa de Tickets
+Tipo: Tecnico
+Tipo de data: Abertura de Ticket
+Data do dia analisado
+Estados: Todos
+Baixar e Salvar arquivo ESTATISTICAS - SUPORTE`
+};
+
+function hydrateKnownTaskCreation(config: Configuracao): { config: Configuracao; changed: boolean } {
+  const next = JSON.parse(JSON.stringify(config)) as Configuracao;
+  let changed = false;
+  for (const task of next.tarefas.tarefas) {
+    const creation = KNOWN_TASK_CREATION[task.id];
+    if (creation && !task.criacao?.trim()) {
+      task.criacao = creation;
+      changed = true;
+    }
+  }
+  return { config: next, changed };
+}
+
 const KNOWN_TASK_LINKS: Record<string, string> = {
   T001: "https://docs.google.com/spreadsheets/d/10iFhG9pdTM2awgknPvZSsa3GhWWHs3ot8WmpeKJf250/edit?gid=0#gid=0",
   T002: "https://docs.google.com/spreadsheets/d/1rsHfwSQnzl-44xzzZqXs1K2l1HnbrJ0KOJDBYg3F9tw/edit?gid=1933790308#gid=1933790308",
@@ -303,8 +325,10 @@ export class DataRepository {
       email: validateEmails(email),
       layout: validateLayout(layout)
     };
-    const hydrated = hydrateKnownTaskLinks(configuracao);
-    if (hydrated.changed) {
+    const linkedHydrated = hydrateKnownTaskLinks(configuracao);
+    const creationHydrated = hydrateKnownTaskCreation(linkedHydrated.config);
+    const hydrated = creationHydrated;
+    if (linkedHydrated.changed || hydrated.changed) {
       validateConfigurationConsistency(hydrated.config);
       await this.writeNamed(s.configId, "tarefas.json", hydrated.config.tarefas);
       return { configuracao: hydrated.config, calendario: calendario ? validateCalendar(calendario) : EMPTY_CALENDAR(), estado: estado ? validateState(estado) : null };
