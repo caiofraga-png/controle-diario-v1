@@ -4,7 +4,7 @@ export type AuthStatus = { authenticated: boolean; email?: string };
 type TokenResponse = { access_token: string; expires_in: number; scope?: string; token_type?: string };
 type GoogleIdentity = { accounts: { oauth2: { initTokenClient: (options:any)=>any } } };
 
-const SCOPES = "https://www.googleapis.com/auth/drive.file openid email";
+const SCOPES = "https://www.googleapis.com/auth/drive openid email";
 const TOKEN_KEY = "controle-diario.google.token";
 const EMAIL_KEY = "controle-diario.google.email";
 const ROOT_KEY = "controle-diario.root.id";
