@@ -42,10 +42,24 @@ export function buildState(data: LoadedData, date: string, profileId: string): E
     if (!task || !task.ativo) continue;
     const emails: EmailSnapshot[] = [];
     for (const emailId of task.emailsVinculados) {
-      const email = emailById.get(emailId);
-      if (!email || !email.ativo || linkedEmailIds.has(email.id)) continue;
-      linkedEmailIds.add(email.id);
-      emails.push(emailSnapshot(email, false));
+      const configuredEmail = emailById.get(emailId);
+      const taskOwned = emailId === `${task.id}_EMAIL`;
+      if (linkedEmailIds.has(emailId)) continue;
+      if (taskOwned) {
+        linkedEmailIds.add(emailId);
+        emails.push({
+          id: emailId,
+          nome: `E-MAIL — ${task.nome}`,
+          titulo: "",
+          corpo: "",
+          ativo: true,
+          concluido: false
+        });
+        continue;
+      }
+      if (!configuredEmail || !configuredEmail.ativo) continue;
+      linkedEmailIds.add(configuredEmail.id);
+      emails.push(emailSnapshot(configuredEmail, false));
     }
     tasks.push({ ...clone(task), concluida: false, emailsVinculados: emails });
   }
