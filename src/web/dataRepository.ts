@@ -146,6 +146,26 @@ function validateConfigurationConsistency(config: Configuracao) {
   }
 }
 
+const KNOWN_TASK_LINKS: Record<string, string> = {
+  T001: "https://docs.google.com/spreadsheets/d/10iFhG9pdTM2awgknPvZSsa3GhWWHs3ot8WmpeKJf250/edit?gid=0#gid=0",
+  T002: "https://docs.google.com/spreadsheets/d/1rsHfwSQnzl-44xzzZqXs1K2l1HnbrJ0KOJDBYg3F9tw/edit?gid=1933790308#gid=1933790308",
+  T003: "https://docs.google.com/spreadsheets/d/1a6uNsOn1cmj5-oQfC17fX8ASnHVNovd2hPwPWrTc35k/edit?gid=1854971753#gid=1854971753",
+  T004: "https://drive.google.com/drive/u/0/folders/1g1dXDPvlZht7StOO8qBTxK0dJUn7Wgps",
+  T005: "https://docs.google.com/spreadsheets/d/1SbuL_4ZuAIbneVovYD8DErGxGjx3wSUZRegbdMXbTAM/edit?gid=1465443564#gid=1465443564",
+  T006: "https://docs.google.com/spreadsheets/d/11PA6LjBotLbD5-yBczgt1l_w1OLN_adqeVRKJ5yyjJI/edit?gid=1100969615#gid=1100969615",
+  T007: "https://docs.google.com/spreadsheets/d/1TvtlVb-nRYYoPafwGuBM90H4AuyYZtDPABS3poLRh0E/edit?gid=1299604657#gid=1299604657"
+};
+
+function hydrateKnownTaskLinks(config: Configuracao): { config: Configuracao; changed: boolean } {
+  const next = JSON.parse(JSON.stringify(config)) as Configuracao;
+  let changed = false;
+  for (const task of next.tarefas.tarefas) {
+    const link = KNOWN_TASK_LINKS[task.id];
+    if (link && !task.link) { task.link = link; changed = true; }
+  }
+  return { config: next, changed };
+}
+
 function defaultConfiguration(): Configuracao {
   const tarefas = [
     ["T001","DADOS ESTATÍSTICOS - SUPORTE"],
@@ -276,6 +296,12 @@ export class DataRepository {
       email: validateEmails(email),
       layout: validateLayout(layout)
     };
+    const hydrated = hydrateKnownTaskLinks(configuracao);
+    if (hydrated.changed) {
+      validateConfigurationConsistency(hydrated.config);
+      await this.writeNamed(s.configId, "tarefas.json", hydrated.config.tarefas);
+      return { configuracao: hydrated.config, calendario: calendario ? validateCalendar(calendario) : EMPTY_CALENDAR(), estado: estado ? validateState(estado) : null };
+    }
     validateConfigurationConsistency(configuracao);
     return {
       configuracao,
