@@ -165,6 +165,10 @@ function hydrateKnownTaskLinks(config: Configuracao): { config: Configuracao; ch
   for (const task of next.tarefas.tarefas) {
     const link = KNOWN_TASK_LINKS[task.id];
     if (link && !task.link) { task.link = link; changed = true; }
+    if ((task.id === "T005" || task.id === "T007") && !task.emailsVinculados.includes(`${task.id}_EMAIL`)) {
+      task.emailsVinculados.push(`${task.id}_EMAIL`);
+      changed = true;
+    }
   }
   return { config: next, changed };
 }
