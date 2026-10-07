@@ -1,4 +1,8 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-export default defineConfig({ base: "/controle-diario-v1/", plugins: [react()] });
+export default defineConfig({
+  root: "src/renderer",
+  base: "/controle-diario-v1/",
+  plugins: [react()]
+});
