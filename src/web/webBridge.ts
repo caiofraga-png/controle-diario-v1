@@ -1,6 +1,6 @@
 import type { EstadoAtual, RegistroHistorico } from "../shared/types/state";
-import { createEmail, createProfile, createTask } from "../main/configService";
-import { buildState, obligationProgress, setObservation, toggleEmail, toggleTask } from "../main/taskService";
+import { createEmail, createProfile, createTask } from "./configService";
+import { buildState, obligationProgress, setObservation, toggleEmail, toggleTask } from "./taskService";
 import { DataRepository } from "./dataRepository";
 import { CalendarHistoryService } from "./calendarHistoryService";
 import { DriveService } from "./webDriveService";
