@@ -5,6 +5,7 @@ import { DataRepository } from "./dataRepository";
 import { CalendarHistoryService } from "./calendarHistoryService";
 import { DriveService } from "./webDriveService";
 import { WebGoogleAuth, loadBootstrap, saveBootstrap } from "./webAuth";
+import { pickDriveFolder } from "./webPicker";
 import { WebSessionService } from "./webSessionService";
 
 const auth=new WebGoogleAuth(); const drive=new DriveService(auth); const data=new DataRepository(drive); const calendarHistory=new CalendarHistoryService(drive); const session=new WebSessionService(drive);
@@ -18,7 +19,7 @@ export function installWebBridge(){
    status:async()=>({auth:await auth.getStatus(),bootstrap:boot()}),
    autorizarGoogle:async()=>{const status=await auth.authorize();const b=boot();saveBootstrap({drive:{pastaRaizId:b.drive.pastaRaizId,contaEmail:status.email}});if(b.drive.pastaRaizId)await session.acquire(b.drive.pastaRaizId);return status;},
    definirPastaRaiz:configureRoot,
-   selecionarPasta:async()=>{const id=window.prompt("COLE O ID DA PASTA RAIZ DO CONTROLE DIÁRIO NO GOOGLE DRIVE:",boot().drive.pastaRaizId);if(!id)throw new Error("SELEÇÃO CANCELADA.");return configureRoot(id);},
+   selecionarPasta:async()=>{const cfg=await (async()=>{const c=(globalThis as any).__CONTROLE_DIARIO_CONFIG__??{};return {developerKey:String(c.googlePickerApiKey??"").trim(),accessToken:await auth.getAccessToken()};})();const id=await pickDriveFolder(cfg);return configureRoot(id);},
    testarConexao:async()=>{const id=boot().drive.pastaRaizId;if(!id)throw new Error("NENHUMA PASTA RAIZ FOI CONFIGURADA.");await session.assertOwner(id);return drive.testConnection(id)}
   },
   dados:{
