@@ -9,5 +9,5 @@
     "skipLibCheck": true,
     "jsx": "react-jsx"
   },
-  "include": ["src/renderer/**/*.tsx", "src/renderer/**/*.ts", "src/shared/**/*.ts"]
+  "include": ["src/renderer/**/*.tsx", "src/renderer/**/*.ts", "src/shared/**/*.ts", "src/web/**/*.ts"]
 }

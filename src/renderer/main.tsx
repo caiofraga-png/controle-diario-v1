@@ -3,6 +3,9 @@ import { createRoot } from "react-dom/client";
 import "./styles.css";
 import ConfigurationPanel from "./ConfigurationPanel";
 import RoteiroEditor from "./RoteiroEditor";
+import { installWebBridge } from "../web/webBridge";
+
+installWebBridge();
 
 interface Bridge {
   sistema: { status: () => Promise<any>; autorizarGoogle: () => Promise<any>; definirPastaRaiz: (id: string) => Promise<any>; selecionarPasta: () => Promise<any>; testarConexao: () => Promise<boolean> };
