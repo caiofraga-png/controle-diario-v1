@@ -146,6 +146,56 @@ function validateConfigurationConsistency(config: Configuracao) {
   }
 }
 
+function defaultConfiguration(): Configuracao {
+  const tarefas = [
+    ["T001","DADOS ESTATÍSTICOS - SUPORTE"],
+    ["T002","ATENDIMENTOS - CALL BACK"],
+    ["T003","PRODUTIVIDADE SAC - SEM MAMBO"],
+    ["T004","VOLUMETRIA - MÍDIAS"],
+    ["T005","VOLUMETRIA - SUPORTE"],
+    ["T006","LIGAÇÕES"],
+    ["T007","ESTATÍSTICA - MANUTENÇÃO"]
+  ].map(([id,nome]) => ({
+    id, nome, link: "", criacao: "",
+    roteiro: { linhas: 50, colunas: 5, largurasColunas: [120,120,120,120,120], celulas: {}, mesclas: [], filtro: null },
+    emailsVinculados: [], ativo: true
+  }));
+  const perfis = [
+    { id: "P001", nome: "MÍDIAS", tarefas: ["T001","T002","T003","T004","T005"], ativo: true },
+    { id: "P002", nome: "LIGAÇÕES", tarefas: ["T006","T007"], ativo: true }
+  ];
+  const email = {
+    schemaVersion: 1 as const,
+    emails: [{
+      id: "M001",
+      nome: "COMPILAÇÃO DE DADOS",
+      titulo: "MID{HOJE_YYYYMMDD} - COMPILAÇÃO DE DADOS - {ONTEM_DDMMYYYY}",
+      corpo: "Prezados,\\n\\nSeguem em anexo os arquivos utilizados na análise de dados de hoje.",
+      ativo: true
+    }],
+    emailsGlobais: ["M001"]
+  };
+  return {
+    tarefas: { schemaVersion: 1, tarefas },
+    perfis: { schemaVersion: 1, perfis },
+    email,
+    layout: {
+      schemaVersion: 1,
+      blocos: ["data","perfil","tarefas","emails","observacao","progresso"],
+      ordemPerfis: ["P001","P002"],
+      ordemTarefas: {
+        GERAL: tarefas.map(t => t.id),
+        P001: ["T001","T002","T003","T004","T005"],
+        P002: ["T006","T007"]
+      },
+      abas: ["tarefas","calendario"],
+      painelLateral: { largura: 420 },
+      expansaoLateral: { posicao: "direita" },
+      criacaoRoteiro: { modo: "POPUP" }
+    }
+  };
+}
+
 export class DataRepository {
   private readonly meta = new Map<string, DriveMeta>();
   private structureCache: { rootId: string; configId: string; historyId: string; systemId: string } | null = null;
@@ -204,6 +254,21 @@ export class DataRepository {
       this.readNamed<{ schemaVersion: 1; estado: EstadoAtual | null }>(s.systemId, "estado_atual.json")
     ]);
 
+    const allMissing = !tarefas && !perfis && !email && !layout;
+    if (allMissing) {
+      const initial = defaultConfiguration();
+      await Promise.all([
+        this.writeNamed(s.configId, "tarefas.json", initial.tarefas),
+        this.writeNamed(s.configId, "perfis.json", initial.perfis),
+        this.writeNamed(s.configId, "email.json", initial.email),
+        this.writeNamed(s.configId, "layout.json", initial.layout)
+      ]);
+      return {
+        configuracao: initial,
+        calendario: calendario ? validateCalendar(calendario) : EMPTY_CALENDAR(),
+        estado: estado ? validateState(estado) : null
+      };
+    }
     if (!tarefas || !perfis || !email || !layout) throw new Error("A CONFIGURAÇÃO DO CONTROLE DIÁRIO ESTÁ INCOMPLETA NO GOOGLE DRIVE.");
     const configuracao: Configuracao = {
       tarefas: validateTarefas(tarefas),
