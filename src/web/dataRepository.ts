@@ -122,7 +122,10 @@ function validateConfigurationConsistency(config: Configuracao) {
   const profileIds = new Set(config.perfis.perfis.map(p => p.id));
   for (const task of config.tarefas.tarefas) {
     for (const emailId of task.emailsVinculados) {
-      if (typeof emailId !== "string" || !emailIds.has(emailId)) throw new Error(`A TAREFA ${task.id} POSSUI E-MAIL VINCULADO INEXISTENTE.`);
+      const taskOwnedEmail = emailId === `${task.id}_EMAIL`;
+      if (typeof emailId !== "string" || (!emailIds.has(emailId) && !taskOwnedEmail)) {
+        throw new Error(`A TAREFA ${task.id} POSSUI E-MAIL VINCULADO INEXISTENTE.`);
+      }
     }
   }
   for (const profile of config.perfis.perfis) {
@@ -178,7 +181,7 @@ function defaultConfiguration(): Configuracao {
   ].map(([id,nome]) => ({
     id, nome, link: "", criacao: "",
     roteiro: { linhas: 50, colunas: 5, largurasColunas: [120,120,120,120,120], celulas: {}, mesclas: [], filtro: null },
-    emailsVinculados: [], ativo: true
+    emailsVinculados: id === "T005" || id === "T007" ? [`${id}_EMAIL`] : [], ativo: true
   }));
   const perfis = [
     { id: "P001", nome: "MÍDIAS", tarefas: ["T001","T002","T003","T004","T005"], ativo: true },
