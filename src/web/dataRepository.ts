@@ -155,7 +155,297 @@ Tipo: Tecnico
 Tipo de data: Abertura de Ticket
 Data do dia analisado
 Estados: Todos
-Baixar e Salvar arquivo ESTATISTICAS - SUPORTE`
+Baixar e Salvar arquivo ESTATISTICAS - SUPORTE`,
+  T002: `Pesquisar ticket
+Fila : SAC::SUPORTE::RETORNO
+Tipo de data: Encerramento do Ticket
+Data do dia analisado
+Estados: Encerrados
+Baixar e Salvar arquivo CALLBACK`,
+  T003: `Pesquisar ticket
+Tipo: Técnico, Financeiro, Comercial
+Tipo de data: Encerramento do Ticket
+Data do dia analisado
+Estados: Encerrados
+Criador por (login): root@localhost
+Filtrar em Filas e retirar SAC: Mambo (se houver)
+Baixar e Salvar arquivo PRODUTIVIDADE SAC - SEM MAMBO - GERAL
+
+Pesquisar ticket
+Tipo: Técnico, Financeiro, Comercial
+Tipo de data: Abertura do Ticket
+Data do dia analisado
+Estados: Todos
+Criador por (login): root@localhost
+Filtrar em Filas e retirar SAC: Mambo (se houver)
+Baixar e Salvar arquivo PRODUTIVIDADE SAC - SEM MAMBO - ABERTAS`,
+  T004: `Pesquisa de Tickets
+Tipo: Técnico
+Tipo de data: Abertura de Ticket
+Data do dia analisado
+Marcar CHAT e SAC (Receptivo)
+Baixar e Salvar arquivo CHAT MIDIAS - SUPORTE`,
+  T005: `Pesquisa de Tickets
+Tipo: Tecnico
+Data: Abertura de Ticket
+Data do dia anterior
+Estados: Todos e pesquisar
+Baixar e Salvar arquivo VOLUMETRIA SUPORTE`,
+  T006: `NÃO HÁ`,
+  T007: `Pesquisar Atividades
+Tipo: Manutenção
+Tipo Data: Atividade criada em
+Data do dia anterior
+Estados: Abertas
+Baixar e Salvar arquivo MANUTENÇÃO ABERTAS DO DIA
+
+Pesquisar Atividades
+Tipo: Manutenção
+Tipo Data: Demanda do dia
+Data do dia anterior
+Estados: Feitas
+Baixar e Salvar arquivo MANUTENÇÃO DEMANDA DO DIA
+
+Pesquisar Atividades
+Tipo: Manutenção
+Tipo Data: Atividade criada em
+De: 03 meses atrás Até: Dia anterior
+Estados: Abertas
+Baixar e Salvar arquivo MANUTENÇÃO TODAS ABERTAS`
+};
+
+const KNOWN_TASK_ROTEIRO: Record<string, string> = {
+  T001: `Pesquisa de Tickets
+Tipo: Tecnico
+Tipo de data: Abertura de Ticket
+Data do dia analisado
+Estados: Todos
+Baixar e Salvar arquivo ESTATISTICAS - SUPORTE
+
+Utilizar separador BD ESTAT SUP
+Copiar dados da aba ESTAT SUP
+
+Colar dados na planilha, aba RESOLUÇÃO SUPORTE
+
+Arrastar fórmula da coluna ABERTO E FECHADO NO MESMO DIA
+Arrastar fórmula das colunas: SETOR, RESOLVIDO?, ALL e DATA
+
+Ajustar dados e aguardar planilha atualizar tudo antes de encerrar`,
+  T002: `Pesquisar ticket
+Fila : SAC::SUPORTE::RETORNO
+Tipo de data: Encerramento do Ticket
+Data do dia analisado
+Estados: Encerrados
+Baixar e Salvar arquivo CALLBACK
+Alimentar planilha e bater colunas
+
+ATENÇÃO: Na aba Dinâmica
+Na tabela CLOSED CALLBACK / DIA, deixar somente os callbacks atuais.
+Na tabela CLOSED SEM SER CALLBACK, deixar todos exceto os callbacks atuais.
+
+(Se der erro na coluna "tempo de transferência", necessário formatar hora)
+(Se der erro na dinâmica, necessário excluir os assistentes "Call Back" da lista "CLOSED SEM SER CALLBACK"`,
+  T003: `SEM MAMBO - GERAL
+Pesquisar ticket
+Tipo: Técnico, Financeiro, Comercial
+Tipo de data: Encerramento do Ticket
+Data do dia analisado
+Estados: Encerrados
+Criador por (login): root@localhost
+Filtrar em Filas e retirar SAC: Mambo (se houver)
+Baixar e Salvar arquivo PRODUTIVIDADE SAC - SEM MAMBO - GERAL
+
+SEM MAMBO - ABERTAS
+Pesquisar ticket
+Tipo: Técnico, Financeiro, Comercial
+Tipo de data: Abertura do Ticket
+Data do dia analisado
+Estados: Todos
+Criador por (login): root@localhost
+Filtrar em Filas e retirar SAC: Mambo (se houver)
+Baixar e Salvar arquivo PRODUTIVIDADE SAC - SEM MAMBO - ABERTAS
+
+Checagem: Acessar a aba dinâmica e checar se a data do dia consta na tabela.`,
+  T004: `Pesquisa de Tickets
+Tipo: Técnico
+Tipo de data: Abertura de Ticket
+Data do dia analisado
+Marcar CHAT e SAC (Receptivo)
+Baixar e Salvar arquivo CHAT MIDIAS - SUPORTE
+
+Utilizar separador BD VOL MIDIAS
+Copiar dados da aba VOL MIDIAS
+Colar na aba BD da planilha SUPORTE - AUTO MIDIAS
+
+Bater colunas e eliminar N/A (se houver)
+Conferir script nas colunas:
+DATA ABERTURA, DATA ENCERRAMENTO, HORA ABERTURA, HORA ENCERRAMENTO e BH.
+Apagar linhas vazias
+
+Filtrar planilha:
+Coluna "chat encerrado" > Classificar Z a A
+Ajustar qualquer formato incorreto, copiando "chat aberto" aumentando o tempo no mínimo até final 9
+
+Coluna "chat aberto" > Classificar A a Z
+Bater coluna "chat encerrado" até o fim para ver se há alguma célula vazia.
+Se houver, entrar no ticket e encerrar chat de acordo com cada situação.
+DESATIVAR FILTRO
+
+Retornar ao gráfico do Beta, selecionar CANAL
+Inserir dados correspondentes na aba MODELO MENSAL
+
+REPETIR TODO O PROCEDIMENTO PARA FINANCEIRO E COMERCIAL`,
+  T005: `Na planilha, selecionar a aba oculta do dia
+Pesquisa de Tickets
+Tipo: Tecnico
+Data: Abertura de Ticket
+Data do dia anterior
+Estados: Todos e pesquisar
+Baixar e Salvar arquivo VOLUMETRIA SUPORTE
+No arquivo, filtrar subtipo Oscilacao, levar tickets para a planilha e salvar arquivo OSCILACAO
+No arquivo, filtrar subtipo Inconformidade, levar tickets para a planilha e salvar arquivo INCONFORMIDADE
+
+No gráfico do Beta, selecionar Status>Aberto
+Em Subtipos, copiar a lista e alimentar planilha GERAL - ATENDIMENTOS ABERTOS
+No gráfico do Beta, selecionar Status>Encerrados (os dois tipos)
+Em Subtipos, copiar a lista e alimentar planilha GERAL - ATENDIMENTOS ENCERRADOS
+
+Pesquisar ticket no beta novamente sendo agora Chat e SAC (Receptivo)
+Baixar e Salvar arquivo VOLUMETRIA SUPORTE MIDIAS
+No gráfico do Beta, selecionar Status>Aberto
+Em Subtipos, copiar a lista e alimentar planilha MIDIAS - ATENDIMENTOS ABERTOS
+No gráfico do Beta, selecionar Status>Encerrados
+Em Subtipos, copiar a lista e alimentar planilha MIDIAS - ATENDIMENTOS ENCERRADOS
+
+ANÁLISE DE DADOS:
+1- AUTO CONFIG não pode estar no top3 das estatísticas
+(Caso esteja no top3, copiar ela na célula correspondente na base de mídias e depois deletar a informação dela acima)
+2- Tratar os subtipos rosa (substituir sem tipo por abandono, renomear, etc)
+3 - Bater os resultados totais e conferir
+
+ANALISAR OSCILACAO E INCONFORMIDADE
+Colocar nome de quem fechou e classificar
+ATENÇÃO Conferir na planilha se bate fechados e gerados
+
+ENVIAR EMAIL para liderança e backoffice anexando os 4 arquivos
+Não esquecer de copiar as duas tabelas no email`,
+  T006: `SOS > MENU > CALLCENTER > TELEFONIA > FILAS
+Selecionar uma fileira por vez
+Pesquisar a data do dia
+Contar ATENDIDAS e RETORNO
+Copiar campo TEMPO MÉDIO ATENDIDO e colar na célula correspondente na aba TMA/ABANDONO GERAL`,
+  T007: `Coletar arquivos
+Pesquisar Atividades
+Tipo: Manutenção
+Tipo Data: Atividade criada em
+Data do dia anterior
+Estados: Abertas
+Baixar e Salvar arquivo MANUTENÇÃO ABERTAS DO DIA
+
+Pesquisar Atividades
+Tipo: Manutenção
+Tipo Data: Demanda do dia
+Data do dia anterior
+Estados: Feitas
+Baixar e Salvar arquivo MANUTENÇÃO DEMANDA DO DIA
+
+Pesquisar Atividades
+Tipo: Manutenção
+Tipo Data: Atividade criada em
+De: 03 meses atrás Até: Dia anterior
+Estados: Abertas
+Baixar e Salvar arquivo MANUTENÇÃO TODAS ABERTAS
+
+Abrir arquivo DEMANDA DO DIA
+
+Colar no separador BD MANUT FEITAS
+Copiar conteúdo da aba MANUT FEITAS e lançar na planilha, na aba de mesmo nome
+
+1- Arrastar script das colunas MEIO DE CONTATO e SETOR
+2- Ajustar FORMATAR>NÚMERO>DATA na coluna DATA ATIV. CRIADA
+3- Arrastar script das colunas:
+DIAS Ñ UTEIS, HORAS DIAS Ñ UTEIS, TEMPO REAL (ATÉ), TEMPO TOTAL, SLA e STATUS
+4- Ajustar FORMATAR>NÚMERO>DATA na coluna DATA DA VISITA/TICKET
+5- Arrastar script das colunas TENT. DE VISITA - 1º OS E TENT. DE VISITA - EM 3 OS
+6- Verificar a linha preenchida na coluna MOTIVO DO CANCELAMENTO - 1º OS
+7- Inserir a linha no botão da planilha, aba MODELO EMAIL AUTO
+8- Arrastar script das colunas:
+CONV. HORAS - REAIS, T. TOTAL - 1º OS, T. TOTAL - 2º OS, T. TOTAL - 3º OS e PREF. START/END
+
+Corrigir os bairros. Eliminar linhas vazias.
+Na aba MANUT PRAZO, abrir filtro:
+1- Filtrar ✅ na coluna STATUS e eliminar todas as linhas.
+2- Ordenar em ordem alfabética a coluna TICKET DA VISITA
+3- Fechar filtro
+Abrir arquivo ABERTAS DO DIA
+
+Abrir arquivo ABERTAS DO DIA
+Conferir se não há TESTE, DESENVOLVIMENTO e LIXEIRA
+
+Colar no separador BD MANUT PRAZO
+Copiar conteúdo da aba MANUT PRAZO e lançar na planilha, na aba de mesmo nome
+
+1- Arrastar script das colunas MEIO DE CONTATO e SETOR
+2- Ajustar FORMATAR>NÚMERO>DATA HORA na coluna DATA ATIV. CRIADA
+3- Arrastar script das colunas DIAS Ñ UTEIS, HORAS DIAS Ñ UTEIS, TEMPO REAL (ATÉ), TEMPO TOTAL, SLA e STATUS
+4- Arrastar script das colunas TENT. DE VISITA - 1º OS E TENT. DE VISITA - EM 3 OS
+5- Arrastar script das colunas CONV. HORAS - REAIS, T. TOTAL - 1º OS, T. TOTAL - 2º OS, T. TOTAL - 3º OS e PREF. START/END
+
+Eliminar linhas vazias.
+Criar filtro SELECIONANDO DA ÚLTIMA LINHA ATÉ O TOPO.
+Filtrar ordem alfabética na coluna TICKET DA VISITA
+
+Abrir arquivo TODAS ABERTAS
+
+Filtrar coluna ticket em ordem crescente
+Eliminar linhas contendo: TESTE, DESENVOLVIMENTO e LIXEIRA
+Filtrar coluna subtipo: LOS e LOS AUTO
+Filtrar coluna estado atividade: Pendente Tarefa
+Filtrar coluna conectado: SIM
+Analisar cada ticket e verificar se podemos encerrar atividade.
+Eliminar do arquivo os tickets que forem encerrados após análise.
+
+Selecionar a lista de ticket e colar na planilha MANUT PRAZO abaixo do filtro
+A lista colada deverá ficar totalmente verde
+Na lista de tickets filtrados acima, selecionar Filtro> Filtrar por cor> Cor de preenchimento > Branco
+Na coluna STATUS, filtrar apenas 🕒
+Ocultar colunas, de DESCONTO até PREF. END.
+
+Analisar cada ticket, identificar motivo do cancelamento na coluna RESOLUÇÃO DA VISITA e mudar o 🕒 para 📞
+Ao final, mostrar colunas ocultas, desfazer filtros do Status e Cor de preenchimento.
+Apagar lista de tickets abaixo do filtro.
+
+Filtrar novamente coluna STATUS> 🕒
+Filtrar TICKET DA VISITA em ordem crescente
+Colar novamente a lista de tickets TODAS ABERTAS ao lado da coluna TICKET DA VISITA
+Conferir se as listas são idênticas.
+
+Copiar o arquivo TODAS ABERTAS e colar no separador BD MANUT PRAZO
+Na aba TODAS ABERTAS:
+1- Copiar a coluna "fila atual" e substituir na coluna homônima em MANUT PRAZO
+2- Copiar a coluna "estado_atividade" e substituir na coluna homônima em MANUT PRAZO
+3- Copiar colunas "motivo_cancel", "visitas canceladas", "priorityStart" e "priorityEnd"
+e lançar nas colunas homônimas em MANUT PRAZO.
+
+Verifica a linha do primeiro "MOTIVO DO CANCELAMENTO - 1º OS" substituído e
+insira no botão "SEPARAR MOTIVO CANCELAMENTO - ABERTAS" na aba MODELO EMAIL AUTO. Aperte o botão.
+
+Após isso, verificar na coluna "VISITAS CANCELADAS":
+Todo ticket que tiver o valor 3 ou mais (e a célula vermelha), devemos copiar o motivo da primeira visita no ticket e
+atualizar na planilha.
+
+Desfaça o filtro na coluna STATUS, ordene BAIRRO e CIDADE em ordem crescente e corrija.
+Após correção, filtre de forma crescente a coluna TICKET DA VISITA e remova o filtro.
+
+NUNCA ESQUECER DE ARRASTAR E CONFERIR TODAS AS COLUNAS DE FÓRMULAS
+IMPORTANTE: VERIFICAR SUBTIPO (A-Z) E CORRIGIR SUBTIPOS ESTRANHOS (AMBAS ABAS)
+
+BATER CONTAGEM:
+1- "Total de manutenções", bater com as linhas do arquivo TODAS ABERTAS
+2 - Fechar e Salvar arquivo TODAS ABERTAS
+3 - "Total de visitas feitas", bater com as linhas do arquivo DEMANDA DO DIA
+4 - Fechar e Salvar arquivo DEMANDA DO DIA
+5 - Mandar email para liderança e backoffice. NAO ESQUECER ANEXOS`
 };
 
 function hydrateKnownTaskCreation(config: Configuracao): { config: Configuracao; changed: boolean } {
@@ -165,6 +455,25 @@ function hydrateKnownTaskCreation(config: Configuracao): { config: Configuracao;
     const creation = KNOWN_TASK_CREATION[task.id];
     if (creation && !task.criacao?.trim()) {
       task.criacao = creation;
+      changed = true;
+    }
+  }
+  return { config: next, changed };
+}
+
+function hydrateKnownTaskRoteiro(config: Configuracao): { config: Configuracao; changed: boolean } {
+  const next = JSON.parse(JSON.stringify(config)) as Configuracao;
+  let changed = false;
+  for (const task of next.tarefas.tarefas) {
+    const roteiro = KNOWN_TASK_ROTEIRO[task.id];
+    if (roteiro && (!task.roteiro || Object.keys(task.roteiro.celulas ?? {}).length === 0)) {
+      const linhas = roteiro.split("\n").length;
+      task.roteiro = {
+        ...task.roteiro,
+        linhas: Math.max(task.roteiro?.linhas ?? 50, linhas),
+        colunas: task.roteiro?.colunas ?? 5,
+        celulas: { "1:1": roteiro }
+      };
       changed = true;
     }
   }
@@ -327,8 +636,9 @@ export class DataRepository {
     };
     const linkedHydrated = hydrateKnownTaskLinks(configuracao);
     const creationHydrated = hydrateKnownTaskCreation(linkedHydrated.config);
-    const hydrated = creationHydrated;
-    if (linkedHydrated.changed || hydrated.changed) {
+    const roteiroHydrated = hydrateKnownTaskRoteiro(creationHydrated.config);
+    const hydrated = roteiroHydrated;
+    if (linkedHydrated.changed || creationHydrated.changed || roteiroHydrated.changed) {
       validateConfigurationConsistency(hydrated.config);
       await this.writeNamed(s.configId, "tarefas.json", hydrated.config.tarefas);
       return { configuracao: hydrated.config, calendario: calendario ? validateCalendar(calendario) : EMPTY_CALENDAR(), estado: estado ? validateState(estado) : null };
