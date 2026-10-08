@@ -30,7 +30,7 @@ function resolveEmailVariables(value:string){
   const hoje=`${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}`;
   const ontemDate=new Date(now); ontemDate.setDate(ontemDate.getDate()-1);
   const ontem=`${pad(ontemDate.getDate())}${pad(ontemDate.getMonth()+1)}${ontemDate.getFullYear()}`;
-  return value.replaceAll("{HOJE_YYYYMMDD}",hoje).replaceAll("{ONTEM_DDMMYYYY}",ontem);
+  return value.replaceAll("\\n", "\n").replaceAll("{HOJE_YYYYMMDD}",hoje).replaceAll("{ONTEM_DDMMYYYY}",ontem);
 }
 function App() {
   const [tab, setTab] = useState<"tarefas" | "calendario">("tarefas");
