@@ -472,7 +472,7 @@ function hydrateKnownTaskRoteiro(config: Configuracao): { config: Configuracao; 
         ...task.roteiro,
         linhas: Math.max(task.roteiro?.linhas ?? 50, linhas),
         colunas: task.roteiro?.colunas ?? 5,
-        celulas: { "1:1": roteiro }
+        celulas: { "1:1": { valor: roteiro } }
       };
       changed = true;
     }
