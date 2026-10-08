@@ -12,7 +12,7 @@ interface Bridge {
   tarefas: { iniciar: (p: { data: string; perfilId: string }) => Promise<any>; trocarPerfil: (perfilId:string) => Promise<any>; marcar: (p: { tipo: "tarefa" | "email"; id: string; concluido: boolean }) => Promise<any>; observacao: (v: string) => Promise<any>; concluir: () => Promise<any>; abandonar: () => Promise<any> };
   dados: { carregar: () => Promise<any>; salvarCalendario: (calendario: unknown) => Promise<any> };
   calendario: { mes: (p: { year: number; month: number }) => Promise<any>; salvarData: (p: { data: string; folga: boolean; feriado: boolean }) => Promise<any> };
-  config: { salvar: (config: unknown) => Promise<any>; novaTarefa: (input:{nome:string;link:string;criacao:string})=>Promise<any>; novoPerfil:(input:{nome:string;tarefas:string[]})=>Promise<any>; novoEmail:(input:{nome:string;titulo:string;corpo:string;global?:boolean})=>Promise<any> };
+  config: { salvar: (config: unknown) => Promise<any>; novaTarefa: (input:{nome:string;link:string;criacao:string})=>Promise<any>; novoPerfil:(input:{nome:string;tarefas:string[]})=>Promise<any>; novoEmail:(input:{nome:string;titulo:string;corpo:string;global?:boolean})=>Promise<any>; salvarTarefa:(p:{id:string;criacao?:string;roteiro?:any})=>Promise<any> };
   historico: { versoes: (date: string) => Promise<any>; ler: (p: { date: string; versao: number }) => Promise<any>; errata: (p: { source: unknown; edited: unknown }) => Promise<any> };
 }
 declare global { interface Window { controleDiario: Bridge } }
@@ -91,7 +91,7 @@ function App() {
   }
 
   async function saveTaskRoteiro(task:any, value:any){
-    if(!config) return; const next=JSON.parse(JSON.stringify(config)); const t=next.tarefas.tarefas.find((x:any)=>x.id===task.id); if(!t)return; t.roteiro=JSON.parse(JSON.stringify(value)); setBusy(true); try { await window.controleDiario.config.salvar(next); await loadData(); setRoteiroPanel(null); } catch(e){ setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR O ROTEIRO."); } finally { setBusy(false); }
+    if(!config) return; const next=JSON.parse(JSON.stringify(config)); const t=next.tarefas.tarefas.find((x:any)=>x.id===task.id); if(!t)return; t.roteiro=JSON.parse(JSON.stringify(value)); setBusy(true); try { const saved=await window.controleDiario.config.salvarTarefa({id:task.id,roteiro:value}); setData(saved); setRoteiroPanel(null); } catch(e){ setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR O ROTEIRO."); } finally { setBusy(false); }
   }
 
   async function abandon(){if(!window.confirm(`ABANDONAR EXPEDIENTE? O registro em produção de ${brDate(state.data)} será descartado. Nenhum histórico será criado.`))return;setBusy(true);try{await window.controleDiario.tarefas.abandonar();await loadData();setObservation("");}catch(e){setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL ABANDONAR O EXPEDIENTE.");}finally{setBusy(false);}}
