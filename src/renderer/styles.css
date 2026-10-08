@@ -141,3 +141,7 @@ button:disabled { opacity:.55; cursor:default; }
 .work-actions{display:flex;align-items:center;gap:8px}.profile-switch{border:1px solid #aaa;background:#fff;border-radius:5px;padding:7px 10px;font-size:12px}.task-tools{display:inline-flex;gap:5px;margin-left:8px}.task-tools button{border:1px solid #bbb;background:#fff;border-radius:4px;padding:4px 7px;font-size:10px;font-weight:600}.creation-editor{width:100%;min-height:360px;resize:vertical;padding:10px;border:1px solid #ccc;border-radius:6px;font:inherit}.profile-switch-modal{max-width:560px}.profile-switch-modal .profile-list{margin-top:16px}
 
 .side-panel.esquerda{left:0;right:auto;border-left:0;border-right:1px solid #ddd;box-shadow:8px 0 25px rgba(0,0,0,.08)}.roteiro-side{justify-content:flex-end}.roteiro-side.esquerda{justify-content:flex-start}.roteiro-side .roteiro-window{width:min(1450px,92vw);height:100%;max-height:none;border-radius:0}.creation-popup{width:min(1000px,calc(100vw - 40px));max-height:92vh;padding:24px}.creation-popup .creation-editor{min-height:68vh;max-height:calc(92vh - 150px);overflow:auto}
+
+.roteiro-text-window{width:min(1100px,92vw);height:min(820px,88vh)}
+.roteiro-text-area-wrap{flex:1;min-height:0;padding:18px;display:flex}
+.roteiro-text-editor{width:100%;height:100%;resize:none;box-sizing:border-box;border:1px solid #ccc;border-radius:8px;padding:16px;font:14px/1.5 Arial,sans-serif;white-space:pre-wrap;overflow:auto}
