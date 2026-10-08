@@ -87,7 +87,7 @@ function App() {
   }
 
   async function saveTaskCreation(task:any, value:string){
-    if(!config) return; const next=JSON.parse(JSON.stringify(config)); const t=next.tarefas.tarefas.find((x:any)=>x.id===task.id); if(!t)return; t.criacao=value; setBusy(true); try { await window.controleDiario.config.salvar(next); await loadData(); setTaskPanel(null); } catch(e){ setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR A CRIAÇÃO."); } finally { setBusy(false); }
+    if(!config) return; const next=JSON.parse(JSON.stringify(config)); const t=next.tarefas.tarefas.find((x:any)=>x.id===task.id); if(!t)return; t.criacao=value; setBusy(true); try { const saved=await window.controleDiario.config.salvarTarefa({id:task.id,criacao:value}); setData(saved); setTaskPanel(null); } catch(e){ setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR A CRIAÇÃO."); } finally { setBusy(false); }
   }
 
   async function saveTaskRoteiro(task:any, value:any){
