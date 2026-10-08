@@ -466,7 +466,7 @@ function hydrateKnownTaskRoteiro(config: Configuracao): { config: Configuracao; 
   let changed = false;
   for (const task of next.tarefas.tarefas) {
     const roteiro = KNOWN_TASK_ROTEIRO[task.id];
-    if (roteiro && (!task.roteiro || Object.keys(task.roteiro.celulas ?? {}).length === 0 || Object.values(task.roteiro.celulas ?? {}).some((cell: any) => typeof cell === "string"))) {
+    if (roteiro && (!task.roteiro || Object.keys(task.roteiro.celulas ?? {}).length === 0 || Object.keys(task.roteiro.celulas ?? {}).some((key) => !/^[A-Z]+\\d+$/.test(key)) || Object.values(task.roteiro.celulas ?? {}).some((cell: any) => typeof cell === "string"))) {
       const linhas = roteiro.split("\n").length;
       task.roteiro = {
         ...task.roteiro,
