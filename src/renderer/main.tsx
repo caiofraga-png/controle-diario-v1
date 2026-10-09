@@ -17,7 +17,7 @@ interface Bridge {
 }
 declare global { interface Window { controleDiario: Bridge } }
 
-function today() { return new Date().toISOString().slice(0, 10); }
+function today() { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`; }
 function brDate(value: string) { const [y,m,d] = value.split("-"); return `${d}/${m}/${y}`; }
 const monthNames = ["JANEIRO","FEVEREIRO","MARÇO","ABRIL","MAIO","JUNHO","JULHO","AGOSTO","SETEMBRO","OUTUBRO","NOVEMBRO","DEZEMBRO"];
 function monthLabel(y: number, m: number) { return `${monthNames[m - 1]} DE ${y}`; }
@@ -58,7 +58,7 @@ function App() {
   const [historyMode, setHistoryMode] = useState<"view"|"edit"|null>(null);
 
   async function refresh() { const result = await window.controleDiario.sistema.status(); setStatus(result); setFolderId(result.bootstrap?.drive?.pastaRaizId ?? ""); }
-  async function loadData() { try { const result = await window.controleDiario.dados.carregar(); setData(result); if (result.estado) { setObservation(result.estado.observacao ?? ""); setSelectedDate(result.estado.data); } } catch (e) { setData({ erro: e instanceof Error ? e.message : "NÃO FOI POSSÍVEL CARREGAR OS DADOS." }); } }
+  async function loadData() { try { const result = await window.controleDiario.dados.carregar(); setData(result); if (result.estado) { setObservation(result.estado.observacao ?? ""); setSelectedDate(result.estado.data); } else { setSelectedDate(today()); } } catch (e) { setData({ erro: e instanceof Error ? e.message : "NÃO FOI POSSÍVEL CARREGAR OS DADOS." }); } }
   async function loadMonth() { if (!status?.auth?.authenticated || !status?.bootstrap?.drive?.pastaRaizId) return; try { setCalendarData(await window.controleDiario.calendario.mes(calendarCursor)); } catch (e) { setMessage(e instanceof Error ? e.message : "NÃO FOI POSSÍVEL CARREGAR O CALENDÁRIO."); } }
   useEffect(() => { void refresh(); }, []);
   useEffect(() => { if (status?.auth?.authenticated && status?.bootstrap?.drive?.pastaRaizId) void loadData(); else setData(null); }, [status?.auth?.authenticated, status?.bootstrap?.drive?.pastaRaizId]);
