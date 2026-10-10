@@ -440,8 +440,6 @@ body::before {
 
 /* IDENTIDADE VISUAL LESTE TELECOM */
 body::before { background: none; }
-.header-title-wrap { display: flex; align-items: center; gap: 18px; }
-.header-company-logo { display: block; width: 88px; height: 36px; object-fit: contain; flex: 0 0 88px; }
 .header strong::before { display: none; }
 .company-watermark {
   position: fixed; z-index: 0; left: calc(252px + (100vw - 252px) / 2); top: 68%;
@@ -451,21 +449,17 @@ body::before { background: none; }
 }
 .app-main { position: relative; z-index: 1; }
 .app-sidebar { z-index: 18; }
-.app-main > .header > .header-title-wrap { flex-direction: row; gap: 18px; align-items: center; }
-.sidebar-company-top { display: flex; justify-content: flex-end; align-items: center; min-height: 34px; margin: -18px 8px 12px; }
+.app-main > .header > .sidebar-company-top { display: flex; justify-content: flex-end; align-items: center; min-height: 34px; margin: -18px 8px 12px; }
 .sidebar-company-top img { display: block; width: 92px; max-height: 34px; object-fit: contain; }
 .sidebar-company-footer { display: flex; justify-content: center; align-items: center; padding: 12px 6px 10px; margin-top: auto; border-top: 1px solid rgba(255,255,255,.14); }
 .sidebar-company-footer img { display: block; width: 150px; max-width: 100%; height: auto; max-height: 54px; object-fit: contain; }
 .sidebar-footer { margin-top: 0; border-top: 0; padding-top: 8px; }
 @media (max-width: 850px) {
   .company-watermark { left: calc(205px + (100vw - 205px) / 2); width: min(56vw, 620px); }
-  .header-company-logo { width: 76px; flex-basis: 76px; }
   .sidebar-company-top img { width: 78px; }
   .sidebar-company-footer img { width: 120px; }
 }
 @media (max-width: 620px) {
   .company-watermark { left: 50%; top: 72%; width: min(76vw, 520px); }
   .sidebar-company-top, .sidebar-company-footer { display: none; }
-  .header-company-logo { width: 58px; height: 28px; flex-basis: 58px; }
-  .header-title-wrap { gap: 10px; }
-}
+  }
