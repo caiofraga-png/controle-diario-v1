@@ -7,7 +7,7 @@ type Tab = "perfis" | "tarefas" | "email" | "layout";
 function clone<T>(v:T):T { return JSON.parse(JSON.stringify(v)); }
 function move<T>(arr:T[], from:number, to:number){ const a=[...arr]; const [x]=a.splice(from,1); a.splice(to,0,x); return a; }
 
-export default function ConfigurationPanel({ initial, onSave, onClose, busy }: { initial: Config; onSave: (config:Config)=>Promise<void>; onClose:()=>void; busy:boolean }) {
+export default function ConfigurationPanel({ initial, onSave, onClose, busy, embedded = false }: { initial: Config; onSave: (config:Config)=>Promise<void>; onClose:()=>void; busy:boolean; embedded?:boolean }) {
   const [tab,setTab]=useState<Tab>("perfis");
   const [draft,setDraft]=useState<Config>(()=>clone(initial));
   const [selectedId,setSelectedId]=useState<string|null>(null);
@@ -76,5 +76,5 @@ export default function ConfigurationPanel({ initial, onSave, onClose, busy }: {
 
   function saveRoteiroValue(value:any){ if(!selectedId) return; const next=clone(draft); const t=next.tarefas.tarefas.find((x:any)=>x.id===selectedId); if(!t) return; t.roteiro=clone(value); setDraft(next); setForm((f:any)=>({...f,roteiro:clone(value)})); setRoteiroOpen(false); }
   const roteiroInitial = roteiro ?? {linhas:50,colunas:5,largurasColunas:[120,120,120,120,120],celulas:{},mesclas:[],filtro:null};
-  return <div className="config-overlay"><div className="config-window"><header className="config-head"><div><h2>CONFIGURAÇÃO</h2><span>Administração do CONTROLE DIÁRIO</span></div><button onClick={onClose}>✕</button></header><nav className="config-tabs">{([['perfis','👤 PERFIS'],['tarefas','✅ TAREFAS'],['email','✉️ E-MAIL'],['layout','📐 LAYOUT']] as const).map(([id,label])=><button key={id} className={tab===id?"active":""} onClick={()=>switchTab(id)}>{label}</button>)}</nav>{localMessage&&<div className="system-message">{localMessage}</div>}{route==="lista"&&tab!=="layout"?renderList():route==="editar"&&tab!=="layout"?renderEdit():renderList()}</div>{roteiroOpen&&<RoteiroEditor initial={roteiroInitial} onCancel={()=>setRoteiroOpen(false)} onSave={saveRoteiroValue}/>}</div>;
+  return <div className={embedded?"config-embedded":"config-overlay"}><div className="config-window"><header className="config-head"><div><h2>CONFIGURAÇÃO</h2><span>Administração do CONTROLE DIÁRIO</span></div><button onClick={onClose} aria-label="Voltar para tarefas">✕</button></header><nav className="config-tabs">{([['perfis','👤 PERFIS'],['tarefas','✅ TAREFAS'],['email','✉️ E-MAIL'],['layout','📐 LAYOUT']] as const).map(([id,label])=><button key={id} className={tab===id?"active":""} onClick={()=>switchTab(id)}>{label}</button>)}</nav>{localMessage&&<div className="system-message">{localMessage}</div>}{route==="lista"&&tab!=="layout"?renderList():route==="editar"&&tab!=="layout"?renderEdit():renderList()}</div>{roteiroOpen&&<RoteiroEditor initial={roteiroInitial} onCancel={()=>setRoteiroOpen(false)} onSave={saveRoteiroValue}/>}</div>;
 }
