@@ -27,6 +27,22 @@ jobs:
       - name: Instalar dependências
         run: npm install
 
+      - name: Configurar chave do Google Picker
+        env:
+          GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+          const config = {
+            googleClientId: "694384996130-190cb97ksaebs11p975137j8m6m3fbpn.apps.googleusercontent.com",
+            googlePickerApiKey: process.env.GOOGLE_PICKER_API_KEY || ""
+          };
+          fs.writeFileSync(
+            "src/renderer/public/config.js",
+            "window.__CONTROLE_DIARIO_CONFIG__ = " + JSON.stringify(config, null, 2) + ";\\n"
+          );
+          NODE
+
       - name: Compilar aplicação Web
         run: npm run build
 
