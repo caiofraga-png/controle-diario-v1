@@ -449,7 +449,9 @@ body::before { background: none; }
   opacity: .14; filter: brightness(0) saturate(100%) invert(27%) sepia(16%) saturate(1000%) hue-rotate(111deg) brightness(92%) contrast(88%);
   pointer-events: none;
 }
-.app-sidebar, .app-main { position: relative; z-index: 1; }
+.app-main { position: relative; z-index: 1; }
+.app-sidebar { z-index: 18; }
+.app-main > .header > .header-title-wrap { flex-direction: row; gap: 18px; align-items: center; }
 .sidebar-company-top { display: flex; justify-content: flex-end; align-items: center; min-height: 34px; margin: -18px 8px 12px; }
 .sidebar-company-top img { display: block; width: 92px; max-height: 34px; object-fit: contain; }
 .sidebar-company-footer { display: flex; justify-content: center; align-items: center; padding: 12px 6px 10px; margin-top: auto; border-top: 1px solid rgba(255,255,255,.14); }
