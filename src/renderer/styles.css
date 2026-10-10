@@ -436,3 +436,52 @@ body::before {
   .system-workspace-card { padding:18px; }
   .import-placeholder { padding:24px 16px; }
 }
+
+
+/* IDENTIDADE VISUAL LESTE TELECOM */
+body::before {
+  background: url("/leste-logo.svg") center 68% / min(48vw, 760px) auto no-repeat;
+  filter: brightness(0) saturate(100%) invert(27%) sepia(16%) saturate(1000%) hue-rotate(111deg) brightness(92%) contrast(88%);
+  opacity: .14;
+}
+.header strong::before {
+  width: 88px;
+  height: 36px;
+  flex: 0 0 88px;
+  background: url("./leste-logo.svg") center / contain no-repeat;
+}
+.sidebar-company-top {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 34px;
+  margin: -18px 8px 12px;
+}
+.sidebar-company-top img {
+  display: block;
+  width: 92px;
+  max-height: 34px;
+  object-fit: contain;
+}
+.sidebar-company-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 12px 6px 10px;
+  margin-top: auto;
+  border-top: 1px solid rgba(255,255,255,.14);
+}
+.sidebar-company-footer img {
+  display: block;
+  width: 150px;
+  max-width: 100%;
+  height: auto;
+  max-height: 54px;
+  object-fit: contain;
+}
+.sidebar-footer { margin-top: 0; border-top: 0; padding-top: 8px; }
+@media (max-width: 760px) {
+  body::before { background-size: min(76vw, 520px) auto; background-position: center 62%; }
+  .sidebar-company-top img { width: 78px; }
+  .sidebar-company-footer img { width: 120px; }
+}
