@@ -121,6 +121,7 @@ function App() {
   return <div className="app app-shell">
     <aside className="app-sidebar">
       <div className="sidebar-brand"><span className="sidebar-monogram">CD</span><div><strong>CONTROLE</strong><span>DIÁRIO</span></div></div>
+      <div className="sidebar-company-top"><img src="./leste-logo.svg" alt="Leste Telecom" /></div>
       <div className="sidebar-section-label">EXPEDIENTE</div>
       <button className={`sidebar-item ${tab==="tarefas"?"active":""}`} onClick={()=>setTab("tarefas")}><span className="sidebar-icon">✓</span><span>Tarefas</span></button>
       <button className={`sidebar-item ${tab==="calendario"?"active":""}`} onClick={()=>setTab("calendario")}><span className="sidebar-icon">▦</span><span>Calendário</span></button>
@@ -128,6 +129,7 @@ function App() {
       <button className={`sidebar-item ${tab==="importacao"?"active":""}`} onClick={()=>setTab("importacao")}><span className="sidebar-icon">⇧</span><span>Importação</span></button>
       <button className={`sidebar-item ${tab==="configuracao"?"active":""}`} onClick={()=>setTab("configuracao")}><span className="sidebar-icon">⚙</span><span>Configuração</span></button>
       <button className={`sidebar-item ${tab==="sistema"?"active":""}`} onClick={()=>setTab("sistema")}><span className="sidebar-icon">◈</span><span>Sistema</span></button>
+      <div className="sidebar-company-footer"><img src="./leste-logo.svg" alt="Leste Telecom" /></div>
       <div className="sidebar-footer"><span className={status?.auth?.authenticated?"connection-dot connected":"connection-dot"}></span><span>{status?.auth?.authenticated?"Google conectado":"Google não conectado"}</span></div>
     </aside>
     <div className="app-main">
