@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 
 type SourceFile = { name: string; sheetName: string; headers: string[]; rows: unknown[][]; hash: string };
-type SheetInfo = { sheetId: number; title: string; hidden: boolean };\ndeclare global { interface Window { controleDiario: { sistema: { testarSheets: (id: string) => Promise<{spreadsheetId:string;title:string;sheets:SheetInfo[]}>; inspecionarDestino: (id:string,title:string) => Promise<{spreadsheetId:string;sheetTitle:string;headers:string[];lastTicketRow:number;headerRow:number;firstDataRow:number;ticketColumn:string}> } } } }
+type SheetInfo = { sheetId: number; title: string; hidden: boolean };
+declare global { interface Window { controleDiario: { sistema: { testarSheets: (id: string) => Promise<{spreadsheetId:string;title:string;sheets:SheetInfo[]}>; inspecionarDestino: (id:string,title:string) => Promise<{spreadsheetId:string;sheetTitle:string;headers:string[];lastTicketRow:number;headerRow:number;firstDataRow:number;ticketColumn:string}> } } } }
 const MAP: Record<string, string> = {
   "TICKET": "TICKET",
   "NOME CLIENTE": "NOME_CLIENTE",
@@ -31,7 +32,11 @@ export default function ImporterPanel() {
   const [file, setFile] = useState<SourceFile | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [spreadsheetId, setSpreadsheetId] = useState("1608bZtMCXHSbXDzYVIq-X454ZDDOpCUa4TdkHWZT5wM");\n  const [spreadsheetTitle, setSpreadsheetTitle] = useState("");\n  const [sheets, setSheets] = useState<SheetInfo[]>([]);\n  const [targetSheet, setTargetSheet] = useState("");\n  const [destination, setDestination] = useState<any>(null);
+  const [spreadsheetId, setSpreadsheetId] = useState("1608bZtMCXHSbXDzYVIq-X454ZDDOpCUa4TdkHWZT5wM");
+  const [spreadsheetTitle, setSpreadsheetTitle] = useState("");
+  const [sheets, setSheets] = useState<SheetInfo[]>([]);
+  const [targetSheet, setTargetSheet] = useState("");
+  const [destination, setDestination] = useState<any>(null);
   const mapping = useMemo(() => {
     if (!file) return [];
     const source = new Map(file.headers.map((header, index) => [norm(header), index]));
@@ -40,7 +45,21 @@ export default function ImporterPanel() {
     }));
   }, [file]);
 
-  async function loadDestinationSheets() {\n    setBusy(true); setError(""); setDestination(null); setSheets([]);\n    try { const result = await window.controleDiario.sistema.testarSheets(spreadsheetId); setSpreadsheetTitle(result.title); const visible = result.sheets.filter(s => !s.hidden); setSheets(visible); if (!visible.some(s => s.title === targetSheet)) setTargetSheet(visible[0]?.title ?? ""); }\n    catch (e) { setError(e instanceof Error ? e.message : "NÃO FOI POSSÍVEL LISTAR AS ABAS DA PLANILHA."); }\n    finally { setBusy(false); }\n  }\n  async function inspectDestination() {\n    if (!targetSheet) { setError("SELECIONE A ABA DE DESTINO."); return; }\n    setBusy(true); setError(""); setDestination(null);\n    try { setDestination(await window.controleDiario.sistema.inspecionarDestino(spreadsheetId, targetSheet)); }\n    catch (e) { setError(e instanceof Error ? e.message : "NÃO FOI POSSÍVEL INSPECIONAR A ABA DE DESTINO."); }\n    finally { setBusy(false); }\n  }\n\n  async function readFile(selected?: File) {
+  async function loadDestinationSheets() {
+    setBusy(true); setError(""); setDestination(null); setSheets([]);
+    try { const result = await window.controleDiario.sistema.testarSheets(spreadsheetId); setSpreadsheetTitle(result.title); const visible = result.sheets.filter(s => !s.hidden); setSheets(visible); if (!visible.some(s => s.title === targetSheet)) setTargetSheet(visible[0]?.title ?? ""); }
+    catch (e) { setError(e instanceof Error ? e.message : "NÃO FOI POSSÍVEL LISTAR AS ABAS DA PLANILHA."); }
+    finally { setBusy(false); }
+  }
+  async function inspectDestination() {
+    if (!targetSheet) { setError("SELECIONE A ABA DE DESTINO."); return; }
+    setBusy(true); setError(""); setDestination(null);
+    try { setDestination(await window.controleDiario.sistema.inspecionarDestino(spreadsheetId, targetSheet)); }
+    catch (e) { setError(e instanceof Error ? e.message : "NÃO FOI POSSÍVEL INSPECIONAR A ABA DE DESTINO."); }
+    finally { setBusy(false); }
+  }
+
+  async function readFile(selected?: File) {
     setError(""); setFile(null);
     if (!selected) return;
     if (!selected.name.toLocaleLowerCase().endsWith(".xlsx")) {
@@ -78,7 +97,12 @@ export default function ImporterPanel() {
         <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={busy} onChange={e => void readFile(e.target.files?.[0])} />
       </label>
       <h3>Planilha empresarial</h3>
-      <label className="import-file-label"><span>ID DA PLANILHA</span><input value={spreadsheetId} onChange={e => { setSpreadsheetId(e.target.value); setSheets([]); setDestination(null); }} placeholder="ID da planilha Google Sheets" /></label>\n      <button className="import-action-button" disabled={busy || !spreadsheetId.trim()} onClick={() => void loadDestinationSheets()}>CARREGAR ABAS VISÍVEIS</button>\n      {spreadsheetTitle && <p className="import-note">Planilha encontrada: <strong>{spreadsheetTitle}</strong></p>}\n      {sheets.length > 0 && <><label className="import-file-label"><span>ABA DE DESTINO</span><select value={targetSheet} onChange={e => { setTargetSheet(e.target.value); setDestination(null); }}><option value="">Selecione uma aba</option>{sheets.map(s => <option key={s.sheetId} value={s.title}>{s.title}</option>)}</select></label><button className="import-action-button" disabled={busy || !targetSheet} onClick={() => void inspectDestination()}>INSPECIONAR DESTINO</button></>}\n      {destination && <div className="import-destination-result"><h3>Destino validado para prévia</h3><div className="import-summary"><div><span>ABA</span><strong>{destination.sheetTitle}</strong></div><div><span>COLUNA TICKET</span><strong>{destination.ticketColumn}</strong></div><div><span>ÚLTIMA LINHA COM TICKET</span><strong>{destination.lastTicketRow}</strong></div><div><span>LINHA DO CABEÇALHO NOVO</span><strong>{destination.headerRow}</strong></div></div><p className="import-note">A primeira linha prevista para os dados seria {destination.firstDataRow}. A planilha foi consultada apenas em leitura.</p><details className="import-source-details"><summary>Ver cabeçalhos atuais do destino</summary><ol>{destination.headers.map((header:string,i:number)=><li key={i}>{header || "(cabeçalho vazio)"}</li>)}</ol></details></div>}\n      {busy && <p className="system-message">PROCESSANDO…</p>
+      <label className="import-file-label"><span>ID DA PLANILHA</span><input value={spreadsheetId} onChange={e => { setSpreadsheetId(e.target.value); setSheets([]); setDestination(null); }} placeholder="ID da planilha Google Sheets" /></label>
+      <button className="import-action-button" disabled={busy || !spreadsheetId.trim()} onClick={() => void loadDestinationSheets()}>CARREGAR ABAS VISÍVEIS</button>
+      {spreadsheetTitle && <p className="import-note">Planilha encontrada: <strong>{spreadsheetTitle}</strong></p>}
+      {sheets.length > 0 && <><label className="import-file-label"><span>ABA DE DESTINO</span><select value={targetSheet} onChange={e => { setTargetSheet(e.target.value); setDestination(null); }}><option value="">Selecione uma aba</option>{sheets.map(s => <option key={s.sheetId} value={s.title}>{s.title}</option>)}</select></label><button className="import-action-button" disabled={busy || !targetSheet} onClick={() => void inspectDestination()}>INSPECIONAR DESTINO</button></>}
+      {destination && <div className="import-destination-result"><h3>Destino validado para prévia</h3><div className="import-summary"><div><span>ABA</span><strong>{destination.sheetTitle}</strong></div><div><span>COLUNA TICKET</span><strong>{destination.ticketColumn}</strong></div><div><span>ÚLTIMA LINHA COM TICKET</span><strong>{destination.lastTicketRow}</strong></div><div><span>LINHA DO CABEÇALHO NOVO</span><strong>{destination.headerRow}</strong></div></div><p className="import-note">A primeira linha prevista para os dados seria {destination.firstDataRow}. A planilha foi consultada apenas em leitura.</p><details className="import-source-details"><summary>Ver cabeçalhos atuais do destino</summary><ol>{destination.headers.map((header:string,i:number)=><li key={i}>{header || "(cabeçalho vazio)"}</li>)}</ol></details></div>}
+      {busy && <p className="system-message">PROCESSANDO…</p>
       {error && <p className="system-message" role="alert">{error}</p>}
       {file && <>
         <div className="import-summary">
