@@ -99,7 +99,12 @@ function App() {
 
   type CalendarSpecial = { data: string; folga?: boolean; feriado?: boolean };
   const specialByDate = useMemo<Map<string, CalendarSpecial>>(()=>new Map(((calendarData?.special??[]) as CalendarSpecial[]).map(x=>[x.data,x])),[calendarData]);
-  const completed = new Set<string>(calendarData?.completedDates??[]);\n  const upcomingDates = useMemo(() => ((calendarData?.special ?? []) as CalendarSpecial[])\n    .filter(x => (x.folga || x.feriado) && x.data >= today())\n    .sort((a,b) => a.data.localeCompare(b.data))\n    .slice(0, 2)\n    .map(x => `${x.data.slice(8,10)}/${x.data.slice(5,7)} ${x.feriado ? "FERIADO" : "FOLGA"}`), [calendarData]);
+  const completed = new Set<string>(calendarData?.completedDates??[]);
+  const upcomingDates = useMemo(() => ((calendarData?.special ?? []) as CalendarSpecial[])
+    .filter(x => (x.folga || x.feriado) && x.data >= today())
+    .sort((a,b) => a.data.localeCompare(b.data))
+    .slice(0, 2)
+    .map(x => `${x.data.slice(8,10)}/${x.data.slice(5,7)} ${x.feriado ? "FERIADO" : "FOLGA"}`), [calendarData]);
   const first = new Date(calendarCursor.year, calendarCursor.month-1, 1).getDay();
   const days = new Date(calendarCursor.year, calendarCursor.month, 0).getDate();
   const cells = Array.from({length:first+days},(_,i)=>i<first?null:i-first+1);
