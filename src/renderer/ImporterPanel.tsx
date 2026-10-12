@@ -117,7 +117,7 @@ export default function ImporterPanel() {
       {spreadsheetTitle && <p className="import-note">Planilha encontrada: <strong>{spreadsheetTitle}</strong></p>}
       {sheets.length > 0 && <><label className="import-file-label"><span>ABA DE DESTINO</span><select value={targetSheet} onChange={e => { setTargetSheet(e.target.value); setDestination(null); }}><option value="">Selecione uma aba</option>{sheets.map(s => <option key={s.sheetId} value={s.title}>{s.title}</option>)}</select></label><button className="import-action-button" disabled={busy || !targetSheet} onClick={() => void inspectDestination()}>INSPECIONAR DESTINO</button></>}
       {destination && <div className="import-destination-result"><h3>Destino validado para prévia</h3><div className="import-summary"><div><span>ABA</span><strong>{destination.sheetTitle}</strong></div><div><span>COLUNA TICKET</span><strong>{destination.ticketColumn}</strong></div><div><span>ÚLTIMA LINHA COM TICKET</span><strong>{destination.lastTicketRow}</strong></div><div><span>LINHA DO CABEÇALHO NOVO</span><strong>{destination.headerRow}</strong></div></div><p className="import-note">A primeira linha prevista para os dados seria {destination.firstDataRow}. A planilha foi consultada apenas em leitura.</p><details className="import-source-details"><summary>Ver cabeçalhos atuais do destino</summary><ol>{destination.headers.map((header:string,i:number)=><li key={i}>{header || "(cabeçalho vazio)"}</li>)}</ol></details></div>}
-      {busy && <p className="system-message">PROCESSANDO…</p>
+      {busy && <p className="system-message">PROCESSANDO…</p>}
       {error && <p className="system-message" role="alert">{error}</p>}
       {file && <>
         <div className="import-summary">
@@ -126,11 +126,6 @@ export default function ImporterPanel() {
           <div><span>LINHAS DE DADOS</span><strong>{file.rows.length.toLocaleString("pt-BR")}</strong></div>
           <div><span>COLUNAS DE ORIGEM</span><strong>{file.headers.filter(Boolean).length}</strong></div>
         </div>
-        <label className="import-file-label">
-          <span>ABA DE DESTINO (PRÉ-SELEÇÃO)</span>
-          <input value={targetSheet} onChange={e => setTargetSheet(e.target.value)} placeholder="Nome exato da aba da planilha empresarial" />
-        </label>
-        <p className="import-note">A lista automática de abas será ligada à Sheets API na próxima etapa. Por enquanto, este campo é apenas uma anotação e não executa gravação.</p>
         <h3>Validação do mapeamento do script atual</h3>
         <p>O arquivo é lido pela primeira aba, conforme o importador original. Os nomes abaixo são comparados sem diferenciar maiúsculas/minúsculas e removendo espaços nas extremidades.</p>
         <div className="import-map-table">
