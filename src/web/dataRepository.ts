@@ -698,6 +698,9 @@ export class DataRepository {
     const progress = this.progress(state);
     if (progress.total === 0 || progress.done !== progress.total) throw new Error("O EXPEDIENTE AINDA NÃO ESTÁ 100% CONCLUÍDO.");
     const s = await this.structure(rootId);
+    // Recarrega os metadados do arquivo de estado anterior antes de gravá-lo.
+    // Isso permite atualizar um arquivo existente sem ignorar a proteção contra alterações externas.
+    await this.readNamed<{ schemaVersion: 1; estado: EstadoAtual | null }>(s.systemId, "estado_anterior.json");
     await this.writeNamed(s.systemId, "estado_anterior.json", { schemaVersion: 1, estado: state });
     const year = state.data.slice(0, 4);
     const monthNumber = state.data.slice(5, 7);
