@@ -497,3 +497,25 @@ body::before { background: none; }
   .upcoming-dates { justify-self:start; text-align:left; font-size:11px; }
   .app-main > .header .header-status { display:none; }
 }
+
+
+/* Importador XLSX — etapa de leitura e validação, sem gravação */
+.import-file-label { display:flex; flex-direction:column; gap:8px; margin:18px 0; color:#315746; font-size:12px; font-weight:800; letter-spacing:.06em; }
+.import-file-label input { width:100%; min-width:0; padding:12px; border:1px solid #cbd8d0; border-radius:8px; background:#fff; color:#202124; font:inherit; letter-spacing:normal; }
+.import-summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:22px 0; }
+.import-summary > div { display:flex; flex-direction:column; gap:7px; min-width:0; padding:14px; background:#f2f7f3; border:1px solid #dce8df; border-radius:9px; }
+.import-summary span,.import-integrity > span { color:#587064; font-size:10px; font-weight:800; letter-spacing:.06em; }
+.import-summary strong { overflow-wrap:anywhere; font-size:13px; }
+.import-note { color:#65736b; font-size:12px; line-height:1.55; }
+.import-map-table { width:100%; overflow:auto; margin:14px 0; border:1px solid #dce5de; border-radius:8px; }
+.import-map-row { display:grid; grid-template-columns:1fr 1fr 120px; gap:12px; align-items:center; min-width:560px; padding:10px 12px; border-bottom:1px solid #e8ede9; font-size:12px; }
+.import-map-row:last-child { border-bottom:0; }
+.import-map-head { background:#edf4ef; color:#315746; font-size:10px; font-weight:800; letter-spacing:.04em; }
+.import-found { color:#167044; }
+.import-missing { color:#a34a30; }
+.import-source-details { margin:16px 0; font-size:13px; }
+.import-source-details summary { cursor:pointer; font-weight:700; color:#315746; }
+.import-source-details ol { max-height:240px; overflow:auto; }
+.import-integrity { display:flex; flex-direction:column; gap:8px; padding:12px; border-radius:8px; background:#f6f7f6; }
+.import-integrity code { overflow-wrap:anywhere; font-size:11px; }
+@media (max-width: 760px) { .import-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }
