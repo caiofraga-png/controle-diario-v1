@@ -3,7 +3,6 @@ import * as XLSX from "xlsx";
 
 type SourceFile = { name: string; sheetName: string; headers: string[]; rows: unknown[][]; hash: string };
 type SheetInfo = { sheetId: number; title: string; hidden: boolean };
-declare global { interface Window { controleDiario: { sistema: { testarSheets: (id: string) => Promise<{spreadsheetId:string;title:string;sheets:SheetInfo[]}>; inspecionarDestino: (id:string,title:string) => Promise<{spreadsheetId:string;sheetTitle:string;headers:string[];lastTicketRow:number;headerRow:number;firstDataRow:number;ticketColumn:string}> } } } }
 const MAP: Record<string, string> = {
   "TICKET": "TICKET",
   "NOME CLIENTE": "NOME_CLIENTE",
@@ -47,14 +46,14 @@ export default function ImporterPanel() {
 
   async function loadDestinationSheets() {
     setBusy(true); setError(""); setDestination(null); setSheets([]);
-    try { const result = await window.controleDiario.sistema.testarSheets(spreadsheetId); setSpreadsheetTitle(result.title); const visible = result.sheets.filter(s => !s.hidden); setSheets(visible); if (!visible.some(s => s.title === targetSheet)) setTargetSheet(visible[0]?.title ?? ""); }
+    try { const result = await (window as any).controleDiario.sistema.testarSheets(spreadsheetId); setSpreadsheetTitle(result.title); const visible = result.sheets.filter(s => !s.hidden); setSheets(visible); if (!visible.some(s => s.title === targetSheet)) setTargetSheet(visible[0]?.title ?? ""); }
     catch (e) { setError(e instanceof Error ? e.message : "NÃO FOI POSSÍVEL LISTAR AS ABAS DA PLANILHA."); }
     finally { setBusy(false); }
   }
   async function inspectDestination() {
     if (!targetSheet) { setError("SELECIONE A ABA DE DESTINO."); return; }
     setBusy(true); setError(""); setDestination(null);
-    try { setDestination(await window.controleDiario.sistema.inspecionarDestino(spreadsheetId, targetSheet)); }
+    try { setDestination(await (window as any).controleDiario.sistema.inspecionarDestino(spreadsheetId, targetSheet)); }
     catch (e) { setError(e instanceof Error ? e.message : "NÃO FOI POSSÍVEL INSPECIONAR A ABA DE DESTINO."); }
     finally { setBusy(false); }
   }
