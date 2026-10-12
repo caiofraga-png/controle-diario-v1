@@ -32,10 +32,10 @@ export function installWebBridge(){
     const apiError=async(response:Response,fallback:string)=>{if(response.ok)return;let message=`${fallback} (HTTP ${response.status}).`;try{const body=await response.json();if(body?.error?.message)message=body.error.message;}catch{}throw new Error(message);};
     const day=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()).replace(/-/g,"");
     const hash=String(p.hash??"").trim();if(!/^[a-f0-9]{64}$/i.test(hash))throw new Error("NÃO FOI POSSÍVEL VALIDAR O ARQUIVO SELECIONADO.");
-    const duplicateKey=`ESTATISTICAS_IMPORTADO_${day}_${hash}`;
+    const duplicateKey=`ESTATISTICAS_IMPORTADO_${day}`;
     const duplicateSearch=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/developerMetadata:search`,{method:"POST",headers:{...headersAuth,"Content-Type":"application/json"},body:JSON.stringify({dataFilters:[{developerMetadataLookup:{metadataKey:duplicateKey}}]})});
     await apiError(duplicateSearch,"NÃO FOI POSSÍVEL VERIFICAR IMPORTAÇÕES ANTERIORES");const duplicateResult=await duplicateSearch.json();
-    if((duplicateResult.matchedDeveloperMetadata??[]).length>0&&!p.confirmarDuplicidade)return {duplicate:true,fileName:String(p.fileName??""),sheetTitle:title};
+    const previous=(duplicateResult.matchedDeveloperMetadata??[]).some((m:any)=>{try{return JSON.parse(String(m.developerMetadata?.metadataValue??"{}")).hash===hash;}catch{return false;}});if(previous&&!p.confirmarDuplicidade)return {duplicate:true,fileName:String(p.fileName??""),sheetTitle:title};
     const metaResponse=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}?fields=sheets(properties(title,gridProperties(rowCount,columnCount)))`,{headers:headersAuth});
     await apiError(metaResponse,"NÃO FOI POSSÍVEL CONSULTAR A PLANILHA");const meta=await metaResponse.json();
     const sheet=(meta.sheets??[]).find((s:any)=>s.properties?.title===title);if(!sheet)throw new Error("A ABA DE DESTINO NÃO FOI ENCONTRADA.");
@@ -62,7 +62,7 @@ export function installWebBridge(){
     }
     const write=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values:batchUpdate`,{method:"POST",headers:{...headersAuth,"Content-Type":"application/json"},body:JSON.stringify({valueInputOption:"USER_ENTERED",data})});await apiError(write,"A GRAVAÇÃO DA IMPORTAÇÃO FALHOU");
     const result=await write.json();
-    const metadataResponse=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{...headersAuth,"Content-Type":"application/json"},body:JSON.stringify({requests:[{createDeveloperMetadata:{developerMetadata:{metadataKey:duplicateKey,metadataValue:JSON.stringify({fileName:String(p.fileName??""),sheetTitle:title,importedAt:new Date().toISOString(),records:p.rows.length}),visibility:"DOCUMENT",location:{spreadsheet:{}}}}}]})});
+    const metadataResponse=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{...headersAuth,"Content-Type":"application/json"},body:JSON.stringify({requests:[{createDeveloperMetadata:{developerMetadata:{metadataKey:duplicateKey,metadataValue:JSON.stringify({hash,fileName:String(p.fileName??""),sheetTitle:title,importedAt:new Date().toISOString(),records:p.rows.length}),visibility:"DOCUMENT",location:{spreadsheet:{}}}}}]})});
     await apiError(metadataResponse,"DADOS GRAVADOS, MAS NÃO FOI POSSÍVEL REGISTRAR O CONTROLE DE DUPLICIDADE");
     return {success:true,fileName:String(p.fileName??""),sheetTitle:title,records:p.rows.length,columns:data.length-1,headerRow,firstDataRow,updatedCells:Number(result.totalUpdatedCells??0)};
    }
