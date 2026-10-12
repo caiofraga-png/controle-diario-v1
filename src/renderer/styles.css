@@ -526,3 +526,8 @@ body::before { background: none; }
 .import-file-label select { width:100%; padding:12px; border:1px solid #cbd8d0; border-radius:8px; background:#fff; color:#202124; font:inherit; letter-spacing:normal; }
 .import-destination-result { margin:22px 0; padding:16px; border:1px solid #dce8df; border-radius:9px; background:#fbfdfb; }
 .import-destination-result h3 { margin-top:0; }
+
+
+.import-preview { margin-top:24px; padding-top:18px; border-top:1px solid #dce8df; }
+.import-warning { padding:12px; border-radius:8px; background:#fff5e9; color:#874b13; font-size:12px; line-height:1.5; }
+.import-preview .import-map-row { grid-template-columns:minmax(130px,1fr) minmax(150px,1fr) minmax(100px,1fr); }
