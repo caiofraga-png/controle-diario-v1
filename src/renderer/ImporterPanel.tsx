@@ -54,7 +54,14 @@ export default function ImporterPanel() {
     if (!window.confirm("Importar os dados do arquivo selecionado para a aba escolhida? A operação gravará dados na planilha empresarial.")) return;
     setBusy(true); setError(""); setMessage("");
     try {
-      const result = await (window as any).controleDiario.sistema.importarEstatisticas({ spreadsheetId, sheetTitle: targetSheet, fileName: file.name, headers: file.headers, rows: file.rows, hash: file.hash });
+      const payload = { spreadsheetId, sheetTitle: targetSheet, fileName: file.name, headers: file.headers, rows: file.rows, hash: file.hash };
+      let result = await (window as any).controleDiario.sistema.importarEstatisticas(payload);
+      if (result.duplicate) {
+        const confirmAgain = window.confirm("ESTE MESMO ARQUIVO JÁ FOI IMPORTADO HOJE. Deseja importá-lo novamente?");
+        if (!confirmAgain) { setMessage("IMPORTAÇÃO CANCELADA. NENHUM DADO FOI GRAVADO."); return; }
+        result = await (window as any).controleDiario.sistema.importarEstatisticas({ ...payload, confirmarDuplicidade: true });
+      }
+      if (result.duplicate) throw new Error("A VERIFICAÇÃO DE DUPLICIDADE NÃO FOI CONCLUÍDA.");
       localStorage.setItem("controle-diario-importer-tab", targetSheet);
       setMessage(`IMPORTAÇÃO CONCLUÍDA: ${result.records.toLocaleString("pt-BR")} REGISTROS GRAVADOS NA ABA “${result.sheetTitle}”.`);
     } catch (e) { setError(e instanceof Error ? e.message : "A IMPORTAÇÃO NÃO FOI CONCLUÍDA."); }
