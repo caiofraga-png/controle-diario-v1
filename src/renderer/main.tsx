@@ -61,7 +61,7 @@ function App() {
   async function loadMonth() { if (!status?.auth?.authenticated || !status?.bootstrap?.drive?.pastaRaizId) return; try { setCalendarData(await window.controleDiario.calendario.mes(calendarCursor)); } catch (e) { setMessage(e instanceof Error ? e.message : "NÃO FOI POSSÍVEL CARREGAR O CALENDÁRIO."); } }
   useEffect(() => { void refresh(); }, []);
   useEffect(() => { if (status?.auth?.authenticated && status?.bootstrap?.drive?.pastaRaizId) void loadData(); else setData(null); }, [status?.auth?.authenticated, status?.bootstrap?.drive?.pastaRaizId]);
-  useEffect(() => { if (tab === "calendario") void loadMonth(); }, [tab, calendarCursor.year, calendarCursor.month, status?.auth?.authenticated, status?.bootstrap?.drive?.pastaRaizId]);
+  useEffect(() => { if (status?.auth?.authenticated && status?.bootstrap?.drive?.pastaRaizId) void loadMonth(); }, [calendarCursor.year, calendarCursor.month, status?.auth?.authenticated, status?.bootstrap?.drive?.pastaRaizId]);
   useEffect(() => () => { if (observationTimer.current) clearTimeout(observationTimer.current); }, []);
 
   const config = data?.configuracao, state = data?.estado;
@@ -99,7 +99,7 @@ function App() {
 
   type CalendarSpecial = { data: string; folga?: boolean; feriado?: boolean };
   const specialByDate = useMemo<Map<string, CalendarSpecial>>(()=>new Map(((calendarData?.special??[]) as CalendarSpecial[]).map(x=>[x.data,x])),[calendarData]);
-  const completed = new Set<string>(calendarData?.completedDates??[]);
+  const completed = new Set<string>(calendarData?.completedDates??[]);\n  const upcomingDates = useMemo(() => ((calendarData?.special ?? []) as CalendarSpecial[])\n    .filter(x => (x.folga || x.feriado) && x.data >= today())\n    .sort((a,b) => a.data.localeCompare(b.data))\n    .slice(0, 2)\n    .map(x => `${x.data.slice(8,10)}/${x.data.slice(5,7)} ${x.feriado ? "FERIADO" : "FOLGA"}`), [calendarData]);
   const first = new Date(calendarCursor.year, calendarCursor.month-1, 1).getDay();
   const days = new Date(calendarCursor.year, calendarCursor.month, 0).getDate();
   const cells = Array.from({length:first+days},(_,i)=>i<first?null:i-first+1);
@@ -122,7 +122,7 @@ function App() {
   return <div className="app app-shell">
     <img className="company-watermark" src="./leste-logo.svg" alt="" aria-hidden="true" />
     <aside className="app-sidebar">
-      <div className="sidebar-brand"><span className="sidebar-monogram">CD</span><div><strong>CONTROLE</strong><span>DIÁRIO</span></div></div>
+      <a className="sidebar-brand sidebar-home-link" href="./" aria-label="CONTROLE DIÁRIO — voltar à página inicial"><span className="sidebar-monogram">CD</span><div><strong>CONTROLE</strong><span>DIÁRIO</span></div></a>
       <div className="sidebar-company-top"><img src="./leste-logo.svg" alt="Leste Telecom" /></div>
       <div className="sidebar-section-label">EXPEDIENTE</div>
       <button className={`sidebar-item ${tab==="tarefas"?"active":""}`} onClick={()=>setTab("tarefas")}><span className="sidebar-icon">✓</span><span>Tarefas</span></button>
@@ -135,7 +135,7 @@ function App() {
       <div className="sidebar-footer"><span className={status?.auth?.authenticated?"connection-dot connected":"connection-dot"}></span><span>{status?.auth?.authenticated?"Google conectado":"Google não conectado"}</span></div>
     </aside>
     <div className="app-main">
-    <header className="header"><div><div className="page-eyebrow">CONTROLE DIÁRIO</div><strong>{{tarefas:"Tarefas do expediente",calendario:"Calendário de trabalho",configuracao:"Configuração",importacao:"Importação",sistema:"Sistema"}[tab]}</strong></div><div className="header-status">{busy?"Salvando alterações…":"Organização do expediente"}</div></header>
+    <header className="header"><div className="header-page-title"><div className="page-eyebrow">CONTROLE DIÁRIO</div><strong>{{tarefas:"Tarefas do expediente",calendario:"Calendário de trabalho",configuracao:"Configuração",importacao:"Importação",sistema:"Sistema"}[tab]}</strong></div><div className="upcoming-dates" aria-live="polite"><span>Próximas datas:</span> {upcomingDates.length ? upcomingDates.join(" - ") : "Nenhuma data especial próxima"}</div><div className="header-status">{busy?"Salvando alterações…":"Organização do expediente"}</div></header>
     <main className="content">
       {tab==="configuracao" ? (data?.configuracao ? <ConfigurationPanel initial={data.configuracao} onSave={saveConfig} onClose={()=>setTab("tarefas")} busy={busy} embedded/> : <section className="card"><div className="profile">CARREGANDO CONFIGURAÇÃO…</div></section>)
       : tab==="sistema" ? <section className="system-workspace"><div className="workspace-intro"><h2>Conexão e armazenamento</h2><p>Gerencie a conta Google e a pasta usada pelo CONTROLE DIÁRIO.</p></div><div className="system-workspace-grid"><div className="system-workspace-card"><span className="system-workspace-label">CONTA GOOGLE</span><strong>{status?.auth?.email??"NÃO AUTORIZADA"}</strong><p>{status?.auth?.authenticated?"Conta autorizada para acessar o serviço.":"Autorize sua conta Google para iniciar o acesso ao Drive."}</p><button disabled={busy} onClick={()=>void systemAction(()=>window.controleDiario.sistema.autorizarGoogle(),"CONTA GOOGLE AUTORIZADA.")}>AUTORIZAR GOOGLE</button></div><div className="system-workspace-card"><span className="system-workspace-label">PASTA RAIZ</span><strong className="folder-id">{folderId||"NÃO CONFIGURADA"}</strong><p>Selecione a pasta raiz do CONTROLE DIÁRIO ou informe o ID manualmente.</p><div className="system-actions"><button disabled={busy||!status?.auth?.authenticated} onClick={()=>void systemAction(()=>window.controleDiario.sistema.selecionarPasta(),"PASTA RAIZ CONFIGURADA.")}>SELECIONAR PASTA</button></div><div className="manual-folder"><input value={folderId} onChange={e=>setFolderId(e.target.value)} placeholder="ID da pasta do Google Drive"/><button disabled={busy||!status?.auth?.authenticated} onClick={()=>void systemAction(()=>window.controleDiario.sistema.definirPastaRaiz(folderId),"PASTA RAIZ CONFIGURADA.")}>USAR ID</button></div><button className="test-button" disabled={busy||!folderId} onClick={()=>void systemAction(()=>window.controleDiario.sistema.testarConexao(),"CONEXÃO CONFIRMADA.")}>TESTAR CONEXÃO</button></div></div>{message&&<p className="system-message">{message}</p>}</section>
