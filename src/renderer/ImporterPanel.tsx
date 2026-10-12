@@ -62,7 +62,7 @@ export default function ImporterPanel() {
 
   async function loadDestinationSheets() {
     setBusy(true); setError(""); setDestination(null); setSheets([]);
-    try { const result = await (window as any).controleDiario.sistema.testarSheets(spreadsheetId); setSpreadsheetTitle(result.title); const visible = result.sheets.filter(s => !s.hidden); setSheets(visible); if (!visible.some(s => s.title === targetSheet)) setTargetSheet(visible[0]?.title ?? ""); }
+    try { const result = await (window as any).controleDiario.sistema.testarSheets(spreadsheetId); setSpreadsheetTitle(result.title); const visible = result.sheets.filter((s: { hidden: boolean; title: string }) => !s.hidden); setSheets(visible); if (!visible.some((s: { title: string }) => s.title === targetSheet)) setTargetSheet(visible[0]?.title ?? ""); }
     catch (e) { setError(e instanceof Error ? e.message : "NÃO FOI POSSÍVEL LISTAR AS ABAS DA PLANILHA."); }
     finally { setBusy(false); }
   }
