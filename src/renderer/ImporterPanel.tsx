@@ -43,6 +43,22 @@ export default function ImporterPanel() {
       destination, sourceName, found: source.has(norm(sourceName)), protected: PROTECTED.has(norm(destination))
     }));
   }, [file]);
+  const destinationPlan = useMemo(() => {
+    if (!file || !destination) return null;
+    const sourceIndexes = new Map(file.headers.map((header, index) => [norm(header), index]));
+    const columns = destination.headers.map((header: string, index: number) => {
+      const key = Object.keys(MAP).find(candidate => norm(candidate) === norm(header));
+      const sourceName = key ? MAP[key] : "";
+      const sourceIndex = sourceName ? sourceIndexes.get(norm(sourceName)) : undefined;
+      const protectedColumn = PROTECTED.has(norm(header));
+      return { header, index, sourceName, sourceIndex, protectedColumn, importable: Boolean(header && !protectedColumn && sourceName && sourceIndex !== undefined) };
+    });
+    const missing = columns.filter((column: any) => column.header && !column.protectedColumn && column.sourceName && column.sourceIndex === undefined);
+    const mapped = columns.filter((column: any) => column.importable);
+    const sample = file.rows.slice(0, 5).map(row => mapped.map((column: any) => row[column.sourceIndex as number] instanceof Date ? (row[column.sourceIndex as number] as Date).toLocaleString("pt-BR") : String(row[column.sourceIndex as number] ?? "")));
+    return { columns, missing, mapped, sample };
+  }, [file, destination]);
+
 
   async function loadDestinationSheets() {
     setBusy(true); setError(""); setDestination(null); setSheets([]);
@@ -125,6 +141,12 @@ export default function ImporterPanel() {
           </div>)}
         </div>
         <details className="import-source-details"><summary>Ver cabeçalhos encontrados no arquivo</summary><ol>{file.headers.map((header, i) => <li key={i}>{header || "(cabeçalho vazio)"}</li>)}</ol></details>
+        {destinationPlan && <section className="import-preview">
+          <h3>Prévia de importação (somente leitura)</h3>
+          <p className="import-note">Colunas de destino que receberiam dados: <strong>{destinationPlan.mapped.length}</strong>. Colunas protegidas e colunas sem mapeamento ficam fora da gravação. A prévia abaixo mostra até cinco registros.</p>
+          {destinationPlan.missing.length > 0 && <p className="import-warning">Colunas de origem ausentes: {destinationPlan.missing.map((column:any) => column.sourceName).join(", ")}. Essas colunas seriam ignoradas pelo script original.</p>}
+          {destinationPlan.mapped.length > 0 ? <div className="import-map-table"><div className="import-map-row import-map-head"><span>DESTINO</span><span>ORIGEM</span><span>AMOSTRA</span></div>{destinationPlan.mapped.slice(0,12).map((column:any,i:number)=><div className="import-map-row" key={column.header}><span>{column.header}</span><span>{column.sourceName}</span><span>{destinationPlan.sample[0]?.[i] ?? "(vazio)"}</span></div>)}</div> : <p className="import-warning">Nenhuma coluna mapeável foi encontrada para o destino selecionado.</p>}
+        </section>}
         <div className="import-integrity"><span>SHA-256 DO ARQUIVO</span><code>{file.hash}</code></div>
         <p className="import-note">Nenhum dado foi gravado. A inspeção do destino é somente leitura; a próxima etapa será montar a prévia linha a linha antes de habilitar qualquer gravação.</p>
       </>}
