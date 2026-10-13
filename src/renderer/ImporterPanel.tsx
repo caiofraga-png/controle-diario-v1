@@ -1,6 +1,6 @@
 import { useState } from "react";
-import * as XLSX from "xlsx";
 
+// O XLSX é lido após conversão temporária pelo Google Drive/Sheets.
 type SourceFile = { name: string; headers: string[]; rows: unknown[][]; hash: string };
 type SheetInfo = { sheetId: number; title: string; hidden: boolean };
 async function hashFile(file: File) {
@@ -23,14 +23,12 @@ export default function ImporterPanel() {
     if (!selected.name.toLocaleLowerCase().endsWith(".xlsx")) { setError("SELECIONE UM ARQUIVO .XLSX."); return; }
     setBusy(true);
     try {
-      const workbook = XLSX.read(await selected.arrayBuffer(), { type: "array", cellDates: true });
-      const sheetName = workbook.SheetNames[0];
-      if (!sheetName) throw new Error("O ARQUIVO NÃO POSSUI ABAS.");
-      const rows = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[sheetName], { header: 1, defval: "", raw: true, blankrows: false });
-      if (rows.length < 2) throw new Error("O ARQUIVO PRECISA TER CABEÇALHO E PELO MENOS UMA LINHA DE DADOS.");
-      const headers = (rows[0] ?? []).map(v => String(v ?? "").trim());
+      const converted = await (window as any).controleDiario.sistema.prepararEstatisticas(selected);
+      const rows = converted.rows as unknown[][];
+      const headers = (converted.headers as unknown[]).map(v => String(v ?? "").trim());
+      if (rows.length < 1) throw new Error("O ARQUIVO PRECISA TER CABEÇALHO E PELO MENOS UMA LINHA DE DADOS.");
       if (!headers.some(Boolean)) throw new Error("NÃO FOI POSSÍVEL IDENTIFICAR O CABEÇALHO DO ARQUIVO.");
-      setFile({ name: selected.name, headers, rows: rows.slice(1), hash: await hashFile(selected) });
+      setFile({ name: selected.name, headers, rows, hash: await hashFile(selected) });
     } catch (e) { setError(e instanceof Error ? e.message : "NÃO FOI POSSÍVEL LER O ARQUIVO."); }
     finally { setBusy(false); }
   }

@@ -9,7 +9,84 @@ import { pickDriveFolder } from "./webPicker";
 import { WebSessionService } from "./webSessionService";
 
 const auth=new WebGoogleAuth(); const drive=new DriveService(auth); const data=new DataRepository(drive); const calendarHistory=new CalendarHistoryService(drive); const session=new WebSessionService(drive);
+
 const boot=()=>loadBootstrap();
+
+/**
+ * Reproduz o fluxo do importador Apps Script: envia o arquivo escolhido
+ * temporariamente ao Drive, converte para Google Sheets, lê a primeira aba
+ * como valores e remove os dois arquivos temporários ao final.
+ */
+async function prepararEstatisticas(file: File) {
+ if (!file || !file.name.toLocaleLowerCase().endsWith(".xlsx")) throw new Error("SELECIONE UM ARQUIVO .XLSX.");
+ const token=await auth.getAccessToken();
+ const authHeaders={Authorization:`Bearer ${token}`};
+ const uploadedType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+ const googleSheetType="application/vnd.google-apps.spreadsheet";
+ let uploadedId="";
+ let convertedId="";
+ const apiError=async(response:Response,fallback:string)=>{if(response.ok)return;let message=`${fallback} (HTTP ${response.status}).`;try{const body=await response.json();if(body?.error?.message)message=body.error.message;}catch{}throw new Error(message);};
+ const deleteTemporary=async(id:string)=>{if(!id)return;try{await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?supportsAllDrives=true`,{method:"DELETE",headers:authHeaders});}catch{/* limpeza best-effort */}};
+ try {
+  const boundary="cd_"+crypto.randomUUID().replace(/-/g,"");
+  const metadata={name:`TEMP_CONTROLE_DIARIO_CONVERTIDO_${Date.now()}`,mimeType:googleSheetType};
+  const bytes=await file.arrayBuffer();
+  const multipart=new Blob([
+   `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n`,
+   `--${boundary}\r\nContent-Type: ${uploadedType}\r\n\r\n`,
+   bytes,
+   `\r\n--${boundary}--`
+  ]);
+  const upload=await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,mimeType",{method:"POST",headers:{...authHeaders,"Content-Type":`multipart/related; boundary=${boundary}`},body:multipart});
+  await apiError(upload,"NÃO FOI POSSÍVEL ENVIAR TEMPORARIAMENTE O XLSX PARA CONVERSÃO");
+  uploadedId=String((await upload.json()).id??"");
+  if(!uploadedId)throw new Error("O GOOGLE DRIVE NÃO RETORNOU O ID DO ARQUIVO TEMPORÁRIO.");
+  convertedId=uploadedId;
+  uploadedId="";
+  let spreadsheet:any=null,lastReadError:unknown=null;
+  for(let attempt=1;attempt<=3;attempt++){
+   try{
+    const response=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(convertedId)}?fields=sheets(properties(title,gridProperties(rowCount,columnCount)))`,{headers:authHeaders});
+    await apiError(response,"NÃO FOI POSSÍVEL ABRIR A PLANILHA TEMPORÁRIA CONVERTIDA");
+    spreadsheet=await response.json();if(spreadsheet.sheets?.length)break;
+   }catch(e){lastReadError=e;}
+   if(attempt<3)await new Promise(resolve=>setTimeout(resolve,attempt*1000));
+  }
+  const firstSheet=spreadsheet?.sheets?.[0];
+  if(!firstSheet)throw lastReadError instanceof Error?lastReadError:new Error("O ARQUIVO CONVERTIDO NÃO POSSUI ABAS.");
+  const title=String(firstSheet.properties?.title??"");
+  const rowCount=Math.max(1,Number(firstSheet.properties?.gridProperties?.rowCount??1));
+  const columnCount=Math.max(1,Number(firstSheet.properties?.gridProperties?.columnCount??1));
+  const col=(n:number)=>{let out="";for(let x=n;x>0;x=Math.floor((x-1)/26))out=String.fromCharCode(65+(x-1)%26)+out;return out;};
+  const range=`'${title.replace(/'/g,"''")}'!A1:${col(columnCount)}${rowCount}`;
+  const valuesResponse=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(convertedId)}?includeGridData=true&ranges=${encodeURIComponent(range)}&fields=sheets(properties(title),data(rowData(values(effectiveValue,effectiveFormat(numberFormat),formattedValue))))`,{headers:authHeaders});
+  await apiError(valuesResponse,"NÃO FOI POSSÍVEL LER OS VALORES DA PLANILHA CONVERTIDA");
+  const valuesBook=await valuesResponse.json();
+  const gridRows=valuesBook.sheets?.[0]?.data?.[0]?.rowData??[];
+  const serialDate=(serial:number)=>new Date(Date.UTC(1899,11,30)+serial*86400000);
+  const rows=gridRows.map((row:any)=> (row.values??[]).map((cell:any)=>{
+   const value=cell.effectiveValue;
+   if(!value)return "";
+   if(value.errorValue)return String(cell.formattedValue??value.errorValue.message??"");
+   if(value.numberValue!==undefined){
+    const type=String(cell.effectiveFormat?.numberFormat?.type??"");
+    if(["DATE","TIME","DATE_TIME"].includes(type))return serialDate(value.numberValue);
+    return value.numberValue;
+   }
+   if(value.stringValue!==undefined)return value.stringValue;
+   if(value.boolValue!==undefined)return value.boolValue;
+   return "";
+  }));
+  while(rows.length&&rows[rows.length-1].every((v:any)=>v===""||v===null||v===undefined))rows.pop();
+  const maxWidth=rows.reduce((n:number,row:any[])=>Math.max(n,row.length),0);
+  for(const row of rows)while(row.length<maxWidth)row.push("");
+  if(rows.length<2)throw new Error("O ARQUIVO PRECISA TER CABEÇALHO E PELO MENOS UMA LINHA DE DADOS.");
+  return {headers:(rows[0]??[]).map((v:any)=>String(v??"").trim()),rows:rows.slice(1)};
+ } finally {
+  await deleteTemporary(convertedId);
+  await deleteTemporary(uploadedId);
+ }
+}
 async function configureRoot(id:string){ if(!id?.trim())throw new Error("INFORME O ID DA PASTA."); const root=await drive.validateRoot(id.trim()); await drive.testConnection(root.id); await drive.ensureStructure(root.id); const status=await auth.getStatus(); saveBootstrap({drive:{pastaRaizId:root.id,contaEmail:status.email}}); await session.acquire(root.id); return {root,status}; }
 
 export function installWebBridge(){
@@ -21,6 +98,7 @@ export function installWebBridge(){
    definirPastaRaiz:configureRoot,
    selecionarPasta:async()=>{const cfg=await (async()=>{const c=(globalThis as any).__CONTROLE_DIARIO_CONFIG__??{};return {developerKey:String(c.googlePickerApiKey??"").trim(),accessToken:await auth.getAccessToken()};})();const id=await pickDriveFolder(cfg);return configureRoot(id);},
    testarConexao:async()=>{const id=boot().drive.pastaRaizId;if(!id)throw new Error("NENHUMA PASTA RAIZ FOI CONFIGURADA.");await session.assertOwner(id);return drive.testConnection(id)},
+   prepararEstatisticas,
    testarSheets:async(spreadsheetId:string)=>{const id=spreadsheetId.trim();if(!id)throw new Error("INFORME O ID DA PLANILHA.");if(!/^[a-zA-Z0-9_-]+$/.test(id))throw new Error("O ID DA PLANILHA NÃO É VÁLIDO.");const token=await auth.getAccessToken();const url=`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}?fields=spreadsheetId,properties(title),sheets(properties(sheetId,title,hidden))`;const response=await fetch(url,{headers:{Authorization:`Bearer ${token}`}});if(!response.ok){let message=`GOOGLE SHEETS API RETORNOU HTTP ${response.status}.`;try{const body=await response.json();if(body?.error?.message)message=body.error.message;}catch{}throw new Error(message);}const result=await response.json();return {spreadsheetId:id,title:String(result.properties?.title??"PLANILHA SEM TÍTULO"),sheets:(result.sheets??[]).map((s:any)=>({sheetId:Number(s.properties?.sheetId),title:String(s.properties?.title??""),hidden:Boolean(s.properties?.hidden)})).filter((s:any)=>s.title)};},
    inspecionarDestino:async(spreadsheetId:string,sheetTitle:string)=>{const id=spreadsheetId.trim();const title=sheetTitle.trim();if(!/^[a-zA-Z0-9_-]+$/.test(id))throw new Error("O ID DA PLANILHA NÃO É VÁLIDO.");if(!title)throw new Error("SELECIONE A ABA DE DESTINO.");const token=await auth.getAccessToken();const quoted=`'${title.replace(/'/g,"''")}'`;const headersUrl=`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values/${encodeURIComponent(quoted+"!1:1")}?majorDimension=ROWS`;const headersResponse=await fetch(headersUrl,{headers:{Authorization:`Bearer ${token}`}});if(!headersResponse.ok){let message=`NÃO FOI POSSÍVEL LER O CABEÇALHO DA ABA (HTTP ${headersResponse.status}).`;try{const body=await headersResponse.json();if(body?.error?.message)message=body.error.message;}catch{}throw new Error(message);}const headersResult=await headersResponse.json();const headers=(headersResult.values?.[0]??[]).map((v:any)=>String(v??"").trim());const ticketIndex=headers.findIndex((v:string)=>v.trim().toLocaleUpperCase("pt-BR")==="TICKET");if(ticketIndex<0)throw new Error("A ABA DE DESTINO NÃO POSSUI UMA COLUNA TICKET NA LINHA 1.");const col=(n:number)=>{let out="";for(let x=n+1;x>0;x=Math.floor((x-1)/26))out=String.fromCharCode(65+(x-1)%26)+out;return out;};const ticketRange=`${quoted}!${col(ticketIndex)}2:${col(ticketIndex)}`;const ticketsUrl=`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values/${encodeURIComponent(ticketRange)}?majorDimension=ROWS`;const ticketsResponse=await fetch(ticketsUrl,{headers:{Authorization:`Bearer ${token}`}});if(!ticketsResponse.ok){let message=`NÃO FOI POSSÍVEL LER A COLUNA TICKET (HTTP ${ticketsResponse.status}).`;try{const body=await ticketsResponse.json();if(body?.error?.message)message=body.error.message;}catch{}throw new Error(message);}const ticketsResult=await ticketsResponse.json();const tickets=ticketsResult.values??[];let lastTicketRow=1;for(let i=0;i<tickets.length;i++){if(String(tickets[i]?.[0]??"").trim())lastTicketRow=i+2;}return {spreadsheetId:id,sheetTitle:title,headers,lastTicketRow,headerRow:lastTicketRow+2,firstDataRow:lastTicketRow+3,ticketColumn:col(ticketIndex)};},
    importarEstatisticas:async(p:any)=>{
@@ -57,14 +135,14 @@ export function installWebBridge(){
     for(let i=0;i<destHeaders.length;i++){
       const destinationHeader=destHeaders[i]??"",key=Object.keys(map).find(k=>norm(k)===norm(destinationHeader)),sourceName=key?map[key]:"";
       if(!destinationHeader||protectedCols.has(norm(destinationHeader))||!sourceName)continue;
-      const index=sourceIndex.get(norm(sourceName));if(index===undefined)continue;
-      importedHeaders[i]=sourceHeaders[index];
+      const index=sourceIndex.get(norm(sourceName)) ?? (key==="RESOLUÇÃO" ? sourceIndex.get("RESOLUCAO") : undefined);if(index===undefined)continue;
+      importedHeaders[i]=key==="RESOLUÇÃO" ? "resolucao_tipo" : sourceHeaders[index];
     }
     const data:any[]=[{range:`${quote}!A${headerRow}:${col(columnCount)}${headerRow}`,values:[importedHeaders]}];
     for(let i=0;i<destHeaders.length;i++){
       const destinationHeader=destHeaders[i]??"",key=Object.keys(map).find(k=>norm(k)===norm(destinationHeader)),sourceName=key?map[key]:"";
       if(!destinationHeader||protectedCols.has(norm(destinationHeader))||!sourceName)continue;
-      const index=sourceIndex.get(norm(sourceName));if(index===undefined)continue;
+      const index=sourceIndex.get(norm(sourceName)) ?? (key==="RESOLUÇÃO" ? sourceIndex.get("RESOLUCAO") : undefined);if(index===undefined)continue;
       data.push({range:`${quote}!${col(i+1)}${firstDataRow}:${col(i+1)}${lastDataRow}`,values:(p.rows as any[][]).map(row=>[row?.[index] instanceof Date?(row[index] as Date).toISOString().slice(0,10):row?.[index]??""])});
     }
     const write=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values:batchUpdate`,{method:"POST",headers:{...headersAuth,"Content-Type":"application/json"},body:JSON.stringify({valueInputOption:"USER_ENTERED",data})});await apiError(write,"A GRAVAÇÃO DA IMPORTAÇÃO FALHOU");
