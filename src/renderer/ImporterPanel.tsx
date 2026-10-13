@@ -63,7 +63,9 @@ export default function ImporterPanel() {
       }
       if (result.duplicate) throw new Error("A VERIFICAÇÃO DE DUPLICIDADE NÃO FOI CONCLUÍDA.");
       localStorage.setItem("controle-diario-importer-tab", targetSheet);
-      setMessage(`IMPORTAÇÃO CONCLUÍDA: ${result.records.toLocaleString("pt-BR")} REGISTROS GRAVADOS NA ABA “${result.sheetTitle}”.`);
+      setMessage(result.warning
+        ? `IMPORTAÇÃO CONCLUÍDA: ${result.records.toLocaleString("pt-BR")} REGISTROS GRAVADOS NA ABA “${result.sheetTitle}”. ${result.warning}`
+        : `IMPORTAÇÃO CONCLUÍDA: ${result.records.toLocaleString("pt-BR")} REGISTROS GRAVADOS NA ABA “${result.sheetTitle}”.`);
     } catch (e) { setError(e instanceof Error ? e.message : "A IMPORTAÇÃO NÃO FOI CONCLUÍDA."); }
     finally { setBusy(false); }
   }
