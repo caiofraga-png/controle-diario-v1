@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+// O XLSX é lido após conversão temporária pelo Google Drive/Sheets.
 type SourceFile = { name: string; headers: string[]; rows: unknown[][]; hash: string };
 type SheetInfo = { sheetId: number; title: string; hidden: boolean };
 async function hashFile(file: File) {
