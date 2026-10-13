@@ -29,7 +29,7 @@ async function prepararEstatisticas(file: File) {
  const deleteTemporary=async(id:string)=>{if(!id)return;try{await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?supportsAllDrives=true`,{method:"DELETE",headers:authHeaders});}catch{/* limpeza best-effort */}};
  try {
   const boundary="cd_"+crypto.randomUUID().replace(/-/g,"");
-  const metadata={name:`TEMP_CONTROLE_DIARIO_XLSX_${Date.now()}.xlsx`,mimeType:uploadedType};
+  const metadata={name:`TEMP_CONTROLE_DIARIO_CONVERTIDO_${Date.now()}`,mimeType:googleSheetType};
   const bytes=await file.arrayBuffer();
   const multipart=new Blob([
    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n`,
@@ -41,16 +41,7 @@ async function prepararEstatisticas(file: File) {
   await apiError(upload,"NÃO FOI POSSÍVEL ENVIAR TEMPORARIAMENTE O XLSX PARA CONVERSÃO");
   uploadedId=String((await upload.json()).id??"");
   if(!uploadedId)throw new Error("O GOOGLE DRIVE NÃO RETORNOU O ID DO ARQUIVO TEMPORÁRIO.");
-  let converted:any=null,lastError:unknown=null;
-  for(let attempt=1;attempt<=3;attempt++){
-   try{
-    const response=await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(uploadedId)}/copy?supportsAllDrives=true&fields=id,mimeType`,{method:"POST",headers:{...authHeaders,"Content-Type":"application/json"},body:JSON.stringify({name:`TEMP_CONTROLE_DIARIO_CONVERTIDO_${Date.now()}`,mimeType:googleSheetType})});
-    await apiError(response,"NÃO FOI POSSÍVEL CONVERTER O XLSX PARA GOOGLE SHEETS");
-    converted=await response.json();break;
-   }catch(e){lastError=e;if(attempt<3)await new Promise(resolve=>setTimeout(resolve,attempt*1500));}
-  }
-  if(!converted?.id)throw lastError instanceof Error?lastError:new Error("NÃO FOI POSSÍVEL CONVERTER O XLSX PARA GOOGLE SHEETS.");
-  convertedId=String(converted.id);
+  convertedId=uploadedId;
   let spreadsheet:any=null,lastReadError:unknown=null;
   for(let attempt=1;attempt<=3;attempt++){
    try{
