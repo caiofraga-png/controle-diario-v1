@@ -620,3 +620,24 @@ body::before { background: none; }
   .importer-controls { align-items:stretch; flex-direction:column; }
   .importer-secondary-button { width:100%; }
 }
+
+
+/* Popup do importador dentro da tarefa */
+.task-importer-backdrop { z-index: 120; }
+.task-importer-popup {
+  width: min(1120px, calc(100vw - 32px));
+  max-width: 1120px;
+  max-height: 94vh;
+  overflow: auto;
+  padding: 20px;
+}
+.task-importer-popup > .modal-head { position: sticky; top: -20px; z-index: 5; background: #fff; padding: 8px 0 12px; }
+.task-importer-popup .import-workspace { padding: 0; margin: 0; min-height: 0; }
+.task-importer-popup .workspace-intro { display: none; }
+.task-importer-popup .importer-shell { width: 100%; max-width: none; margin: 0; box-shadow: none; }
+.task-importer-popup .importer-brand { padding-top: 8px; }
+.task-importer-popup .importer-fields { gap: 16px; }
+@media (max-width: 700px) {
+  .task-importer-popup { width: calc(100vw - 16px); max-height: 96vh; padding: 12px; }
+  .task-importer-popup .importer-fields { grid-template-columns: 1fr; }
+}
