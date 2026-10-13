@@ -39,7 +39,7 @@ jobs:
           };
           fs.writeFileSync(
             "src/renderer/public/config.js",
-            "window.__CONTROLE_DIARIO_CONFIG__ = " + JSON.stringify(config, null, 2) + ";\\n"
+            "window.__CONTROLE_DIARIO_CONFIG__ = " + JSON.stringify(config, null, 2) + ";\n"
           );
           NODE
 
