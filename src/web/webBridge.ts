@@ -155,6 +155,36 @@ export function installWebBridge(){
       duplicateTrackingWarning="OS DADOS FORAM GRAVADOS, MAS O CONTROLE DE DUPLICIDADE NÃO FOI REGISTRADO"+(detail?": "+detail:"")+".";
     }
     return {success:true,fileName:String(p.fileName??""),sheetTitle:title,records:p.rows.length,columns:data.length-1,headerRow,firstDataRow,updatedCells:Number(result.totalUpdatedCells??0),warning:duplicateTrackingWarning};
+   },
+   importarCallback:async(p:any)=>{
+    const id=String(p.spreadsheetId??"").trim(),title=String(p.sheetTitle??"").trim();
+    if(!/^[a-zA-Z0-9_-]+$/.test(id))throw new Error("O ID DA PLANILHA CALLBACK NÃO É VÁLIDO.");
+    if(!title)throw new Error("SELECIONE A ABA DE DESTINO.");
+    if(!Array.isArray(p.headers)||!Array.isArray(p.rows)||p.rows.length<1)throw new Error("O ARQUIVO PRECISA TER CABEÇALHO E PELO MENOS UMA LINHA DE DADOS.");
+    const token=await auth.getAccessToken(),authHeaders={Authorization:`Bearer ${token}`};
+    const apiError=async(response:Response,fallback:string)=>{if(response.ok)return;let message=`${fallback} (HTTP ${response.status}).`;try{const body=await response.json();if(body?.error?.message)message=body.error.message;}catch{}throw new Error(message);};
+    const day=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()).replace(/-/g,"");
+    const hash=String(p.hash??"").trim();if(!/^[a-f0-9]{64}$/i.test(hash))throw new Error("NÃO FOI POSSÍVEL VALIDAR O ARQUIVO SELECIONADO.");
+    const duplicateKey=`CALLBACK_IMPORTADO_${day}`;
+    const search=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/developerMetadata:search`,{method:"POST",headers:{...authHeaders,"Content-Type":"application/json"},body:JSON.stringify({dataFilters:[{developerMetadataLookup:{metadataKey:duplicateKey}}]})});await apiError(search,"NÃO FOI POSSÍVEL VERIFICAR IMPORTAÇÕES CALLBACK ANTERIORES");
+    const sr=await search.json(),duplicate=(sr.matchedDeveloperMetadata??[]).some((m:any)=>{try{const v=JSON.parse(String(m.developerMetadata?.metadataValue??"{}"));return v.hash===hash&&v.sheetTitle===title;}catch{return false;}});
+    if(duplicate&&!p.confirmarDuplicidade)return {duplicate:true,fileName:String(p.fileName??""),sheetTitle:title};
+    const mr=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}?fields=sheets(properties(sheetId,title,hidden,gridProperties(rowCount,columnCount)))`,{headers:authHeaders});await apiError(mr,"NÃO FOI POSSÍVEL CONSULTAR A PLANILHA CALLBACK");const meta=await mr.json(),sheet=(meta.sheets??[]).find((s:any)=>s.properties?.title===title);
+    if(!sheet)throw new Error("A ABA DE DESTINO NÃO FOI ENCONTRADA.");if(sheet.properties?.hidden)throw new Error("A ABA DE DESTINO ESTÁ OCULTA E NÃO PODE SER UTILIZADA.");
+    const quote=`'${title.replace(/'/g,"''")}'`,col=(n:number)=>{let out="";for(let x=n;x>0;x=Math.floor((x-1)/26))out=String.fromCharCode(65+(x-1)%26)+out;return out;};
+    const read=async(range:string)=>{const r=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values/${encodeURIComponent(range)}?majorDimension=ROWS`,{headers:authHeaders});await apiError(r,"NÃO FOI POSSÍVEL LER A ABA CALLBACK");return await r.json();};
+    const dest=await read(`${quote}!1:1`),destHeaders=(dest.values?.[0]??[]).map((v:any)=>String(v??"").trim());if(!destHeaders.length)throw new Error("A ABA DE DESTINO NÃO POSSUI CABEÇALHOS.");
+    const ticket=destHeaders.findIndex((h:string)=>h.toUpperCase()==="TICKET");if(ticket<0)throw new Error('A COLUNA "TICKET" NÃO FOI ENCONTRADA NA ABA DE DESTINO.');
+    const tr=await read(`${quote}!${col(ticket+1)}2:${col(ticket+1)}`),tickets=tr.values??[];let lastTicket=1;for(let i=tickets.length-1;i>=0;i--){if(tickets[i]?.[0]!==""&&tickets[i]?.[0]!==null&&tickets[i]?.[0]!==undefined){lastTicket=i+2;break;}}
+    const headerRow=lastTicket+2,firstDataRow=headerRow+1,lastDataRow=firstDataRow+p.rows.length-1,rowCount=Number(sheet.properties?.gridProperties?.rowCount??1000),needed=lastDataRow-rowCount;
+    if(needed>0){const gr=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{...authHeaders,"Content-Type":"application/json"},body:JSON.stringify({requests:[{appendDimension:{sheetId:Number(sheet.properties?.sheetId),dimension:"ROWS",length:needed}}]})});await apiError(gr,"NÃO FOI POSSÍVEL AMPLIAR A ABA CALLBACK");}
+    const sourceHeaders=(p.headers as any[]).map(v=>String(v??"").trim()),sourceMap:Record<string,number>={};sourceHeaders.forEach((h:string,i:number)=>{if(h!=="")sourceMap[h.toUpperCase()]=i;});
+    const protectedCols=["DATA","TEMPO TRANSFERENCIA","TEMPO DESIGNADO"],missing:string[]=[],importHeaders=destHeaders.map((h:string)=>{if(!h)return "";if(protectedCols.includes(h))return h;const idx=sourceMap[h.toUpperCase()];return idx===undefined?h:sourceHeaders[idx];});
+    const data:any[]=[{range:`${quote}!A${headerRow}:${col(destHeaders.length)}${headerRow}`,values:[importHeaders]}];let columns=0;
+    for(let c=0;c<destHeaders.length;c++){const h=destHeaders[c];if(!h||protectedCols.includes(h))continue;const idx=sourceMap[h.toUpperCase()];if(idx===undefined){missing.push(h);continue;}data.push({range:`${quote}!${col(c+1)}${firstDataRow}:${col(c+1)}${lastDataRow}`,values:(p.rows as any[][]).map(row=>{const v=row?.[idx];return [v instanceof Date?v.toISOString():v??""];})});columns++;}
+    const wr=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values:batchUpdate`,{method:"POST",headers:{...authHeaders,"Content-Type":"application/json"},body:JSON.stringify({valueInputOption:"USER_ENTERED",data})});await apiError(wr,"A GRAVAÇÃO DA IMPORTAÇÃO CALLBACK FALHOU");const written=await wr.json();
+    const mark=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{...authHeaders,"Content-Type":"application/json"},body:JSON.stringify({requests:[{createDeveloperMetadata:{developerMetadata:{metadataKey:duplicateKey,metadataValue:JSON.stringify({hash,fileName:String(p.fileName??""),sheetTitle:title,importedAt:new Date().toISOString(),records:p.rows.length}),visibility:"DOCUMENT",location:{spreadsheet:true}}}}]})});
+    return {success:true,fileName:String(p.fileName??""),sheetTitle:title,records:p.rows.length,columns,headerRow,firstDataRow,updatedCells:Number(written.totalUpdatedCells??0),missingColumns:missing,warning:mark.ok?"":"DADOS GRAVADOS, MAS NÃO FOI POSSÍVEL REGISTRAR A DUPLICIDADE."};
    }
   },
   dados:{
