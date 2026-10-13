@@ -42,6 +42,7 @@ async function prepararEstatisticas(file: File) {
   uploadedId=String((await upload.json()).id??"");
   if(!uploadedId)throw new Error("O GOOGLE DRIVE NÃO RETORNOU O ID DO ARQUIVO TEMPORÁRIO.");
   convertedId=uploadedId;
+  uploadedId="";
   let spreadsheet:any=null,lastReadError:unknown=null;
   for(let attempt=1;attempt<=3;attempt++){
    try{
