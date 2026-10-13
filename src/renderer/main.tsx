@@ -48,7 +48,7 @@ function App() {
   const [emailPanel, setEmailPanel] = useState<any>(null);
   const [taskPanel, setTaskPanel] = useState<any>(null);
   const [roteiroPanel, setRoteiroPanel] = useState<any>(null);
-  const [importerTaskPanel, setImporterTaskPanel] = useState<any>(null);
+  const [importerTaskPanel, setImporterTaskPanel] = useState<any>(null); // popup do importador por tarefa
   const [profileSwitch, setProfileSwitch] = useState(false);
   const observationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [calendarCursor, setCalendarCursor] = useState(() => { const { year, month } = brazilTodayParts(); return { year, month }; });
