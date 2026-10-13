@@ -39,7 +39,7 @@ jobs:
           };
           fs.writeFileSync(
             "src/renderer/public/config.js",
-            "window.__CONTROLE_DIARIO_CONFIG__ = " + JSON.stringify(config, null, 2) + ";\n"
+            "window.__CONTROLE_DIARIO_CONFIG__ = " + JSON.stringify(config, null, 2) + ";\\n"
           );
           NODE
 
@@ -53,7 +53,10 @@ jobs:
         uses: actions/upload-pages-artifact@v4
         with:
           path: ./dist
+          name: github-pages-${{ github.run_attempt }}
 
       - name: Publicar Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages-${{ github.run_attempt }}
