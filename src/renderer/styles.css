@@ -641,3 +641,5 @@ body::before { background: none; }
   .task-importer-popup { width: calc(100vw - 16px); max-height: 96vh; padding: 12px; }
   .task-importer-popup .importer-fields { grid-template-columns: 1fr; }
 }
+
+.importer-switch{display:flex;gap:8px;margin:0 0 14px}.importer-switch button{border:1px solid #d0d5dd;background:#fff;color:#344054;padding:10px 14px;border-radius:8px;font-weight:700;cursor:pointer}.importer-switch button.active{background:#173f35;color:#fff;border-color:#173f35}.importer-switch button:focus-visible{outline:2px solid #667085;outline-offset:2px}
