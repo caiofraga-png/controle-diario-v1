@@ -69,17 +69,37 @@ export default function ImporterPanel() {
   }
 
   return <section className="import-workspace">
-    <div className="workspace-intro"><h2>Importação de estatísticas</h2><p>Selecione a planilha tratada e importe diretamente para a aba de destino.</p></div>
-    <div className="import-placeholder">
-      <label className="import-file-label"><span>PLANILHA XLSX TRATADA</span><input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={busy} onChange={e => void readFile(e.target.files?.[0])} /></label>
-      {file && <p className="import-note">Arquivo selecionado: <strong>{file.name}</strong> · {file.rows.length.toLocaleString("pt-BR")} registros</p>}
-      <label className="import-file-label"><span>ID DA PLANILHA DE DESTINO</span><input value={spreadsheetId} onChange={e => { setSpreadsheetId(e.target.value); setSheets([]); setTargetSheet(""); setMessage(""); }} placeholder="ID da planilha Google Sheets" disabled={busy} /></label>
-      <button className="import-action-button" disabled={busy || !spreadsheetId.trim()} onClick={() => void loadSheets()}>CARREGAR ABAS VISÍVEIS</button>
-      {sheets.length > 0 && <label className="import-file-label"><span>ABA DE DESTINO</span><select value={targetSheet} onChange={e => setTargetSheet(e.target.value)} disabled={busy}><option value="">Selecione uma aba</option>{sheets.map(s => <option key={s.sheetId} value={s.title}>{s.title}</option>)}</select></label>}
-      <button className="import-action-button" disabled={busy || !file || !targetSheet} onClick={() => void importFile()}>IMPORTAR PLANILHA</button>
-      {busy && <p className="system-message">PROCESSANDO…</p>}
-      {error && <p className="system-message" role="alert">{error}</p>}
-      {message && <p className="system-message" role="status">{message}</p>}
+    <div className="workspace-intro"><h2>Importação</h2></div>
+    <div className="importer-shell">
+      <header className="importer-brand">
+        <img src="./leste-logo.svg" alt="Leste" />
+        <h2>DADOS ESTATÍSTICOS</h2>
+        <p>Compilação de Dados - Madrugada</p>
+      </header>
+      <div className="importer-fields">
+        <label className="importer-field">
+          <span>Aba</span>
+          <select value={targetSheet} onChange={e => setTargetSheet(e.target.value)} disabled={busy || sheets.length === 0}>
+            {sheets.length === 0 && <option value="">Carregue as abas disponíveis</option>}
+            {sheets.map(s => <option key={s.sheetId} value={s.title}>{s.title}</option>)}
+          </select>
+        </label>
+        <label className="importer-field">
+          <span>Arquivo</span>
+          <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={busy} onChange={e => void readFile(e.target.files?.[0])} />
+          {file && <small>{file.name} · {file.rows.length.toLocaleString("pt-BR")} registros</small>}
+        </label>
+      </div>
+      <div className="importer-controls">
+        <label className="importer-spreadsheet-id">
+          <span>ID da planilha de destino</span>
+          <input value={spreadsheetId} onChange={e => { setSpreadsheetId(e.target.value); setSheets([]); setTargetSheet(""); setMessage(""); }} placeholder="ID da planilha Google Sheets" disabled={busy} />
+        </label>
+        <button className="importer-secondary-button" disabled={busy || !spreadsheetId.trim()} onClick={() => void loadSheets()}>CARREGAR ABAS</button>
+      </div>
+      <button className="importer-execute-button" disabled={busy || !file || !targetSheet} onClick={() => void importFile()}>{busy ? "PROCESSANDO…" : "EXECUTAR"}</button>
+      {error && <p className="importer-feedback error" role="alert">{error}</p>}
+      {message && <p className="importer-feedback" role="status">{message}</p>}
     </div>
   </section>;
 }
