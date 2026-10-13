@@ -531,3 +531,92 @@ body::before { background: none; }
 .import-preview { margin-top:24px; padding-top:18px; border-top:1px solid #dce8df; }
 .import-warning { padding:12px; border-radius:8px; background:#fff5e9; color:#874b13; font-size:12px; line-height:1.5; }
 .import-preview .import-map-row { grid-template-columns:minmax(130px,1fr) minmax(150px,1fr) minmax(100px,1fr); }
+
+
+/* IMPORTAÇÃO — INTERFACE INSPIRADA NO IMPORTADOR DADOS ESTATÍSTICOS */
+.import-workspace .workspace-intro { margin-bottom:18px; }
+.import-workspace .workspace-intro h2 { font-size:22px; }
+.importer-shell {
+  min-height: min(550px, calc(100vh - 220px));
+  padding:30px clamp(18px,4vw,70px) 34px;
+  color:#f7fbf8;
+  background:#0b3024;
+  border:1px solid rgba(255,255,255,.14);
+  display:flex; flex-direction:column; align-items:center;
+  position:relative; overflow:hidden;
+}
+.importer-shell::before {
+  content:""; position:absolute; inset:0;
+  background-image:url("./leste-logo.svg"); background-repeat:no-repeat;
+  background-position:center 82%; background-size:min(48%,560px);
+  opacity:.055; pointer-events:none;
+}
+.importer-brand, .importer-fields, .importer-controls, .importer-execute-button, .importer-feedback {
+  position:relative; z-index:1;
+}
+.importer-brand { display:flex; flex-direction:column; align-items:center; text-align:center; margin:0 0 20px; }
+.importer-brand img { display:block; width:120px; height:48px; object-fit:contain; margin:0 0 10px; }
+.importer-brand h2 { margin:0; color:#fff; font-size:23px; font-weight:800; letter-spacing:-.3px; }
+.importer-brand p { margin:6px 0 0; color:#c9ded3; font-size:13px; font-weight:700; letter-spacing:1px; }
+.importer-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:clamp(18px,5vw,90px); width:min(100%,960px); margin:0 auto 20px; }
+.importer-field {
+  min-width:0; display:flex; flex-direction:column; gap:12px; padding:20px;
+  border:1px solid rgba(205,232,217,.2); border-radius:15px;
+  background:rgba(255,255,255,.085); box-shadow:0 8px 18px rgba(0,0,0,.08);
+}
+.importer-field > span, .importer-spreadsheet-id > span {
+  color:#c9d9d0; font-size:13px; font-weight:800; letter-spacing:.2px;
+}
+.importer-field select, .importer-field input[type="file"] {
+  display:block; width:100%; min-width:0; min-height:43px; padding:8px 10px;
+  color:#f5faf7; background:#103e2f; border:1px solid rgba(205,232,217,.24);
+  border-radius:8px; font:inherit; font-size:13px;
+}
+.importer-field select option { color:#18392b; background:#fff; }
+.importer-field input[type="file"]::file-selector-button {
+  margin:-3px 12px -3px -4px; padding:10px 20px; color:#f7fbf8;
+  background:#315f4e; border:0; border-radius:7px; font-size:11px;
+  font-weight:800; letter-spacing:.4px; cursor:pointer;
+}
+.importer-field small { color:#cfe8d8; font-size:11px; overflow-wrap:anywhere; }
+.importer-controls { display:flex; align-items:flex-end; gap:10px; width:min(100%,560px); margin:0 auto 18px; }
+.importer-spreadsheet-id { display:flex; flex:1; min-width:0; flex-direction:column; gap:7px; }
+.importer-spreadsheet-id input {
+  width:100%; min-width:0; min-height:38px; padding:9px 10px;
+  color:#fff; background:rgba(0,0,0,.12); border:1px solid rgba(205,232,217,.24);
+  border-radius:7px; font:inherit; font-size:11px;
+}
+.importer-secondary-button {
+  min-height:38px; padding:0 12px; color:#edf7f1; background:#315f4e;
+  border:1px solid rgba(205,232,217,.22); border-radius:7px;
+  font-size:10px; font-weight:800; letter-spacing:.35px; white-space:nowrap;
+}
+.importer-execute-button {
+  min-width:145px; min-height:43px; margin:0 auto; padding:0 28px;
+  color:#103b2c; background:#d2e4da; border:0; border-radius:8px;
+  font-size:12px; font-weight:800; letter-spacing:.55px;
+  transition:background .15s ease, opacity .15s ease;
+}
+.importer-execute-button:not(:disabled) { background:#f0f7f2; cursor:pointer; }
+.importer-execute-button:not(:disabled):hover { background:#fff; }
+.importer-execute-button:disabled { opacity:.62; cursor:not-allowed; }
+.importer-feedback { max-width:850px; margin:16px auto 0; color:#d9f2e2; font-size:12px; line-height:1.5; text-align:center; overflow-wrap:anywhere; }
+.importer-feedback.error { color:#ffd5cd; }
+.importer-shell button:focus-visible, .importer-shell input:focus-visible, .importer-shell select:focus-visible {
+  outline:2px solid #a8e3bf; outline-offset:2px;
+}
+@media (max-width:850px) {
+  .importer-shell { min-height:500px; padding:26px 22px; }
+  .importer-fields { gap:14px; }
+  .importer-field { padding:16px; }
+}
+@media (max-width:620px) {
+  .importer-shell { min-height:0; padding:24px 14px; }
+  .importer-brand img { width:100px; height:40px; }
+  .importer-brand h2 { font-size:19px; }
+  .importer-brand p { font-size:11px; letter-spacing:.5px; }
+  .importer-fields { grid-template-columns:1fr; gap:12px; }
+  .importer-field { padding:14px; }
+  .importer-controls { align-items:stretch; flex-direction:column; }
+  .importer-secondary-button { width:100%; }
+}
