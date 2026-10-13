@@ -135,14 +135,14 @@ export function installWebBridge(){
     for(let i=0;i<destHeaders.length;i++){
       const destinationHeader=destHeaders[i]??"",key=Object.keys(map).find(k=>norm(k)===norm(destinationHeader)),sourceName=key?map[key]:"";
       if(!destinationHeader||protectedCols.has(norm(destinationHeader))||!sourceName)continue;
-      const index=sourceIndex.get(norm(sourceName));if(index===undefined)continue;
-      importedHeaders[i]=sourceHeaders[index];
+      const index=sourceIndex.get(norm(sourceName)) ?? (key==="RESOLUÇÃO" ? sourceIndex.get("RESOLUCAO") : undefined);if(index===undefined)continue;
+      importedHeaders[i]=key==="RESOLUÇÃO" ? "resolucao_tipo" : sourceHeaders[index];
     }
     const data:any[]=[{range:`${quote}!A${headerRow}:${col(columnCount)}${headerRow}`,values:[importedHeaders]}];
     for(let i=0;i<destHeaders.length;i++){
       const destinationHeader=destHeaders[i]??"",key=Object.keys(map).find(k=>norm(k)===norm(destinationHeader)),sourceName=key?map[key]:"";
       if(!destinationHeader||protectedCols.has(norm(destinationHeader))||!sourceName)continue;
-      const index=sourceIndex.get(norm(sourceName));if(index===undefined)continue;
+      const index=sourceIndex.get(norm(sourceName)) ?? (key==="RESOLUÇÃO" ? sourceIndex.get("RESOLUCAO") : undefined);if(index===undefined)continue;
       data.push({range:`${quote}!${col(i+1)}${firstDataRow}:${col(i+1)}${lastDataRow}`,values:(p.rows as any[][]).map(row=>[row?.[index] instanceof Date?(row[index] as Date).toISOString().slice(0,10):row?.[index]??""])});
     }
     const write=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values:batchUpdate`,{method:"POST",headers:{...headersAuth,"Content-Type":"application/json"},body:JSON.stringify({valueInputOption:"USER_ENTERED",data})});await apiError(write,"A GRAVAÇÃO DA IMPORTAÇÃO FALHOU");
