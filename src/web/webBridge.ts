@@ -44,7 +44,7 @@ export function installWebBridge(){
     const read=async(range:string)=>{const r=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values/${encodeURIComponent(range)}?majorDimension=ROWS`,{headers:headersAuth});await apiError(r,"NÃO FOI POSSÍVEL LER A ABA DE DESTINO");return await r.json();};
     const destResult=await read(`${quote}!A1:${col(columnCount)}1`),destHeaders=(destResult.values?.[0]??[]).map((v:any)=>String(v??"").trim());
     const norm=(v:any)=>String(v??"").trim().toLocaleUpperCase("pt-BR");
-    const map:Record<string,string>={"TICKET":"TICKET","NOME CLIENTE":"NOME_CLIENTE","SUBTIPO":"SUBTIPO","FILA ORIGINAL":"FILA_ORIGINAL","FILA ATUAL":"FILA_ATUAL","TIPO_ESTADO":"TIPO_ESTADO","CIDADE":"CIDADE","DATA ABERTURA TICKET":"TICKET_DATA_ABERTURA","DATA ULTIMA TRANSF.":"ULTIMA_TRANFERENCIA_DATA","DATA ENCERRAMENTO":"ENCERRAMENTO_DATA","RESOLUÇÃO":"resolucao_tipo","RECEBIDO POR":"ATENDENTE","ULTIMA TRANSF. ATENDENTE":"ULTIMA_TRANFERENCIA_ATENDENTE","FECHADO POR":"CLOSEDBY"};
+    const map:Record<string,string>={"TICKET":"TICKET","NOME CLIENTE":"NOME_CLIENTE","SUBTIPO":"SUBTIPO","FILA ORIGINAL":"FILA_ORIGINAL","FILA ATUAL":"FILA_ATUAL","TIPO_ESTADO":"TIPO_ESTADO","CIDADE":"CIDADE","DATA ABERTURA TICKET":"TICKET_DATA_ABERTURA","DATA ULTIMA TRANSF.":"ULTIMA_TRANFERENCIA_DATA","DATA ENCERRAMENTO":"ENCERRAMENTO_DATA","RESOLUÇÃO":"RESOLUCAO","RECEBIDO POR":"ATENDENTE","ULTIMA TRANSF. ATENDENTE":"ULTIMA_TRANFERENCIA_ATENDENTE","FECHADO POR":"CLOSEDBY"};
     const protectedCols=new Set(["ABERTO E FECHADO NO MESMO DIA","SETOR","RESOLVIDO?","ALL","DATA"]);
     const sourceHeaders=(p.headers as any[]).map(v=>String(v??"").trim()),sourceIndex=new Map(sourceHeaders.map((h,i)=>[norm(h),i]));
     const ticketIndex=destHeaders.findIndex((h:string)=>norm(h)==="TICKET");if(ticketIndex<0)throw new Error("A ABA DE DESTINO NÃO POSSUI UMA COLUNA TICKET NA LINHA 1.");
@@ -53,7 +53,14 @@ export function installWebBridge(){
     const headerRow=lastTicketRow+2,firstDataRow=headerRow+1,lastDataRow=firstDataRow+p.rows.length-1;
     const neededRows=lastDataRow-rowCount;
     if(neededRows>0){const insert=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{...headersAuth,"Content-Type":"application/json"},body:JSON.stringify({requests:[{appendDimension:{sheetId:Number(sheet.properties?.sheetId),dimension:"ROWS",length:neededRows}}]})});await apiError(insert,"NÃO FOI POSSÍVEL AMPLIAR A ABA DE DESTINO");}
-    const data:any[]=[{range:`${quote}!A${headerRow}:${col(columnCount)}${headerRow}`,values:[Array.from({length:columnCount},(_,i)=>destHeaders[i]??"")]}];
+    const importedHeaders=Array.from({length:columnCount},(_,i)=>destHeaders[i]??"");
+    for(let i=0;i<destHeaders.length;i++){
+      const destinationHeader=destHeaders[i]??"",key=Object.keys(map).find(k=>norm(k)===norm(destinationHeader)),sourceName=key?map[key]:"";
+      if(!destinationHeader||protectedCols.has(norm(destinationHeader))||!sourceName)continue;
+      const index=sourceIndex.get(norm(sourceName));if(index===undefined)continue;
+      importedHeaders[i]=sourceHeaders[index];
+    }
+    const data:any[]=[{range:`${quote}!A${headerRow}:${col(columnCount)}${headerRow}`,values:[importedHeaders]}];
     for(let i=0;i<destHeaders.length;i++){
       const destinationHeader=destHeaders[i]??"",key=Object.keys(map).find(k=>norm(k)===norm(destinationHeader)),sourceName=key?map[key]:"";
       if(!destinationHeader||protectedCols.has(norm(destinationHeader))||!sourceName)continue;
@@ -63,8 +70,13 @@ export function installWebBridge(){
     const write=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values:batchUpdate`,{method:"POST",headers:{...headersAuth,"Content-Type":"application/json"},body:JSON.stringify({valueInputOption:"USER_ENTERED",data})});await apiError(write,"A GRAVAÇÃO DA IMPORTAÇÃO FALHOU");
     const result=await write.json();
     const metadataResponse=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{...headersAuth,"Content-Type":"application/json"},body:JSON.stringify({requests:[{createDeveloperMetadata:{developerMetadata:{metadataKey:duplicateKey,metadataValue:JSON.stringify({hash,fileName:String(p.fileName??""),sheetTitle:title,importedAt:new Date().toISOString(),records:p.rows.length}),visibility:"DOCUMENT",location:{spreadsheet:true}}}}]})});
-    await apiError(metadataResponse,"DADOS GRAVADOS, MAS NÃO FOI POSSÍVEL REGISTRAR O CONTROLE DE DUPLICIDADE");
-    return {success:true,fileName:String(p.fileName??""),sheetTitle:title,records:p.rows.length,columns:data.length-1,headerRow,firstDataRow,updatedCells:Number(result.totalUpdatedCells??0)};
+    let duplicateTrackingWarning="";
+    if(!metadataResponse.ok){
+      let detail="";
+      try{const body=await metadataResponse.json();if(body?.error?.message)detail=body.error.message;}catch{}
+      duplicateTrackingWarning="OS DADOS FORAM GRAVADOS, MAS O CONTROLE DE DUPLICIDADE NÃO FOI REGISTRADO"+(detail?": "+detail:"")+".";
+    }
+    return {success:true,fileName:String(p.fileName??""),sheetTitle:title,records:p.rows.length,columns:data.length-1,headerRow,firstDataRow,updatedCells:Number(result.totalUpdatedCells??0),warning:duplicateTrackingWarning};
    }
   },
   dados:{
