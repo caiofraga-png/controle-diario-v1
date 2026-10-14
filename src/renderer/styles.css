@@ -732,3 +732,21 @@ body::before { background: none; }
 .importer-shell > .importer-controls {
   width:min(100%,1200px);
 }
+
+/* Exibe somente o ícone/área clicável no seletor de arquivo do PRODUTIVIDADE SAC */
+.prodsac-pair .prodsac-file-input {
+  color:transparent !important;
+  width:44px !important;
+  max-width:44px !important;
+  overflow:hidden;
+  padding:3px !important;
+}
+.prodsac-pair .prodsac-file-input::file-selector-button {
+  width:34px !important;
+  min-width:34px !important;
+  max-width:34px !important;
+  padding:0 !important;
+  margin:0 !important;
+  font-size:0 !important;
+  color:transparent !important;
+}
