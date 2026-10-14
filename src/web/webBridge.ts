@@ -128,18 +128,37 @@ export function installWebBridge(){
     const ticketRes=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values/${encodeURIComponent(ticketRange)}?majorDimension=ROWS`,{headers:h});await apiError(ticketRes,"NÃO FOI POSSÍVEL LER A COLUNA TICKET");
     const vals=(await ticketRes.json()).values??[];let last=1;for(let i=0;i<vals.length;i++)if(String(vals[i]?.[0]??"").trim())last=i+2;
     const headerRow=last+2,firstData=headerRow+1;
-    const protectedCols=["ABERTURA","ENCERRAMENTO","TEMPO DE TRANSFERÊNCIA","TEMPO DE ENCERRAMENTO"];
+    const protectedNames=["ABERTURA","ENCERRAMENTO","TEMPO DE TRANSFERÊNCIA","TEMPO DE ENCERRAMENTO"];
+    const protectedIndexes=new Set([0,1,47,48]); // A, B, AV e AW nunca recebem escrita
+    const normalizeHeader=(value:any)=>String(value??"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").trim().toLocaleLowerCase("pt-BR").replace(/[_-]+/g," ").replace(/[^\\p{L}\\p{N}]+/gu," ").replace(/\\s+/g," ").trim();
     const sourceHeaders=p.headers.map((v:any)=>String(v??"").trim());
-    const mapped=destHeaders.map((dh:string)=>{if(!dh||protectedCols.includes(dh.toLocaleUpperCase("pt-BR")))return -1;return sourceHeaders.findIndex((sh:string)=>sh.toLocaleUpperCase("pt-BR")===dh.toLocaleUpperCase("pt-BR"));});
-    const missing=destHeaders.filter((dh:string,i:number)=>dh&&mapped[i]===-1&&!protectedCols.includes(dh.toLocaleUpperCase("pt-BR")));
-    const width=Math.max(destHeaders.length,sourceHeaders.length);
+    const sourceNormalized=sourceHeaders.map(normalizeHeader);
+    const mapped=destHeaders.map((dh:string,index:number)=>{
+     const upper=dh.trim().toLocaleUpperCase("pt-BR");
+     if(!dh||protectedIndexes.has(index)||protectedNames.includes(upper))return -1;
+     return sourceNormalized.findIndex((sh:string)=>sh===normalizeHeader(dh));
+    });
+    const missing=destHeaders.filter((dh:string,i:number)=>dh&&mapped[i]===-1&&!protectedIndexes.has(i)&&!protectedNames.includes(dh.trim().toLocaleUpperCase("pt-BR")));
+    const width=destHeaders.length;
     const outHeader=new Array(width).fill("");
     for(let c=0;c<destHeaders.length;c++)if(mapped[c]>=0)outHeader[c]=sourceHeaders[mapped[c]];
     const data=p.rows.map((row:any[])=>{const out=new Array(width).fill("");for(let c=0;c<destHeaders.length;c++)if(mapped[c]>=0)out[c]=row[mapped[c]]??"";return out;});
     const needed=firstData+data.length-1,gridRows=Number(sheet.properties?.gridProperties?.rowCount??1000);
     if(needed>gridRows){const add=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify({requests:[{appendDimension:{sheetId:sheet.properties.sheetId,dimension:"ROWS",length:needed-gridRows}}]})});await apiError(add,"NÃO FOI POSSÍVEL AMPLIAR A ABA DE DESTINO");}
-    const range=`${quoted}!A${headerRow}:${col(width-1)}${needed}`;
-    const write=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,{method:"PUT",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify({majorDimension:"ROWS",values:[outHeader,...data]})});await apiError(write,"NÃO FOI POSSÍVEL GRAVAR A IMPORTAÇÃO");
+    // Grava apenas blocos contíguos de colunas não protegidas; A, B, AV e AW são omitidas por completo.
+    const writable:number[]=[];
+    for(let c=0;c<width;c++)if(!protectedIndexes.has(c)&&!protectedNames.includes(String(destHeaders[c]??"").trim().toLocaleUpperCase("pt-BR")))writable.push(c);
+    const segments:number[][]=[];
+    for(const index of writable){const current=segments[segments.length-1];if(current&&index===current[current.length-1]+1)current.push(index);else segments.push([index]);}
+    const valueData=segments.map(segment=>({
+     range:`${quoted}!${col(segment[0])}${headerRow}:${col(segment[segment.length-1])}${needed}`,
+     majorDimension:"ROWS",
+     values:[outHeader,...data].map((row:any[])=>segment.map(index=>row[index]??""))
+    }));
+    if(valueData.length){
+     const write=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values:batchUpdate`,{method:"POST",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify({valueInputOption:"USER_ENTERED",data:valueData})});
+     await apiError(write,"NÃO FOI POSSÍVEL GRAVAR A IMPORTAÇÃO");
+    }
     const meta=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify({requests:[{createDeveloperMetadata:{developerMetadata:{metadataKey:key,metadataValue:JSON.stringify({hash,fileName:String(p.fileName??""),tab:title}),visibility:"DOCUMENT",location:{sheetId:sheet.properties.sheetId}}}}]})});await apiError(meta,"DADOS IMPORTADOS, MAS NÃO FOI POSSÍVEL REGISTRAR A DUPLICIDADE");
     return {duplicate:false,records:data.length,columns:mapped.filter((x:number)=>x>=0).length,sheetTitle:title,missingColumns:missing};
    },
