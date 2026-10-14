@@ -917,3 +917,7 @@ body::before { background: none; }
   opacity:0;
   cursor:pointer;
 }
+
+/* Equilibra a largura dos campos Aba e Arquivo no PRODUTIVIDADE SAC */
+.prodsac-pair{grid-template-columns:minmax(0,0.9fr) minmax(0,1.1fr)}
+@media (max-width:760px){.prodsac-pair{grid-template-columns:minmax(0,0.9fr) minmax(0,1.1fr)}}
