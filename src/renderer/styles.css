@@ -865,3 +865,55 @@ body::before { background: none; }
   content:none !important;
   display:none !important;
 }
+
+/* Seletor personalizado: texto fixo "Selecionar", independente do navegador */
+.prodsac-pair .prodsac-file-picker {
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  width:100%;
+  min-width:0;
+  height:36px;
+  box-sizing:border-box;
+  overflow:hidden;
+  padding:3px 8px 3px 3px;
+  border:1px solid rgba(205,232,217,.24);
+  border-radius:8px;
+  background:#103e31;
+  cursor:pointer;
+}
+.prodsac-pair .prodsac-file-picker-button {
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height:28px;
+  min-width:96px;
+  padding:0 12px;
+  box-sizing:border-box;
+  border-radius:6px;
+  background:#356653;
+  color:#fff;
+  font-size:12px;
+  font-weight:700;
+  white-space:nowrap;
+}
+.prodsac-pair .prodsac-file-picker-name {
+  display:block;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#c9ded3;
+  font-size:12px;
+}
+.prodsac-pair .prodsac-file-picker input.prodsac-file-input {
+  position:absolute;
+  inset:0;
+  width:100% !important;
+  max-width:none !important;
+  height:100%;
+  opacity:0;
+  cursor:pointer;
+}
