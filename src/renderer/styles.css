@@ -643,3 +643,58 @@ body::before { background: none; }
 }
 
 .importer-switch{display:flex;gap:8px;margin:0 0 14px}.importer-switch button{border:1px solid #d0d5dd;background:#fff;color:#344054;padding:10px 14px;border-radius:8px;font-weight:700;cursor:pointer}.importer-switch button.active{background:#173f35;color:#fff;border-color:#173f35}.importer-switch button:focus-visible{outline:2px solid #667085;outline-offset:2px}
+
+
+/* PRODUTIVIDADE SAC — dois pares em disposição horizontal, conforme padrão visual */
+.prodsac-pairs {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px 28px;
+  width:min(100%,960px);
+  margin:0 auto 20px;
+  position:relative;
+  z-index:1;
+}
+.prodsac-pair {
+  min-width:0;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  align-items:center;
+  gap:12px;
+  padding:18px 20px;
+  border:1px solid rgba(205,232,217,.2);
+  border-radius:15px;
+  background:rgba(255,255,255,.085);
+  box-shadow:0 8px 20px rgba(0,0,0,.06);
+}
+.prodsac-pair h3 {
+  grid-column:1 / -1;
+  margin:0;
+  color:#c9ded3;
+  font-size:14px;
+  letter-spacing:.4px;
+}
+.prodsac-pair .importer-field {
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+  gap:8px;
+}
+.prodsac-pair .importer-field span {
+  font-size:13px;
+}
+.prodsac-pair .importer-field input[type="file"],
+.prodsac-pair .importer-field select {
+  min-width:0;
+  width:100%;
+}
+.importer-shell > .importer-controls {
+  width:min(100%,960px);
+}
+@media (max-width: 760px) {
+  .prodsac-pairs { grid-template-columns:minmax(0,1fr); }
+  .prodsac-pair { grid-template-columns:minmax(0,1fr); }
+  .prodsac-pair h3 { grid-column:auto; }
+}
