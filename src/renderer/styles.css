@@ -851,3 +851,17 @@ body::before { background: none; }
   font-weight:700;
   color:#fff;
 }
+
+/* Garantir rótulo visível no seletor de arquivo */
+.prodsac-pair .prodsac-file-input::file-selector-button {
+  font-size:12px !important;
+  color:#fff !important;
+  width:auto !important;
+  min-width:96px !important;
+  max-width:none !important;
+  padding:0 12px !important;
+}
+.prodsac-pair .prodsac-file-input::file-selector-button::after {
+  content:none !important;
+  display:none !important;
+}
