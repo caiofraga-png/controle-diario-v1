@@ -750,3 +750,61 @@ body::before { background: none; }
   font-size:0 !important;
   color:transparent !important;
 }
+
+/* PRODUTIVIDADE SAC: caixas mais baixas e alinhadas em duas linhas */
+.prodsac-pairs {
+  width:min(100%,1200px);
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px 24px;
+  margin-bottom:14px;
+}
+.prodsac-pair {
+  min-height:0;
+  padding:10px 16px;
+  gap:7px 14px;
+  border-radius:13px;
+  box-shadow:none;
+}
+.prodsac-pair h3 {
+  font-size:13px;
+  line-height:1.2;
+}
+.prodsac-pair .importer-field {
+  gap:5px;
+  min-width:0;
+}
+.prodsac-pair .importer-field span {
+  font-size:12px;
+  line-height:1.15;
+}
+.prodsac-pair .importer-field select,
+.prodsac-pair .importer-field input[type="file"] {
+  min-height:36px;
+  height:36px;
+  box-sizing:border-box;
+}
+.prodsac-pair .prodsac-file-input {
+  width:44px !important;
+  max-width:44px !important;
+  min-height:36px;
+  height:36px;
+  padding:2px !important;
+}
+.prodsac-pair .prodsac-file-input::file-selector-button {
+  width:34px !important;
+  min-width:34px !important;
+  max-width:34px !important;
+  height:30px;
+  padding:0 !important;
+  margin:0 !important;
+  font-size:0 !important;
+}
+.importer-shell > .importer-controls {
+  width:min(100%,1200px);
+  margin-top:10px;
+}
+@media (max-width:760px) {
+  .prodsac-pairs { grid-template-columns:minmax(0,1fr); gap:10px; }
+  .prodsac-pair { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+  .prodsac-pair h3 { grid-column:1 / -1; }
+}
