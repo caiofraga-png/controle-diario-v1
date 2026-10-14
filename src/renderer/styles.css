@@ -808,3 +808,34 @@ body::before { background: none; }
   .prodsac-pair { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
   .prodsac-pair h3 { grid-column:1 / -1; }
 }
+
+/* Restaurar seletor de arquivo completo no PRODUTIVIDADE SAC */
+.prodsac-pair .prodsac-file-input {
+  display:block;
+  box-sizing:border-box;
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0;
+  height:36px;
+  min-height:36px;
+  overflow:hidden;
+  padding:3px 6px !important;
+  color:#c9ded3 !important;
+  font-size:12px !important;
+}
+.prodsac-pair .prodsac-file-input::file-selector-button {
+  box-sizing:border-box;
+  width:auto !important;
+  min-width:0 !important;
+  max-width:none !important;
+  height:28px;
+  padding:0 12px !important;
+  margin:0 8px 0 0 !important;
+  border:0;
+  border-radius:6px;
+  background:#356653;
+  color:#fff !important;
+  font-size:12px !important;
+  font-weight:700;
+  cursor:pointer;
+}
