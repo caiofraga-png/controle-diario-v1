@@ -839,3 +839,15 @@ body::before { background: none; }
   font-weight:700;
   cursor:pointer;
 }
+
+/* Texto mais curto no seletor de arquivo do PRODUTIVIDADE SAC */
+.prodsac-pair .prodsac-file-input::file-selector-button {
+  font-size:0 !important;
+  min-width:0 !important;
+}
+.prodsac-pair .prodsac-file-input::file-selector-button::after {
+  content:"Selecionar";
+  font-size:12px;
+  font-weight:700;
+  color:#fff;
+}
