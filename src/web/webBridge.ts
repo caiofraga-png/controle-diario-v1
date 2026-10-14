@@ -130,7 +130,7 @@ export function installWebBridge(){
     const headerRow=last+2,firstData=headerRow+1;
     const protectedNames=["ABERTURA","ENCERRAMENTO","TEMPO DE TRANSFERÊNCIA","TEMPO DE ENCERRAMENTO"];
     const protectedIndexes=new Set([0,1,47,48]); // A, B, AV e AW nunca recebem escrita
-    const normalizeHeader=(value:any)=>String(value??"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").trim().toLocaleLowerCase("pt-BR").replace(/[_-]+/g," ").replace(/[^\\p{L}\\p{N}]+/gu," ").replace(/\\s+/g," ").trim();
+    const normalizeHeader=(value:any)=>String(value??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLocaleLowerCase("pt-BR").replace(/[_-]+/g," ").replace(/[^\p{L}\p{N}]+/gu," ").replace(/\s+/g," ").trim();
     const sourceHeaders=p.headers.map((v:any)=>String(v??"").trim());
     const sourceNormalized=sourceHeaders.map(normalizeHeader);
     const mapped=destHeaders.map((dh:string,index:number)=>{
