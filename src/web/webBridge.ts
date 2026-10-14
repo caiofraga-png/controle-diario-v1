@@ -101,6 +101,48 @@ export function installWebBridge(){
    prepararEstatisticas,
    testarSheets:async(spreadsheetId:string)=>{const id=spreadsheetId.trim();if(!id)throw new Error("INFORME O ID DA PLANILHA.");if(!/^[a-zA-Z0-9_-]+$/.test(id))throw new Error("O ID DA PLANILHA NÃO É VÁLIDO.");const token=await auth.getAccessToken();const url=`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}?fields=spreadsheetId,properties(title),sheets(properties(sheetId,title,hidden))`;const response=await fetch(url,{headers:{Authorization:`Bearer ${token}`}});if(!response.ok){let message=`GOOGLE SHEETS API RETORNOU HTTP ${response.status}.`;try{const body=await response.json();if(body?.error?.message)message=body.error.message;}catch{}throw new Error(message);}const result=await response.json();return {spreadsheetId:id,title:String(result.properties?.title??"PLANILHA SEM TÍTULO"),sheets:(result.sheets??[]).map((s:any)=>({sheetId:Number(s.properties?.sheetId),title:String(s.properties?.title??""),hidden:Boolean(s.properties?.hidden)})).filter((s:any)=>s.title)};},
    inspecionarDestino:async(spreadsheetId:string,sheetTitle:string)=>{const id=spreadsheetId.trim();const title=sheetTitle.trim();if(!/^[a-zA-Z0-9_-]+$/.test(id))throw new Error("O ID DA PLANILHA NÃO É VÁLIDO.");if(!title)throw new Error("SELECIONE A ABA DE DESTINO.");const token=await auth.getAccessToken();const quoted=`'${title.replace(/'/g,"''")}'`;const headersUrl=`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values/${encodeURIComponent(quoted+"!1:1")}?majorDimension=ROWS`;const headersResponse=await fetch(headersUrl,{headers:{Authorization:`Bearer ${token}`}});if(!headersResponse.ok){let message=`NÃO FOI POSSÍVEL LER O CABEÇALHO DA ABA (HTTP ${headersResponse.status}).`;try{const body=await headersResponse.json();if(body?.error?.message)message=body.error.message;}catch{}throw new Error(message);}const headersResult=await headersResponse.json();const headers=(headersResult.values?.[0]??[]).map((v:any)=>String(v??"").trim());const ticketIndex=headers.findIndex((v:string)=>v.trim().toLocaleUpperCase("pt-BR")==="TICKET");if(ticketIndex<0)throw new Error("A ABA DE DESTINO NÃO POSSUI UMA COLUNA TICKET NA LINHA 1.");const col=(n:number)=>{let out="";for(let x=n+1;x>0;x=Math.floor((x-1)/26))out=String.fromCharCode(65+(x-1)%26)+out;return out;};const ticketRange=`${quoted}!${col(ticketIndex)}2:${col(ticketIndex)}`;const ticketsUrl=`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values/${encodeURIComponent(ticketRange)}?majorDimension=ROWS`;const ticketsResponse=await fetch(ticketsUrl,{headers:{Authorization:`Bearer ${token}`}});if(!ticketsResponse.ok){let message=`NÃO FOI POSSÍVEL LER A COLUNA TICKET (HTTP ${ticketsResponse.status}).`;try{const body=await ticketsResponse.json();if(body?.error?.message)message=body.error.message;}catch{}throw new Error(message);}const ticketsResult=await ticketsResponse.json();const tickets=ticketsResult.values??[];let lastTicketRow=1;for(let i=0;i<tickets.length;i++){if(String(tickets[i]?.[0]??"").trim())lastTicketRow=i+2;}return {spreadsheetId:id,sheetTitle:title,headers,lastTicketRow,headerRow:lastTicketRow+2,firstDataRow:lastTicketRow+3,ticketColumn:col(ticketIndex)};},
+   importarProdutividadeSac:async(p:any)=>{
+    const id=String(p.spreadsheetId??"").trim(),title=String(p.sheetTitle??"").trim(),source=String(p.source??"GERAL").trim();
+    if(!/^[a-zA-Z0-9_-]+$/.test(id))throw new Error("O ID DA PLANILHA NÃO É VÁLIDO.");
+    if(!title)throw new Error("SELECIONE A ABA DE DESTINO.");
+    if(!["GERAL","ABERTAS"].includes(source))throw new Error("TIPO DE IMPORTAÇÃO INVÁLIDO.");
+    if(!Array.isArray(p.headers)||!Array.isArray(p.rows)||p.rows.length<1)throw new Error("O ARQUIVO PRECISA TER CABEÇALHO E PELO MENOS UMA LINHA DE DADOS.");
+    const hash=String(p.hash??"").trim();if(!/^[a-f0-9]{64}$/i.test(hash))throw new Error("NÃO FOI POSSÍVEL VALIDAR O ARQUIVO SELECIONADO.");
+    const token=await auth.getAccessToken(),h={Authorization:`Bearer ${token}`};
+    const apiError=async(r:Response,msg:string)=>{if(r.ok)return;let m=`${msg} (HTTP ${r.status}).`;try{const b=await r.json();if(b?.error?.message)m=b.error.message;}catch{}throw new Error(m);};
+    const day=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()).replace(/-/g,"");
+    const key=`PRODSAC_${source}_${day}`;
+    const search=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/developerMetadata:search`,{method:"POST",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify({dataFilters:[{developerMetadataLookup:{metadataKey:key}}]})});
+    await apiError(search,"NÃO FOI POSSÍVEL VERIFICAR IMPORTAÇÕES ANTERIORES");
+    const found=await search.json(),entries=found.matchedDeveloperMetadata??[];
+    if(entries.some((x:any)=>String(x.developerMetadata?.metadataValue??"").includes(hash))&&!p.confirmarDuplicidade)return {duplicate:true};
+    const bookRes=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}?fields=sheets(properties(sheetId,title,hidden,gridProperties(rowCount,columnCount)))`,{headers:h});await apiError(bookRes,"NÃO FOI POSSÍVEL ABRIR A PLANILHA DE DESTINO");
+    const book=await bookRes.json(),sheet=(book.sheets??[]).find((s:any)=>s.properties?.title===title);
+    if(!sheet||sheet.properties?.hidden)throw new Error("A ABA DE DESTINO NÃO EXISTE OU ESTÁ OCULTA.");
+    const quoted=`'${title.replace(/'/g,"''")}'`;
+    const headRes=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values/${encodeURIComponent(quoted+"!1:1")}?majorDimension=ROWS`,{headers:h});await apiError(headRes,"NÃO FOI POSSÍVEL LER OS CABEÇALHOS DO DESTINO");
+    const destHeaders=((await headRes.json()).values?.[0]??[]).map((v:any)=>String(v??"").trim());
+    const ticket=destHeaders.findIndex((v:string)=>v.trim().toLocaleUpperCase("pt-BR")==="TICKET");if(ticket<0)throw new Error("A ABA DE DESTINO NÃO POSSUI COLUNA TICKET NA LINHA 1.");
+    const col=(n:number)=>{let s="";for(let x=n+1;x>0;x=Math.floor((x-1)/26))s=String.fromCharCode(65+(x-1)%26)+s;return s;};
+    const ticketRange=`${quoted}!${col(ticket)}2:${col(ticket)}`;
+    const ticketRes=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values/${encodeURIComponent(ticketRange)}?majorDimension=ROWS`,{headers:h});await apiError(ticketRes,"NÃO FOI POSSÍVEL LER A COLUNA TICKET");
+    const vals=(await ticketRes.json()).values??[];let last=1;for(let i=0;i<vals.length;i++)if(String(vals[i]?.[0]??"").trim())last=i+2;
+    const headerRow=last+2,firstData=headerRow+1;
+    const protectedCols=["ABERTURA","ENCERRAMENTO","TEMPO DE TRANSFERÊNCIA","TEMPO DE ENCERRAMENTO"];
+    const sourceHeaders=p.headers.map((v:any)=>String(v??"").trim());
+    const mapped=destHeaders.map((dh:string)=>{if(!dh||protectedCols.includes(dh.toLocaleUpperCase("pt-BR")))return -1;return sourceHeaders.findIndex((sh:string)=>sh.toLocaleUpperCase("pt-BR")===dh.toLocaleUpperCase("pt-BR"));});
+    const missing=destHeaders.filter((dh:string,i:number)=>dh&&mapped[i]===-1&&!protectedCols.includes(dh.toLocaleUpperCase("pt-BR")));
+    const width=Math.max(destHeaders.length,sourceHeaders.length);
+    const outHeader=new Array(width).fill("");
+    for(let c=0;c<destHeaders.length;c++)if(mapped[c]>=0)outHeader[c]=sourceHeaders[mapped[c]];
+    const data=p.rows.map((row:any[])=>{const out=new Array(width).fill("");for(let c=0;c<destHeaders.length;c++)if(mapped[c]>=0)out[c]=row[mapped[c]]??"";return out;});
+    const needed=firstData+data.length-1,gridRows=Number(sheet.properties?.gridProperties?.rowCount??1000);
+    if(needed>gridRows){const add=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify({requests:[{appendDimension:{sheetId:sheet.properties.sheetId,dimension:"ROWS",length:needed-gridRows}}]})});await apiError(add,"NÃO FOI POSSÍVEL AMPLIAR A ABA DE DESTINO");}
+    const range=`${quoted}!A${headerRow}:${col(width-1)}${needed}`;
+    const write=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,{method:"PUT",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify({majorDimension:"ROWS",values:[outHeader,...data]})});await apiError(write,"NÃO FOI POSSÍVEL GRAVAR A IMPORTAÇÃO");
+    const meta=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify({requests:[{createDeveloperMetadata:{developerMetadata:{metadataKey:key,metadataValue:JSON.stringify({hash,fileName:String(p.fileName??""),tab:title}),visibility:"DOCUMENT",location:{sheetId:sheet.properties.sheetId}}}}]})});await apiError(meta,"DADOS IMPORTADOS, MAS NÃO FOI POSSÍVEL REGISTRAR A DUPLICIDADE");
+    return {duplicate:false,records:data.length,columns:mapped.filter((x:number)=>x>=0).length,sheetTitle:title,missingColumns:missing};
+   },
    importarEstatisticas:async(p:any)=>{
     const id=String(p.spreadsheetId??"").trim(),title=String(p.sheetTitle??"").trim();
     if(!/^[a-zA-Z0-9_-]+$/.test(id))throw new Error("O ID DA PLANILHA NÃO É VÁLIDO.");
