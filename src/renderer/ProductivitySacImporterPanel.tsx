@@ -17,8 +17,8 @@ export default function ProductivitySacImporterPanel(){
    <div className="prodsac-pairs">
     {pairs.map((p,i)=><div className="prodsac-pair" key={p.label}>
      <h3>{p.label}</h3>
-     <label className="importer-field"><span>Arquivo</span><input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={busy} onChange={e=>void selectFile(i,e.target.files?.[0])}/>{p.file&&<small>{p.file.name} · {p.file.rows.length.toLocaleString("pt-BR")} registros</small>}</label>
      <label className="importer-field"><span>Aba</span><select value={p.tab} disabled={busy||!sheets.length} onChange={e=>setPairs(old=>old.map((x,n)=>n===i?{...x,tab:e.target.value}:x))}><option value="">{sheets.length?"Selecione a aba de destino":"Carregue as abas disponíveis"}</option>{sheets.map(s=><option key={s.sheetId} value={s.title}>{s.title}</option>)}</select></label>
+     <label className="importer-field"><span>Arquivo</span><input className="prodsac-file-input" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={busy} onChange={e=>void selectFile(i,e.target.files?.[0])}/>{p.file&&<small>{p.file.name} · {p.file.rows.length.toLocaleString("pt-BR")} registros</small>}</label>
     </div>)}
    </div>
    <div className="importer-controls"><label className="importer-spreadsheet-id"><span>ID da planilha</span><input value={spreadsheetId} onChange={e=>{setSpreadsheetId(e.target.value);setSheets([]);setMessage("");}} placeholder="ID da planilha Google Sheets" disabled={busy}/></label><button className="importer-secondary-button" disabled={busy||!spreadsheetId.trim()} onClick={()=>void loadSheets()}>CARREGAR ABAS</button></div>
