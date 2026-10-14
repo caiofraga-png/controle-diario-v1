@@ -92,7 +92,7 @@ export default function StatisticsImporterPanel() {
       </div>
       <div className="importer-controls">
         <label className="importer-spreadsheet-id">
-          <span>ID da planilha de destino</span>
+          <span>ID da planilha</span>
           <input value={spreadsheetId} onChange={e => { setSpreadsheetId(e.target.value); setSheets([]); setTargetSheet(""); setMessage(""); }} placeholder="ID da planilha Google Sheets" disabled={busy} />
         </label>
         <button className="importer-secondary-button" disabled={busy || !spreadsheetId.trim()} onClick={() => void loadSheets()}>CARREGAR ABAS</button>
