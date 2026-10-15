@@ -206,7 +206,8 @@ export function installWebBridge(){
     });
     const outHeaders=destHeaders.map((name:string,i:number)=>protectedCols[i]||!name?"":mapped[i]>=0?sourceHeaders[mapped[i]]:name);
     // Reutiliza o formatador uma única vez; criar Intl.DateTimeFormat dentro de cada célula atrasava arquivos grandes.
-    const formatChatDate=(date:Date)=>new Intl.DateTimeFormat("pt-BR",{timeZone:"America/Sao_Paulo",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"}).format(date).replace(",", "");
+    const chatDateFormatter=new Intl.DateTimeFormat("pt-BR",{timeZone:"America/Sao_Paulo",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"});
+    const formatChatDate=(date:Date)=>chatDateFormatter.format(date).replace(",", "");
     const data=(p.rows as any[][]).map((row:any[])=>destHeaders.map((name:string,i:number)=>{
       const sourceIndex=mapped[i];if(sourceIndex<0)return "";
       let value=row?.[sourceIndex]??"";
