@@ -247,6 +247,91 @@ export function installWebBridge(){
     const finalize=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify({requests:finalizeRequests})});
     return {duplicate:false,fileName:String(p.fileName??""),sheetTitle:title,records:data.length,columns:mapped.filter((v:number,i:number)=>v>=0&&!protectedCols[i]).length,headerRow,firstDataRow,missingColumns:missing,protectedColumns:notImported,warning:finalize.ok?"":"DADOS GRAVADOS, MAS NÃO FOI POSSÍVEL FINALIZAR A IMPORTAÇÃO."};
    },
+   importarChatMidiasFinanceiro:async(p:any)=>{
+    const id=String(p.spreadsheetId??"").trim(),title=String(p.sheetTitle??"").trim();
+    if(!/^[a-zA-Z0-9_-]+$/.test(id))throw new Error("O ID DA PLANILHA NÃO É VÁLIDO.");
+    if(!title)throw new Error("SELECIONE A ABA DE DESTINO.");
+    if(!Array.isArray(p.headers)||!Array.isArray(p.rows)||p.rows.length<1)throw new Error("O ARQUIVO PRECISA TER CABEÇALHO E PELO MENOS UMA LINHA DE DADOS.");
+    const hash=String(p.hash??"").trim();if(!/^[a-f0-9]{64}$/i.test(hash))throw new Error("NÃO FOI POSSÍVEL VALIDAR O ARQUIVO SELECIONADO.");
+    const token=await auth.getAccessToken(),h={Authorization:`Bearer ${token}`};
+    const apiError=async(r:Response,msg:string)=>{if(r.ok)return;let m=`${msg} (HTTP ${r.status}).`;try{const b=await r.json();if(b?.error?.message)m=b.error.message;}catch{}throw new Error(m);};
+    const day=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()).replace(/-/g,"");
+    const duplicateKey=`CHAT_MIDIAS_FINANCEIRO_ARQUIVO_${day}`;
+    // A checagem de duplicidade e a leitura dos metadados da planilha são independentes.
+    // Executá-las em paralelo elimina uma espera de rede sequencial.
+    const [search,bookRes]=await Promise.all([
+      fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/developerMetadata:search`,{method:"POST",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify({dataFilters:[{developerMetadataLookup:{metadataKey:duplicateKey}}]})}),
+      fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}?fields=sheets(properties(sheetId,title,hidden,gridProperties(rowCount,columnCount)))`,{headers:h})
+    ]);
+    await apiError(search,"NÃO FOI POSSÍVEL VERIFICAR IMPORTAÇÕES ANTERIORES");
+    await apiError(bookRes,"NÃO FOI POSSÍVEL ABRIR A PLANILHA DE DESTINO");
+    const [sr,book]=await Promise.all([search.json(),bookRes.json()]);
+    const duplicate=(sr.matchedDeveloperMetadata??[]).some((m:any)=>{try{return JSON.parse(String(m.developerMetadata?.metadataValue??"{}")).hash===hash;}catch{return false;}});
+    if(duplicate&&!p.confirmarDuplicidade)return {duplicate:true,fileName:String(p.fileName??""),sheetTitle:title};
+    const sheet=(book.sheets??[]).find((s:any)=>s.properties?.title===title);
+    if(!sheet)throw new Error("A ABA DE DESTINO NÃO FOI ENCONTRADA.");if(sheet.properties?.hidden)throw new Error("A ABA DE DESTINO ESTÁ OCULTA E NÃO PODE SER UTILIZADA.");
+    const quote=`'${title.replace(/'/g,"''")}'`,col=(n:number)=>{let out="";for(let x=n+1;x>0;x=Math.floor((x-1)/26))out=String.fromCharCode(65+(x-1)%26)+out;return out;};
+    const read=async(range:string)=>{const r=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values/${encodeURIComponent(range)}?majorDimension=ROWS`,{headers:h});await apiError(r,"NÃO FOI POSSÍVEL LER A ABA DE DESTINO");return await r.json();};
+    const dest=await read(`${quote}!1:1`),destHeaders=(dest.values?.[0]??[]).map((v:any)=>String(v??"").trim());
+    if(!destHeaders.length)throw new Error("A ABA DE DESTINO NÃO POSSUI CABEÇALHOS.");
+    const ticket=destHeaders.findIndex((v:string)=>v.toUpperCase()==="TICKET");if(ticket<0)throw new Error('A COLUNA "TICKET" NÃO FOI ENCONTRADA NA ABA DE DESTINO.');
+    const tr=await read(`${quote}!${col(ticket)}2:${col(ticket)}`),tickets=tr.values??[];let lastTicket=1;
+    for(let i=tickets.length-1;i>=0;i--)if(tickets[i]?.[0]!==""&&tickets[i]?.[0]!==null&&tickets[i]?.[0]!==undefined){lastTicket=i+2;break;}
+    const headerRow=lastTicket+2,firstDataRow=headerRow+1,lastDataRow=firstDataRow+p.rows.length-1,rowCount=Number(sheet.properties?.gridProperties?.rowCount??1000),needed=lastDataRow-rowCount;
+    if(needed>0){const gr=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify({requests:[{appendDimension:{sheetId:Number(sheet.properties?.sheetId),dimension:"ROWS",length:needed}}]})});await apiError(gr,"NÃO FOI POSSÍVEL AMPLIAR A ABA DE DESTINO");}
+    const sourceHeaders=(p.headers as any[]).map(v=>String(v??"").trim()),sourceMap:Record<string,number>={};
+    sourceHeaders.forEach((name:string,i:number)=>{if(name)sourceMap[name.toUpperCase()]=i;});
+    const protectedNames=["DATA ABERTURA","DATA ENCERRAMENTO","HORA ABERTURA","HORA ENCERRAMENTO"];
+    const protectedCols:Record<number,boolean>={};
+    destHeaders.forEach((name:string,i:number)=>{if(protectedNames.includes(name.toUpperCase()))protectedCols[i]=true;});
+    const closeTime=destHeaders.findIndex((name:string)=>name.toUpperCase()==="HORA ENCERRAMENTO");
+    if(closeTime>=0)protectedCols[closeTime+1]=true;
+    const width=Math.max(destHeaders.length,closeTime+2);
+    while(destHeaders.length<width)destHeaders.push("");
+    const missing:string[]=[],notImported:string[]=[],mapped=destHeaders.map((name:string,i:number)=>{
+      if(protectedCols[i]){notImported.push(name||"[COLUNA SEM NOME - À DIREITA DE HORA ENCERRAMENTO]");return -1;}
+      if(!name)return -1;
+      const index=sourceMap[name.toUpperCase()];
+      if(index===undefined){missing.push(name);return -1;}
+      return index;
+    });
+    const outHeaders=destHeaders.map((name:string,i:number)=>protectedCols[i]||!name?"":mapped[i]>=0?sourceHeaders[mapped[i]]:name);
+    const closeCol=destHeaders.findIndex((name:string)=>name.toUpperCase()==="CHAT_ENCERRADO");
+    // Reutiliza o formatador e verifica a coluna por índice, evitando normalizar o cabeçalho em cada célula.
+    const chatDateFormatter=new Intl.DateTimeFormat("pt-BR",{timeZone:"America/Sao_Paulo",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"});
+    const formatChatDate=(date:Date)=>chatDateFormatter.format(date).replace(",", "");
+    const data=(p.rows as any[][]).map((row:any[])=>destHeaders.map((name:string,i:number)=>{
+      const sourceIndex=mapped[i];if(sourceIndex<0)return "";
+      let value=row?.[sourceIndex]??"";
+      if(i===closeCol&&value!==""&&value!==null&&value!==undefined){
+        if(value instanceof Date&&!Number.isNaN(value.getTime()))value=formatChatDate(value);
+        else if(typeof value==="string"){
+          const text=value.trim();
+          const slash=text.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/);
+          const iso=text.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
+          if(slash)value=`${slash[1]}/${slash[2]}/${slash[3]} ${slash[4]??"00"}:${slash[5]??"00"}:${slash[6]??"00"}`;
+          else if(iso)value=`${iso[3]}/${iso[2]}/${iso[1]} ${iso[4]}:${iso[5]}:${iso[6]??"00"}`;
+          else {const parsed=new Date(text);if(!Number.isNaN(parsed.getTime()))value=formatChatDate(parsed);}
+        }
+      }
+      return value;
+    }));
+    const matrix=[outHeaders,...data],writable:number[]=[];
+    for(let i=0;i<width;i++)if(!protectedCols[i])writable.push(i);
+    const segments:number[][]=[];
+    for(const i of writable){const current=segments[segments.length-1];if(current&&i===current[current.length-1]+1)current.push(i);else segments.push([i]);}
+    const ranges=segments.map(segment=>({range:`${quote}!${col(segment[0])}${headerRow}:${col(segment[segment.length-1])}${lastDataRow}`,majorDimension:"ROWS",values:matrix.map(row=>segment.map(index=>row[index]??""))}));
+    if(ranges.length){const wr=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values:batchUpdate`,{method:"POST",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify({valueInputOption:"USER_ENTERED",data:ranges})});await apiError(wr,"A GRAVAÇÃO DA IMPORTAÇÃO CHAT MÍDIAS - FINANCEIRO FALHOU");}
+    // Finaliza em uma única chamada à API: formato e marca de duplicidade.
+    // A gravação dos valores já ocorreu; falhas nesta etapa viram aviso, sem repetir a importação.
+    const finalizeRequests:any[]=[];
+    if(closeCol>=0&&!protectedCols[closeCol]){
+      finalizeRequests.push({repeatCell:{range:{sheetId:Number(sheet.properties?.sheetId),startRowIndex:firstDataRow-1,endRowIndex:lastDataRow,startColumnIndex:closeCol,endColumnIndex:closeCol+1},cell:{userEnteredFormat:{numberFormat:{type:"DATE_TIME",pattern:"dd/MM/yyyy HH:mm:ss"}}},fields:"userEnteredFormat.numberFormat"}});
+    }
+    finalizeRequests.push({createDeveloperMetadata:{developerMetadata:{metadataKey:duplicateKey,metadataValue:JSON.stringify({hash,fileName:String(p.fileName??""),sheetTitle:title,importedAt:new Date().toISOString()}),visibility:"DOCUMENT",location:{spreadsheet:true}}}});
+    const finalize=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify({requests:finalizeRequests})});
+    return {duplicate:false,fileName:String(p.fileName??""),sheetTitle:title,records:data.length,columns:mapped.filter((v:number,i:number)=>v>=0&&!protectedCols[i]).length,headerRow,firstDataRow,missingColumns:missing,protectedColumns:notImported,warning:finalize.ok?"":"DADOS GRAVADOS, MAS NÃO FOI POSSÍVEL FINALIZAR A IMPORTAÇÃO."};
+   },
    importarEstatisticas:async(p:any)=>{
     const id=String(p.spreadsheetId??"").trim(),title=String(p.sheetTitle??"").trim();
     if(!/^[a-zA-Z0-9_-]+$/.test(id))throw new Error("O ID DA PLANILHA NÃO É VÁLIDO.");
