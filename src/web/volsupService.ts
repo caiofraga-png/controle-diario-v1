@@ -122,7 +122,7 @@ export function createVolSupService(getToken:()=>Promise<string>) {
      }}}]};
      await call(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sheetId)}:batchUpdate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(requestBody)});
      const token=await getToken();
-     const exported=await fetch(`https://docs.google.com/spreadsheets/d/${encodeURIComponent(sheetId)}/export?format=xlsx`,{headers:{Authorization:`Bearer ${token}`}});
+     const exported=await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(sheetId)}/export?mimeType=${encodeURIComponent(XLSX_MIME)}`,{headers:{Authorization:`Bearer ${token}`}});
      if(!exported.ok) throw new Error(`Não foi possível exportar o XLSX filtrado (HTTP ${exported.status}).`);
      const blob=await exported.blob();
      const base64=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(",")[1]??"");reader.onerror=()=>reject(new Error("Não foi possível preparar o download."));reader.readAsDataURL(blob);});
