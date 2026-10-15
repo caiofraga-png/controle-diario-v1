@@ -2,8 +2,9 @@ import { useState } from "react";
 import StatisticsImporterPanel from "./StatisticsImporterPanel";
 import CallbackImporterPanel from "./CallbackImporterPanel";
 import ProductivitySacImporterPanel from "./ProductivitySacImporterPanel";
+import ChatMidiasImporterPanel from "./ChatMidiasImporterPanel";
 
-type Importer = "estatisticas" | "callback" | "prodsac";
+type Importer = "estatisticas" | "callback" | "prodsac" | "chatmidias";
 
 export default function ImporterPanel() {
   const [selected, setSelected] = useState<Importer>("estatisticas");
@@ -13,8 +14,9 @@ export default function ImporterPanel() {
         <button type="button" role="tab" aria-selected={selected === "estatisticas"} className={selected === "estatisticas" ? "active" : ""} onClick={() => setSelected("estatisticas")}>DADOS ESTATÍSTICOS</button>
         <button type="button" role="tab" aria-selected={selected === "callback"} className={selected === "callback" ? "active" : ""} onClick={() => setSelected("callback")}>CALLBACK</button>
         <button type="button" role="tab" aria-selected={selected === "prodsac"} className={selected === "prodsac" ? "active" : ""} onClick={() => setSelected("prodsac")}>PRODUTIVIDADE SAC</button>
+        <button type="button" role="tab" aria-selected={selected === "chatmidias"} className={selected === "chatmidias" ? "active" : ""} onClick={() => setSelected("chatmidias")}>CHAT MÍDIAS - SUPORTE</button>
       </div>
-      {selected === "estatisticas" ? <StatisticsImporterPanel /> : selected === "callback" ? <CallbackImporterPanel /> : <ProductivitySacImporterPanel />}
+      {selected === "estatisticas" ? <StatisticsImporterPanel /> : selected === "callback" ? <CallbackImporterPanel /> : selected === "prodsac" ? <ProductivitySacImporterPanel /> : <ChatMidiasImporterPanel />}
     </div>
   );
 }
