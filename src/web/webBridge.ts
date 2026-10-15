@@ -172,12 +172,18 @@ export function installWebBridge(){
     const apiError=async(r:Response,msg:string)=>{if(r.ok)return;let m=`${msg} (HTTP ${r.status}).`;try{const b=await r.json();if(b?.error?.message)m=b.error.message;}catch{}throw new Error(m);};
     const day=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()).replace(/-/g,"");
     const duplicateKey=`CHAT_MIDIAS_ARQUIVO_${day}`;
-    const search=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/developerMetadata:search`,{method:"POST",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify({dataFilters:[{developerMetadataLookup:{metadataKey:duplicateKey}}]})});
+    // A checagem de duplicidade e a leitura dos metadados da planilha são independentes.
+    // Executá-las em paralelo elimina uma espera de rede sequencial.
+    const [search,bookRes]=await Promise.all([
+      fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/developerMetadata:search`,{method:"POST",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify({dataFilters:[{developerMetadataLookup:{metadataKey:duplicateKey}}]})}),
+      fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}?fields=sheets(properties(sheetId,title,hidden,gridProperties(rowCount,columnCount)))`,{headers:h})
+    ]);
     await apiError(search,"NÃO FOI POSSÍVEL VERIFICAR IMPORTAÇÕES ANTERIORES");
-    const sr=await search.json(),duplicate=(sr.matchedDeveloperMetadata??[]).some((m:any)=>{try{return JSON.parse(String(m.developerMetadata?.metadataValue??"{}")).hash===hash;}catch{return false;}});
+    await apiError(bookRes,"NÃO FOI POSSÍVEL ABRIR A PLANILHA DE DESTINO");
+    const [sr,book]=await Promise.all([search.json(),bookRes.json()]);
+    const duplicate=(sr.matchedDeveloperMetadata??[]).some((m:any)=>{try{return JSON.parse(String(m.developerMetadata?.metadataValue??"{}")).hash===hash;}catch{return false;}});
     if(duplicate&&!p.confirmarDuplicidade)return {duplicate:true,fileName:String(p.fileName??""),sheetTitle:title};
-    const bookRes=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}?fields=sheets(properties(sheetId,title,hidden,gridProperties(rowCount,columnCount)))`,{headers:h});await apiError(bookRes,"NÃO FOI POSSÍVEL ABRIR A PLANILHA DE DESTINO");
-    const book=await bookRes.json(),sheet=(book.sheets??[]).find((s:any)=>s.properties?.title===title);
+    const sheet=(book.sheets??[]).find((s:any)=>s.properties?.title===title);
     if(!sheet)throw new Error("A ABA DE DESTINO NÃO FOI ENCONTRADA.");if(sheet.properties?.hidden)throw new Error("A ABA DE DESTINO ESTÁ OCULTA E NÃO PODE SER UTILIZADA.");
     const quote=`'${title.replace(/'/g,"''")}'`,col=(n:number)=>{let out="";for(let x=n+1;x>0;x=Math.floor((x-1)/26))out=String.fromCharCode(65+(x-1)%26)+out;return out;};
     const read=async(range:string)=>{const r=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values/${encodeURIComponent(range)}?majorDimension=ROWS`,{headers:h});await apiError(r,"NÃO FOI POSSÍVEL LER A ABA DE DESTINO");return await r.json();};
@@ -205,13 +211,14 @@ export function installWebBridge(){
       return index;
     });
     const outHeaders=destHeaders.map((name:string,i:number)=>protectedCols[i]||!name?"":mapped[i]>=0?sourceHeaders[mapped[i]]:name);
-    // Reutiliza o formatador uma única vez; criar Intl.DateTimeFormat dentro de cada célula atrasava arquivos grandes.
+    const closeCol=destHeaders.findIndex((name:string)=>name.toUpperCase()==="CHAT_ENCERRADO");
+    // Reutiliza o formatador e verifica a coluna por índice, evitando normalizar o cabeçalho em cada célula.
     const chatDateFormatter=new Intl.DateTimeFormat("pt-BR",{timeZone:"America/Sao_Paulo",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"});
     const formatChatDate=(date:Date)=>chatDateFormatter.format(date).replace(",", "");
     const data=(p.rows as any[][]).map((row:any[])=>destHeaders.map((name:string,i:number)=>{
       const sourceIndex=mapped[i];if(sourceIndex<0)return "";
       let value=row?.[sourceIndex]??"";
-      if(name.trim().toUpperCase()==="CHAT_ENCERRADO"&&value!==""&&value!==null&&value!==undefined){
+      if(i===closeCol&&value!==""&&value!==null&&value!==undefined){
         if(value instanceof Date&&!Number.isNaN(value.getTime()))value=formatChatDate(value);
         else if(typeof value==="string"){
           const text=value.trim();
@@ -232,7 +239,6 @@ export function installWebBridge(){
     if(ranges.length){const wr=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values:batchUpdate`,{method:"POST",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify({valueInputOption:"USER_ENTERED",data:ranges})});await apiError(wr,"A GRAVAÇÃO DA IMPORTAÇÃO CHAT MÍDIAS FALHOU");}
     // Finaliza em uma única chamada à API: formato e marca de duplicidade.
     // A gravação dos valores já ocorreu; falhas nesta etapa viram aviso, sem repetir a importação.
-    const closeCol=destHeaders.findIndex((name:string)=>name.toUpperCase()==="CHAT_ENCERRADO");
     const finalizeRequests:any[]=[];
     if(closeCol>=0&&!protectedCols[closeCol]){
       finalizeRequests.push({repeatCell:{range:{sheetId:Number(sheet.properties?.sheetId),startRowIndex:firstDataRow-1,endRowIndex:lastDataRow,startColumnIndex:closeCol,endColumnIndex:closeCol+1},cell:{userEnteredFormat:{numberFormat:{type:"DATE_TIME",pattern:"dd/MM/yyyy HH:mm:ss"}}},fields:"userEnteredFormat.numberFormat"}});
