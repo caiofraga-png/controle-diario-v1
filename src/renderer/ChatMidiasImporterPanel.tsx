@@ -36,7 +36,7 @@ export default function ChatMidiasImporterPanel(){
    localStorage.setItem("controle-diario-chatmidias-spreadsheet",spreadsheetId);localStorage.setItem("controle-diario-chatmidias-tab",targetSheet);
    const missing=result.missingColumns?.length?" COLUNAS AUSENTES NA ORIGEM: "+result.missingColumns.join(", ")+".":"";
    const warning=result.warning?" "+result.warning:"";
-   setMessage(`CHAT MÍDIAS - SUPORTE IMPORTADO: ${result.records.toLocaleString("pt-BR")} REGISTROS NA ABA “${result.sheetTitle}”. ${result.columns} COLUNAS MAPEADAS. CABEÇALHO NA LINHA ${result.headerRow}.${missing}${warning}`);
+   setMessage(`IMPORTAÇÃO CONCLUÍDA: ${result.records.toLocaleString("pt-BR")} REGISTROS.${missing}${warning}`);
   }catch(e){setError(e instanceof Error?e.message:"A IMPORTAÇÃO CHAT MÍDIAS - SUPORTE NÃO FOI CONCLUÍDA.");}finally{setBusy(false);}
  }
  return <div className="importer-shell"><header className="importer-brand"><img src="./leste-logo.svg" alt="Leste"/><h2>CHAT MÍDIAS - SUPORTE</h2><p>Compilação de Dados - Madrugada</p></header>
