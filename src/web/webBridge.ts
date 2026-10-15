@@ -496,6 +496,7 @@ export function installWebBridge(){
     const finalize=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify({requests:finalizeRequests})});
     return {duplicate:false,fileName:String(p.fileName??""),sheetTitle:title,records:data.length,columns:mapped.filter((v:number,i:number)=>v>=0&&!protectedCols[i]).length,headerRow,firstDataRow,missingColumns:missing,protectedColumns:notImported,warning:finalize.ok?"":"DADOS GRAVADOS, MAS NÃO FOI POSSÍVEL FINALIZAR A IMPORTAÇÃO."};
    },
+  },
   dados:{
    carregar:async()=>{const id=boot().drive.pastaRaizId;if(!id)throw new Error("NENHUMA PASTA RAIZ FOI CONFIGURADA.");return data.load(id);},
    salvarEstado:async(estado:EstadoAtual|null)=>{const id=boot().drive.pastaRaizId;if(!id)throw new Error("NENHUMA PASTA RAIZ FOI CONFIGURADA.");await session.assertOwner(id);await data.saveCurrentState(id,estado);return true;},
