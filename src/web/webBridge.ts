@@ -204,7 +204,7 @@ export function installWebBridge(){
       if(index===undefined){missing.push(name);return -1;}
       return index;
     });
-    const outHeaders=destHeaders.map((name:string,i:number)=>mapped[i]>=0?sourceHeaders[mapped[i]]:"");
+    const outHeaders=destHeaders.map((name:string,i:number)=>protectedCols[i]||!name?"":mapped[i]>=0?sourceHeaders[mapped[i]]:name);
     const data=(p.rows as any[][]).map((row:any[])=>destHeaders.map((name:string,i:number)=>{
       const sourceIndex=mapped[i];if(sourceIndex<0)return "";
       let value=row?.[sourceIndex]??"";
