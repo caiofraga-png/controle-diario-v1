@@ -205,19 +205,20 @@ export function installWebBridge(){
       return index;
     });
     const outHeaders=destHeaders.map((name:string,i:number)=>protectedCols[i]||!name?"":mapped[i]>=0?sourceHeaders[mapped[i]]:name);
+    // Reutiliza o formatador uma única vez; criar Intl.DateTimeFormat dentro de cada célula atrasava arquivos grandes.
+    const formatChatDate=(date:Date)=>new Intl.DateTimeFormat("pt-BR",{timeZone:"America/Sao_Paulo",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"}).format(date).replace(",", "");
     const data=(p.rows as any[][]).map((row:any[])=>destHeaders.map((name:string,i:number)=>{
       const sourceIndex=mapped[i];if(sourceIndex<0)return "";
       let value=row?.[sourceIndex]??"";
       if(name.trim().toUpperCase()==="CHAT_ENCERRADO"&&value!==""&&value!==null&&value!==undefined){
-        const formatDate=(date:Date)=>new Intl.DateTimeFormat("pt-BR",{timeZone:"America/Sao_Paulo",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"}).format(date).replace(",", "");
-        if(value instanceof Date&&!Number.isNaN(value.getTime()))value=formatDate(value);
+        if(value instanceof Date&&!Number.isNaN(value.getTime()))value=formatChatDate(value);
         else if(typeof value==="string"){
           const text=value.trim();
           const slash=text.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/);
           const iso=text.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
           if(slash)value=`${slash[1]}/${slash[2]}/${slash[3]} ${slash[4]??"00"}:${slash[5]??"00"}:${slash[6]??"00"}`;
           else if(iso)value=`${iso[3]}/${iso[2]}/${iso[1]} ${iso[4]}:${iso[5]}:${iso[6]??"00"}`;
-          else {const parsed=new Date(text);if(!Number.isNaN(parsed.getTime()))value=formatDate(parsed);}
+          else {const parsed=new Date(text);if(!Number.isNaN(parsed.getTime()))value=formatChatDate(parsed);}
         }
       }
       return value;
