@@ -228,12 +228,15 @@ export function installWebBridge(){
     for(const i of writable){const current=segments[segments.length-1];if(current&&i===current[current.length-1]+1)current.push(i);else segments.push([i]);}
     const ranges=segments.map(segment=>({range:`${quote}!${col(segment[0])}${headerRow}:${col(segment[segment.length-1])}${lastDataRow}`,majorDimension:"ROWS",values:matrix.map(row=>segment.map(index=>row[index]??""))}));
     if(ranges.length){const wr=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values:batchUpdate`,{method:"POST",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify({valueInputOption:"USER_ENTERED",data:ranges})});await apiError(wr,"A GRAVAÇÃO DA IMPORTAÇÃO CHAT MÍDIAS FALHOU");}
+    // Finaliza em uma única chamada à API: formato e marca de duplicidade.
+    // A gravação dos valores já ocorreu; falhas nesta etapa viram aviso, sem repetir a importação.
     const closeCol=destHeaders.findIndex((name:string)=>name.toUpperCase()==="CHAT_ENCERRADO");
+    const finalizeRequests:any[]=[];
     if(closeCol>=0&&!protectedCols[closeCol]){
-      const fmt=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify({requests:[{repeatCell:{range:{sheetId:Number(sheet.properties?.sheetId),startRowIndex:firstDataRow-1,endRowIndex:lastDataRow,startColumnIndex:closeCol,endColumnIndex:closeCol+1},cell:{userEnteredFormat:{numberFormat:{type:"DATE_TIME",pattern:"dd/MM/yyyy HH:mm:ss"}}},fields:"userEnteredFormat.numberFormat"}}]})});
-      await apiError(fmt,"DADOS GRAVADOS, MAS NÃO FOI POSSÍVEL FORMATAR CHAT_ENCERRADO");
+      finalizeRequests.push({repeatCell:{range:{sheetId:Number(sheet.properties?.sheetId),startRowIndex:firstDataRow-1,endRowIndex:lastDataRow,startColumnIndex:closeCol,endColumnIndex:closeCol+1},cell:{userEnteredFormat:{numberFormat:{type:"DATE_TIME",pattern:"dd/MM/yyyy HH:mm:ss"}}},fields:"userEnteredFormat.numberFormat"}});
     }
-    const mark=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify({requests:[{createDeveloperMetadata:{developerMetadata:{metadataKey:duplicateKey,metadataValue:JSON.stringify({hash,fileName:String(p.fileName??""),sheetTitle:title,importedAt:new Date().toISOString()}),visibility:"DOCUMENT",location:{spreadsheet:true}}}}]})});
+    finalizeRequests.push({createDeveloperMetadata:{developerMetadata:{metadataKey:duplicateKey,metadataValue:JSON.stringify({hash,fileName:String(p.fileName??""),sheetTitle:title,importedAt:new Date().toISOString()}),visibility:"DOCUMENT",location:{spreadsheet:true}}}});
+    const finalize=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify({requests:finalizeRequests})});
     return {duplicate:false,fileName:String(p.fileName??""),sheetTitle:title,records:data.length,columns:mapped.filter((v:number,i:number)=>v>=0&&!protectedCols[i]).length,headerRow,firstDataRow,missingColumns:missing,protectedColumns:notImported,warning:mark.ok?"":"DADOS GRAVADOS, MAS NÃO FOI POSSÍVEL REGISTRAR A DUPLICIDADE."};
    },
    importarEstatisticas:async(p:any)=>{
