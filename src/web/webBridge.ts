@@ -280,7 +280,7 @@ export function installWebBridge(){
     const headerRow=lastTicket+2,firstDataRow=headerRow+1,lastDataRow=firstDataRow+p.rows.length-1,rowCount=Number(sheet.properties?.gridProperties?.rowCount??1000),needed=lastDataRow-rowCount;
     if(needed>0){const gr=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify({requests:[{appendDimension:{sheetId:Number(sheet.properties?.sheetId),dimension:"ROWS",length:needed}}]})});await apiError(gr,"NÃO FOI POSSÍVEL AMPLIAR A ABA DE DESTINO");}
     const sourceHeaders=(p.headers as any[]).map(v=>String(v??"").trim()),sourceMap:Record<string,number>={};
-    sourceHeaders.forEach((name:string,i:number)=>{if(name)sourceMap[name.toUpperCase()]=i;});
+    sourceHeaders.forEach((name:string,i:number)=>{const normalized=name.toUpperCase();if(name&&normalized!=="ORIGEMLEAD")sourceMap[normalized]=i;});
     const protectedNames=["DATA ABERTURA","DATA ENCERRAMENTO","HORA ABERTURA","HORA ENCERRAMENTO"];
     const protectedCols:Record<number,boolean>={};
     destHeaders.forEach((name:string,i:number)=>{if(protectedNames.includes(name.toUpperCase()))protectedCols[i]=true;});
@@ -305,13 +305,10 @@ export function installWebBridge(){
       let value=row?.[sourceIndex]??"";
       if(i===closeCol&&value!==""&&value!==null&&value!==undefined){
         if(value instanceof Date&&!Number.isNaN(value.getTime()))value=formatChatDate(value);
-        else if(typeof value==="string"){
-          const text=value.trim();
-          const slash=text.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/);
-          const iso=text.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
-          if(slash)value=`${slash[1]}/${slash[2]}/${slash[3]} ${slash[4]??"00"}:${slash[5]??"00"}:${slash[6]??"00"}`;
-          else if(iso)value=`${iso[3]}/${iso[2]}/${iso[1]} ${iso[4]}:${iso[5]}:${iso[6]??"00"}`;
-          else {const parsed=new Date(text);if(!Number.isNaN(parsed.getTime()))value=formatChatDate(parsed);}
+        else if(value!==""&&value!==null&&value!==undefined){
+          const original=value,text=String(value).trim();
+          if(/^\\d{2}\\/\\d{2}\\/\\d{4} \\d{2}:\\d{2}:\\d{2}$/.test(text))value=text;
+          else {const parsed=new Date(text);if(!Number.isNaN(parsed.getTime()))value=formatChatDate(parsed);else value=original;}
         }
       }
       return value;
