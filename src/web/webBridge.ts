@@ -307,7 +307,7 @@ export function installWebBridge(){
         if(value instanceof Date&&!Number.isNaN(value.getTime()))value=formatChatDate(value);
         else if(value!==""&&value!==null&&value!==undefined){
           const original=value,text=String(value).trim();
-          if(/^\\d{2}\\/\\d{2}\\/\\d{4} \\d{2}:\\d{2}:\\d{2}$/.test(text))value=text;
+          if(/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/.test(text))value=text;
           else {const parsed=new Date(text);if(!Number.isNaN(parsed.getTime()))value=formatChatDate(parsed);else value=original;}
         }
       }
