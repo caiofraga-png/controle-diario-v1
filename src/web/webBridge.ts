@@ -237,7 +237,7 @@ export function installWebBridge(){
     }
     finalizeRequests.push({createDeveloperMetadata:{developerMetadata:{metadataKey:duplicateKey,metadataValue:JSON.stringify({hash,fileName:String(p.fileName??""),sheetTitle:title,importedAt:new Date().toISOString()}),visibility:"DOCUMENT",location:{spreadsheet:true}}}});
     const finalize=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{...h,"Content-Type":"application/json"},body:JSON.stringify({requests:finalizeRequests})});
-    return {duplicate:false,fileName:String(p.fileName??""),sheetTitle:title,records:data.length,columns:mapped.filter((v:number,i:number)=>v>=0&&!protectedCols[i]).length,headerRow,firstDataRow,missingColumns:missing,protectedColumns:notImported,warning:mark.ok?"":"DADOS GRAVADOS, MAS NÃO FOI POSSÍVEL REGISTRAR A DUPLICIDADE."};
+    return {duplicate:false,fileName:String(p.fileName??""),sheetTitle:title,records:data.length,columns:mapped.filter((v:number,i:number)=>v>=0&&!protectedCols[i]).length,headerRow,firstDataRow,missingColumns:missing,protectedColumns:notImported,warning:finalize.ok?"":"DADOS GRAVADOS, MAS NÃO FOI POSSÍVEL FINALIZAR A IMPORTAÇÃO."};
    },
    importarEstatisticas:async(p:any)=>{
     const id=String(p.spreadsheetId??"").trim(),title=String(p.sheetTitle??"").trim();
