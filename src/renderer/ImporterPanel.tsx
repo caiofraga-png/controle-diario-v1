@@ -4,8 +4,9 @@ import CallbackImporterPanel from "./CallbackImporterPanel";
 import ProductivitySacImporterPanel from "./ProductivitySacImporterPanel";
 import ChatMidiasImporterPanel from "./ChatMidiasImporterPanel";
 import ChatMidiasFinanceiroImporterPanel from "./ChatMidiasFinanceiroImporterPanel";
+import ChatMidiasComercialImporterPanel from "./ChatMidiasComercialImporterPanel";
 
-type Importer = "estatisticas" | "callback" | "prodsac" | "chatmidias" | "chatfinanceiro";
+type Importer = "estatisticas" | "callback" | "prodsac" | "chatmidias" | "chatfinanceiro" | "chatcomercial";
 
 export default function ImporterPanel() {
   const [selected, setSelected] = useState<Importer>("estatisticas");
@@ -17,8 +18,9 @@ export default function ImporterPanel() {
         <button type="button" role="tab" aria-selected={selected === "prodsac"} className={selected === "prodsac" ? "active" : ""} onClick={() => setSelected("prodsac")}>PRODUTIVIDADE SAC</button>
         <button type="button" role="tab" aria-selected={selected === "chatmidias"} className={selected === "chatmidias" ? "active" : ""} onClick={() => setSelected("chatmidias")}>CHAT MÍDIAS - SUPORTE</button>
         <button type="button" role="tab" aria-selected={selected === "chatfinanceiro"} className={selected === "chatfinanceiro" ? "active" : ""} onClick={() => setSelected("chatfinanceiro")}>CHAT MÍDIAS - FINANCEIRO</button>
+        <button type="button" role="tab" aria-selected={selected === "chatcomercial"} className={selected === "chatcomercial" ? "active" : ""} onClick={() => setSelected("chatcomercial")}>CHAT MÍDIAS - COMERCIAL</button>
       </div>
-      {selected === "estatisticas" ? <StatisticsImporterPanel /> : selected === "callback" ? <CallbackImporterPanel /> : selected === "prodsac" ? <ProductivitySacImporterPanel /> : selected === "chatmidias" ? <ChatMidiasImporterPanel /> : <ChatMidiasFinanceiroImporterPanel /> }
+      {selected === "estatisticas" ? <StatisticsImporterPanel /> : selected === "callback" ? <CallbackImporterPanel /> : selected === "prodsac" ? <ProductivitySacImporterPanel /> : selected === "chatmidias" ? <ChatMidiasImporterPanel /> : selected === "chatfinanceiro" ? <ChatMidiasFinanceiroImporterPanel /> : <ChatMidiasComercialImporterPanel /> }
     </div>
   );
 }
