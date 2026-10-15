@@ -87,19 +87,52 @@ export function createVolSupService(getToken:()=>Promise<string>) {
   return {duplicate:false,records:p.rows.length,openSubtypes:data.open.length,closedSubtypes:data.closed.length,openRecords:data.open.reduce((n,x)=>n+x.quantidade,0),closedRecords:data.closed.reduce((n,x)=>n+x.quantidade,0),sheetTitle:title};
  }
  async function generateFiltered(file:File,type:"OSCILACAO"|"INCONFORMIDADE") {
-  if(!file.name.toLowerCase().endsWith(".xlsx"))throw new Error("O arquivo selecionado precisa estar no formato XLSX.");
-  const boundary="volsup_"+crypto.randomUUID().replace(/-/g,""), bytes=await file.arrayBuffer();
-  const multipart=new Blob([`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({name:`TEMP_VOLSUP_FILTER_${Date.now()}`,mimeType:XLSX_MIME})}\r\n--${boundary}\r\nContent-Type: ${XLSX_MIME}\r\n\r\n`,bytes,`\r\n--${boundary}--`]);
+  if(!file.name.toLowerCase().endsWith(".xlsx")) throw new Error("O arquivo selecionado precisa estar no formato XLSX.");
+  const boundary="volsup_"+crypto.randomUUID().replace(/-/g,"");
+  const bytes=await file.arrayBuffer();
+  const multipart=new Blob([
+   `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({name:`TEMP_VOLSUP_FILTER_${Date.now()}`,mimeType:XLSX_MIME})}\r\n--${boundary}\r\nContent-Type: ${XLSX_MIME}\r\n\r\n`,
+   bytes,
+   `\r\n--${boundary}--`
+  ]);
   let xlsxId="",sheetId="";
-  const call=async(url:string,init:RequestInit={})=>api(url,init,"NÃO FOI POSSÍVEL GERAR O XLSX FILTRADO");
+  const call=(url:string,init:RequestInit={})=>api(url,init,"NÃO FOI POSSÍVEL GERAR O XLSX FILTRADO");
   try {
-   const up=await call("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id",{method:"POST",headers:{"Content-Type":`multipart/related; boundary=${boundary}`},body:multipart});xlsxId=String((await up.json()).id??"");if(!xlsxId)throw new Error("O Drive não retornou o ID do arquivo temporário.");
-   const conv=await call(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(xlsxId)}/copy?supportsAllDrives=true&fields=id`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:`TEMP_VOLSUP_SHEET_${Date.now()}`,mimeType:"application/vnd.google-apps.spreadsheet"})});sheetId=String((await conv.json()).id??"");
-   if(!sheetId)throw new Error("Não foi possível converter o arquivo para Google Sheets.");
-   let headers:string[]=[];
-   for(let n=0;n<10;n++){try{const meta=await call(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sheetId)}?fields=sheets(properties(title,gridProperties(rowCount,columnCount)))`);const book=await meta.json();const sh=book.sheets?.[0];if(sh){const title=String(sh.properties.title),rowCount=Number(sh.properties.gridProperties?.rowCount??1),colCount=Number(sh.properties.gridProperties?.columnCount??1);const vals=await read(sheetId,`${quote(title)}!A1:${col(colCount-1)}${rowCount}`);headers=(vals[0]??[]).map((x:any)=>String(x??"").trim());const idx=headers.findIndex(x=>norm(x)==="SUBTIPO");if(idx<0)throw new Error('A coluna "subtipo" não foi encontrada no arquivo.');const criterion=type==="OSCILACAO"?"OSCILAÇÃO/INTERMITÊNCIA":"INCONFORMIDADE DE VELOCIDADE";await call(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sheetId)}:batchUpdate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({requests:[{setBasicFilter:{filter:{range:{sheetId:Number(sh.properties.sheetId),startRowIndex:0,endRowIndex:Math.max(2,vals.length),startColumnIndex:0,endColumnIndex:colCount},criteria:{[idx]:{condition:{type:"TEXT_EQ",values:[{userEnteredValue:criterion}]}}}}}]})});const token=await getToken();const exported=await fetch(`https://docs.google.com/spreadsheets/d/${encodeURIComponent(sheetId)}/export?format=xlsx`,{headers:{Authorization:`Bearer ${token}`}});if(!exported.ok)throw new Error(`Não foi possível exportar o XLSX filtrado (HTTP ${exported.status}).`);const blob=await exported.blob();const base64=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(",")[1]??"");reader.onerror=()=>reject(new Error("Não foi possível preparar o download."));reader.readAsDataURL(blob);});return {success:true,fileName:file.name.replace(/\.xlsx$/i,"")+(type==="OSCILACAO"?" - OSCILACAO.xlsx":" - INCONFORMIDADE.xlsx"),base64};}}catch(e){if(n===9)throw e;}await new Promise(resolve=>setTimeout(resolve,1000));}
-   throw new Error("A planilha temporária não ficou disponível para leitura.");
-  } finally {for(const id of [sheetId,xlsxId])if(id)try{await api(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?supportsAllDrives=true`,{method:"DELETE"});}catch{}}
+   const uploaded=await call("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id",{method:"POST",headers:{"Content-Type":`multipart/related; boundary=${boundary}`},body:multipart});
+   xlsxId=String((await uploaded.json()).id??"");
+   if(!xlsxId) throw new Error("O Drive não retornou o ID do arquivo temporário.");
+   const converted=await call(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(xlsxId)}/copy?supportsAllDrives=true&fields=id`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:`TEMP_VOLSUP_SHEET_${Date.now()}`,mimeType:"application/vnd.google-apps.spreadsheet"})});
+   sheetId=String((await converted.json()).id??"");
+   if(!sheetId) throw new Error("Não foi possível converter o arquivo para Google Sheets.");
+   let lastError:unknown=null;
+   for(let attempt=1;attempt<=10;attempt++) {
+    try {
+     const metaResponse=await call(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sheetId)}?fields=sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)))`);
+     const book=await metaResponse.json(),sh=book.sheets?.[0];
+     if(!sh) throw new Error("A planilha temporária ainda não possui abas.");
+     const title=String(sh.properties.title),rowCount=Number(sh.properties.gridProperties?.rowCount??1),colCount=Number(sh.properties.gridProperties?.columnCount??1);
+     const vals=await read(sheetId,`${quote(title)}!A1:${col(colCount-1)}${rowCount}`);
+     const headers=(vals[0]??[]).map((x:any)=>String(x??"").trim());
+     const idx=headers.findIndex((x:string)=>norm(x)==="SUBTIPO");
+     if(idx<0) throw new Error('A coluna "subtipo" não foi encontrada no arquivo.');
+     const criterion=type==="OSCILACAO"?"OSCILAÇÃO/INTERMITÊNCIA":"INCONFORMIDADE DE VELOCIDADE";
+     const requestBody={requests:[{setBasicFilter:{filter:{
+      range:{sheetId:Number(sh.properties.sheetId),startRowIndex:0,endRowIndex:Math.max(2,vals.length),startColumnIndex:0,endColumnIndex:colCount},
+      criteria:{[idx]:{condition:{type:"TEXT_EQ",values:[{userEnteredValue:criterion}]}}}
+     }}}]};
+     await call(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sheetId)}:batchUpdate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(requestBody)});
+     const token=await getToken();
+     const exported=await fetch(`https://docs.google.com/spreadsheets/d/${encodeURIComponent(sheetId)}/export?format=xlsx`,{headers:{Authorization:`Bearer ${token}`}});
+     if(!exported.ok) throw new Error(`Não foi possível exportar o XLSX filtrado (HTTP ${exported.status}).`);
+     const blob=await exported.blob();
+     const base64=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(",")[1]??"");reader.onerror=()=>reject(new Error("Não foi possível preparar o download."));reader.readAsDataURL(blob);});
+     return {success:true,fileName:file.name.replace(/\\.xlsx$/i,"")+(type==="OSCILACAO"?" - OSCILACAO.xlsx":" - INCONFORMIDADE.xlsx"),base64};
+    } catch(e) {lastError=e;if(attempt===10)throw e;await new Promise(resolve=>setTimeout(resolve,1000));}
+   }
+   throw lastError instanceof Error?lastError:new Error("A planilha temporária não ficou disponível para leitura.");
+  } finally {
+   for(const id of [sheetId,xlsxId]) if(id) try {await api(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?supportsAllDrives=true`,{method:"DELETE"});} catch {}
+  }
  }
  return { importarVolSup:(p:Payload)=>importData(p,false), importarVolSupMid:(p:Payload)=>importData(p,true), gerarVolSupArquivoFiltrado:generateFiltered };
 }
