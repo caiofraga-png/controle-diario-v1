@@ -10,7 +10,7 @@ async function hashFile(file: File) {
 
 export default function StatisticsImporterPanel() {
   const [file, setFile] = useState<SourceFile | null>(null);
-  const [spreadsheetId, setSpreadsheetId] = useState("1608bZtMCXHSbXDzYVIq-X454ZDDOpCUa4TdkHWZT5wM");
+  const [spreadsheetId] = useState(() => localStorage.getItem("controle-diario-estatisticas-spreadsheet") ?? localStorage.getItem("controle-diario-importer-spreadsheet") ?? "1608bZtMCXHSbXDzYVIq-X454ZDDOpCUa4TdkHWZT5wM");
   const [sheets, setSheets] = useState<SheetInfo[]>([]);
   const [targetSheet, setTargetSheet] = useState("");
   const [busy, setBusy] = useState(false);
@@ -39,7 +39,7 @@ export default function StatisticsImporterPanel() {
       const result = await (window as any).controleDiario.sistema.testarSheets(spreadsheetId);
       const visible = result.sheets.filter((s: SheetInfo) => !s.hidden);
       setSheets(visible);
-      const saved = localStorage.getItem("controle-diario-importer-tab") ?? "";
+      const saved = localStorage.getItem("controle-diario-estatisticas-tab") ?? localStorage.getItem("controle-diario-importer-tab") ?? "";
       setTargetSheet(visible.some((s: SheetInfo) => s.title === saved) ? saved : (visible[0]?.title ?? ""));
       if (!visible.length) setMessage("NENHUMA ABA VISÍVEL FOI ENCONTRADA.");
     } catch (e) { setError(e instanceof Error ? e.message : "NÃO FOI POSSÍVEL CARREGAR AS ABAS."); }
@@ -60,7 +60,7 @@ export default function StatisticsImporterPanel() {
         result = await (window as any).controleDiario.sistema.importarEstatisticas({ ...payload, confirmarDuplicidade: true });
       }
       if (result.duplicate) throw new Error("A VERIFICAÇÃO DE DUPLICIDADE NÃO FOI CONCLUÍDA.");
-      localStorage.setItem("controle-diario-importer-tab", targetSheet);
+      localStorage.setItem("controle-diario-estatisticas-tab", targetSheet); localStorage.setItem("controle-diario-importer-tab", targetSheet);
       setMessage(result.warning
         ? `IMPORTAÇÃO CONCLUÍDA: ${result.records.toLocaleString("pt-BR")} REGISTROS GRAVADOS NA ABA “${result.sheetTitle}”. ${result.warning}`
         : `IMPORTAÇÃO CONCLUÍDA: ${result.records.toLocaleString("pt-BR")} REGISTROS GRAVADOS NA ABA “${result.sheetTitle}”.`);
@@ -79,7 +79,7 @@ export default function StatisticsImporterPanel() {
       <div className="importer-fields">
         <label className="importer-field">
           <span>Aba</span>
-          <select value={targetSheet} onChange={e => setTargetSheet(e.target.value)} disabled={busy || sheets.length === 0}>
+          <select value={targetSheet} onChange={e => { setTargetSheet(e.target.value); if(e.target.value)localStorage.setItem("controle-diario-estatisticas-tab",e.target.value); }} disabled={busy || sheets.length === 0}>
             {sheets.length === 0 && <option value="">Carregue as abas disponíveis</option>}
             {sheets.map(s => <option key={s.sheetId} value={s.title}>{s.title}</option>)}
           </select>
@@ -90,13 +90,7 @@ export default function StatisticsImporterPanel() {
           {file && <small>{file.name} · {file.rows.length.toLocaleString("pt-BR")} registros</small>}
         </label>
       </div>
-      <div className="importer-controls">
-        <label className="importer-spreadsheet-id">
-          <span>ID da planilha</span>
-          <input value={spreadsheetId} onChange={e => { setSpreadsheetId(e.target.value); setSheets([]); setTargetSheet(""); setMessage(""); }} placeholder="ID da planilha Google Sheets" disabled={busy} />
-        </label>
-        <button className="importer-secondary-button" disabled={busy || !spreadsheetId.trim()} onClick={() => void loadSheets()}>CARREGAR ABAS</button>
-      </div>
+      <div className="importer-controls"><button className="importer-secondary-button" title="Atualizar abas disponíveis" aria-label="Atualizar abas disponíveis" disabled={busy||!spreadsheetId.trim()} onClick={()=>void loadSheets()}><span aria-hidden="true">⟳</span></button></div>
       <button className="importer-execute-button" disabled={busy || !file || !targetSheet} onClick={() => void importFile()}>{busy ? "PROCESSANDO…" : "EXECUTAR"}</button>
       {error && <p className="importer-feedback error" role="alert">{error}</p>}
       {message && <p className="importer-feedback" role="status">{message}</p>}
