@@ -49,17 +49,7 @@ function App() {
   const [taskPanel, setTaskPanel] = useState<any>(null);
   const [roteiroPanel, setRoteiroPanel] = useState<any>(null);
   const [importerTaskPanel, setImporterTaskPanel] = useState<any>(null); // popup do importador por tarefa
-  function importerForTask(task: any): "estatisticas" | "callback" | "prodsac" | "chatmidias" | "chatfinanceiro" | "chatcomercial" | "volsup" {
-    const label = `${task?.nome ?? ""} ${task?.id ?? ""}`.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toUpperCase();
-    if (label.includes("CALLBACK")) return "callback";
-    if (label.includes("PRODUTIVIDADE SAC") || label.includes("PRODSAC")) return "prodsac";
-    if (label.includes("CHAT") && label.includes("FINANCEIRO")) return "chatfinanceiro";
-    if (label.includes("CHAT") && label.includes("COMERCIAL")) return "chatcomercial";
-    if (label.includes("CHAT") && label.includes("SUPORTE")) return "chatmidias";
-    if (label.includes("VOLUMETRIA SUPORTE") || label.includes("VOLUMETRIA")) return "volsup";
-    return "estatisticas";
-  }
-  const [profileSwitch, setProfileSwitch] = useState(false);
+ , setProfileSwitch] = useState(false);
   const observationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [calendarCursor, setCalendarCursor] = useState(() => { const { year, month } = brazilTodayParts(); return { year, month }; });
   const [calendarData, setCalendarData] = useState<any>(null);
