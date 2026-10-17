@@ -9,11 +9,13 @@ import VolSupImporterPanel from "./VolSupImporterPanel";
 
 type Importer = "estatisticas" | "callback" | "prodsac" | "chatmidias" | "chatfinanceiro" | "chatcomercial" | "volsup";
 
-export default function ImporterPanel() {
-  const [selected, setSelected] = useState<Importer>("estatisticas");
+type ImporterPanelProps = { initialImporter?: Importer; showSelector?: boolean };
+
+export default function ImporterPanel({ initialImporter = "estatisticas", showSelector = true }: ImporterPanelProps) {
+  const [selected, setSelected] = useState<Importer>(initialImporter);
   return (
     <div className="importer-host">
-      <div className="importer-switch" role="tablist" aria-label="Selecionar importador">
+      {showSelector && <div className="importer-switch" role="tablist" aria-label="Selecionar importador">
         <button type="button" role="tab" aria-selected={selected === "estatisticas"} className={selected === "estatisticas" ? "active" : ""} onClick={() => setSelected("estatisticas")}>DADOS ESTATÍSTICOS</button>
         <button type="button" role="tab" aria-selected={selected === "callback"} className={selected === "callback" ? "active" : ""} onClick={() => setSelected("callback")}>CALLBACK</button>
         <button type="button" role="tab" aria-selected={selected === "prodsac"} className={selected === "prodsac" ? "active" : ""} onClick={() => setSelected("prodsac")}>PRODUTIVIDADE SAC</button>
@@ -21,7 +23,7 @@ export default function ImporterPanel() {
         <button type="button" role="tab" aria-selected={selected === "chatfinanceiro"} className={selected === "chatfinanceiro" ? "active" : ""} onClick={() => setSelected("chatfinanceiro")}>CHAT MÍDIAS - FINANCEIRO</button>
         <button type="button" role="tab" aria-selected={selected === "chatcomercial"} className={selected === "chatcomercial" ? "active" : ""} onClick={() => setSelected("chatcomercial")}>CHAT MÍDIAS - COMERCIAL</button>
         <button type="button" role="tab" aria-selected={selected === "volsup"} className={selected === "volsup" ? "active" : ""} onClick={() => setSelected("volsup")}>VOLUMETRIA SUPORTE</button>
-      </div>
+      </div>}
       {selected === "estatisticas" ? <StatisticsImporterPanel /> : selected === "callback" ? <CallbackImporterPanel /> : selected === "prodsac" ? <ProductivitySacImporterPanel /> : selected === "chatmidias" ? <ChatMidiasImporterPanel /> : selected === "chatfinanceiro" ? <ChatMidiasFinanceiroImporterPanel /> : selected === "chatcomercial" ? <ChatMidiasComercialImporterPanel /> : <VolSupImporterPanel /> }
     </div>
   );
