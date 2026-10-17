@@ -35,7 +35,7 @@ function resolveEmailVariables(value:string){
   return value.replaceAll("\\n", "\n").replaceAll("{HOJE_YYYYMMDD}",hoje).replaceAll("{ONTEM_DDMMYYYY}",ontem);
 }
 function App() {
-  const [tab, setTab] = useState<"tarefas" | "calendario" | "configuracao" | "importacao" | "links" | "sistema">("tarefas");
+  const [tab, setTab] = useState<"tarefas" | "calendario" | "configuracao" | "importacao" | "sistema">("tarefas");
   const [status, setStatus] = useState<any>(null);
   const [folderId, setFolderId] = useState("");
   const [sheetTestId, setSheetTestId] = useState("1608bZtMCXHSbXDzYVIq-X454ZDDOpCUa4TdkHWZT5wM");
