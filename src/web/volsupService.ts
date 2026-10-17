@@ -7,14 +7,15 @@ function count(rows:unknown[][], headers:string[], includeFallback:boolean) {
  const map:Record<string,number>={}; headers.forEach((h,i)=>{const k=norm(h);if(k && map[k]===undefined)map[k]=i;});
  const state=map.ESTADO, subtype=map.SUBTIPO, title=map.TITLE, ticket=map.TICKET, typeState=map.TIPO_ESTADO;
  if(state===undefined||subtype===undefined||title===undefined) throw new Error('O arquivo precisa conter as colunas "estado", "subtipo" e "title".');
+ if(!includeFallback&&(ticket===undefined||typeState===undefined)) throw new Error('O arquivo VOLUMETRIA SUPORTE precisa conter também as colunas "ticket" e "tipo_estado" para gerar a ANÁLISE ROUTETHIS.');
  const open:Record<string,{subtipo:string;quantidade:number}>={}, closed:Record<string,{subtipo:string;quantidade:number}>={};
  const osc:any[]=[], incon:any[]=[];
  for(const row of rows) {
   const estado=norm(row[state]); const group=estado==="ABERTO"?"open":(["ENCERRADO COM SUCESSO","ENCERRADO SEM SUCESSO"].includes(estado)?"closed":"");
   const raw=String(row[subtype]??"").trim(), st=raw || (includeFallback ? "(" + String(row[title]??"").trim() + ")" : "(" + String(row[title]??"").trim() + ")");
   if(group){const target=group==="open"?open:closed, key=norm(st);if(!target[key])target[key]={subtipo:st,quantidade:0};target[key].quantidade++;}
-  if(!includeFallback && ticket!==undefined && typeState!==undefined) {
-   const subtypeKey=norm(st), ts=norm(row[typeState]);
+  if(!includeFallback) {
+   const subtypeKey=norm(raw), ts=norm(row[typeState]);
    if(subtypeKey==="OSCILACAO/INTERMITENCIA")osc.push({ticket:row[ticket]??"",open:ts==="OPEN"});
    if(subtypeKey==="INCONFORMIDADE DE VELOCIDADE")incon.push({ticket:row[ticket]??"",open:ts==="OPEN"});
   }
