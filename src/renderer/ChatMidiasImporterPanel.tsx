@@ -3,7 +3,7 @@ type SheetInfo={sheetId:number;title:string;hidden:boolean};
 type SourceFile={name:string;headers:string[];rows:unknown[][];hash:string};
 async function hashFile(file:File){const digest=await crypto.subtle.digest("SHA-256",await file.arrayBuffer());return Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,"0")).join("");}
 export default function ChatMidiasImporterPanel(){
- const [spreadsheetId,setSpreadsheetId]=useState(()=>localStorage.getItem("controle-diario-chatmidias-spreadsheet")??"");
+ const [spreadsheetId]=useState(()=>localStorage.getItem("controle-diario-chatmidias-spreadsheet")??"");
  const [sheets,setSheets]=useState<SheetInfo[]>([]);
  const [targetSheet,setTargetSheet]=useState(()=>localStorage.getItem("controle-diario-chatmidias-tab")??"");
  const [file,setFile]=useState<SourceFile|null>(null);
@@ -40,9 +40,9 @@ export default function ChatMidiasImporterPanel(){
   }catch(e){setError(e instanceof Error?e.message:"A IMPORTAÇÃO CHAT MÍDIAS - SUPORTE NÃO FOI CONCLUÍDA.");}finally{setBusy(false);}
  }
  return <div className="importer-shell"><header className="importer-brand"><img src="./leste-logo.svg" alt="Leste"/><h2>CHAT MÍDIAS - SUPORTE</h2><p>Compilação de Dados - Madrugada</p></header>
-  <div className="importer-fields"><label className="importer-field"><span>Aba</span><select value={targetSheet} onChange={e=>setTargetSheet(e.target.value)} disabled={busy||sheets.length===0}>{sheets.length===0&&<option value="">Carregue as abas disponíveis</option>}{sheets.map(s=><option key={s.sheetId} value={s.title}>{s.title}</option>)}</select></label>
+  <div className="importer-fields"><label className="importer-field"><span>Aba</span><select value={targetSheet} onChange={e=>{setTargetSheet(e.target.value);if(e.target.value)localStorage.setItem("controle-diario-chatmidias-tab",e.target.value);}} disabled={busy||sheets.length===0}>{sheets.length===0&&<option value="">Carregue as abas disponíveis</option>}{sheets.map(s=><option key={s.sheetId} value={s.title}>{s.title}</option>)}</select></label>
    <label className="importer-field"><span>Arquivo</span><input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={busy} onChange={e=>void readFile(e.target.files?.[0])}/>{file&&<small>{file.name} · {file.rows.length.toLocaleString("pt-BR")} registros</small>}</label></div>
-  <div className="importer-controls"><label className="importer-spreadsheet-id"><span>ID da planilha</span><input value={spreadsheetId} onChange={e=>{setSpreadsheetId(e.target.value);setSheets([]);setTargetSheet("");setMessage("");}} placeholder="ID da planilha Google Sheets" disabled={busy}/></label><button className="importer-secondary-button" disabled={busy||!spreadsheetId.trim()} onClick={()=>void loadSheets()}>CARREGAR ABAS</button></div>
+  <div className="importer-controls"><button className="importer-secondary-button" title="Atualizar abas disponíveis" aria-label="Atualizar abas disponíveis" disabled={busy||!spreadsheetId.trim()} onClick={()=>void loadSheets()}><span aria-hidden="true">⟳</span></button></div>
   <button className="importer-execute-button" disabled={busy||!file||!targetSheet} onClick={()=>void importFile()}>{busy?"PROCESSANDO…":"EXECUTAR"}</button>
   {error&&<p className="importer-feedback error" role="alert">{error}</p>}{message&&<p className="importer-feedback" role="status">{message}</p>}
  </div>;
