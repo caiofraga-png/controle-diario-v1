@@ -63,8 +63,8 @@ export function createVolSupService(getToken:()=>Promise<string>) {
    if(marker===null)throw new Error("Não foi possível localizar o bloco MIDIAS com SUBTIPO/QTD em B/C e G/H.");
    const start=marker+4, totalA=normalized.findIndex((r:any[],i:number)=>i>=start-1&&r[1]==="TOTAL"), totalC=normalized.findIndex((r:any[],i:number)=>i>=start-1&&r[6]==="TOTAL");
    if(totalA<0||totalC<0)throw new Error("O bloco MIDIAS não possui os dois marcadores TOTAL.");
-   addPair({subtypeCol:1,qtyCol:2,start,capacity:totalA+1-start},data.open);
-   addPair({subtypeCol:6,qtyCol:7,start,capacity:totalC+1-start},data.closed);
+   addPair({subtypeCol:2,qtyCol:3,start,capacity:totalA+1-start},data.open);
+   addPair({subtypeCol:7,qtyCol:8,start,capacity:totalC+1-start},data.closed);
   } else {
    const geral=find("GERAL");if(!geral)throw new Error('Não foi possível localizar "GERAL".');
    const opened=normalized.flatMap((r:any[],ri:number)=>r.map((v:string,ci:number)=>v==="ATENDIMENTOS ABERTOS"&&ri>=geral.r?{r:ri,c:ci}:null).filter(Boolean))[0] as any;
