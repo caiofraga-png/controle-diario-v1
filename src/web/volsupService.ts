@@ -56,15 +56,15 @@ export function createVolSupService(getToken:()=>Promise<string>) {
   const find=(text:string)=>{for(let r=0;r<normalized.length;r++)for(let c=0;c<normalized[r].length;c++)if(normalized[r][c]===norm(text))return {r,c};return null;};
   const writes:any[]=[];
   const addCol=(column:number,start:number,vals:unknown[])=>{if(vals.length)writes.push({range:`${quote(title)}!${col(column)}${start}:${col(column)}${start+vals.length-1}`,majorDimension:"ROWS",values:vals.map(v=>[v??""])});};
-  const addPair=(block:any,list:any[])=>{if(list.length>block.capacity)throw new Error(`A lista possui ${list.length} subtipos, mas há somente ${block.capacity} linhas disponíveis.`);addCol(block.subtypeCol,block.start,list.map(x=>x.subtipo));addCol(block.qtyCol,block.start,list.map(x=>x.quantidade));};
+  const addPair=(block:any,list:any[])=>{if(list.length>block.capacity)throw new Error(`A lista possui ${list.length} subtipos, mas há somente ${block.capacity} linhas disponíveis.`);addCol(block.subtypeCol-1,block.start,list.map(x=>x.subtipo));addCol(block.qtyCol-1,block.start,list.map(x=>x.quantidade));};
   if(media) {
    let marker:any=null;
    for(let r=0;r<normalized.length;r++)if(normalized[r].includes("MIDIAS")){const h=r+3;if(normalized[h]?.[1]==="SUBTIPO"&&normalized[h]?.[2]==="QTD"&&normalized[h]?.[6]==="SUBTIPO"&&normalized[h]?.[7]==="QTD"){marker=r+1;break;}}
    if(marker===null)throw new Error("Não foi possível localizar o bloco MIDIAS com SUBTIPO/QTD em B/C e G/H.");
    const start=marker+4, totalA=normalized.findIndex((r:any[],i:number)=>i>=start-1&&r[1]==="TOTAL"), totalC=normalized.findIndex((r:any[],i:number)=>i>=start-1&&r[6]==="TOTAL");
    if(totalA<0||totalC<0)throw new Error("O bloco MIDIAS não possui os dois marcadores TOTAL.");
-   addPair({subtypeCol:2,qtyCol:3,start,capacity:totalA+1-start},data.open);
-   addPair({subtypeCol:7,qtyCol:8,start,capacity:totalC+1-start},data.closed);
+   addPair({subtypeCol:1,qtyCol:2,start,capacity:totalA+1-start},data.open);
+   addPair({subtypeCol:6,qtyCol:7,start,capacity:totalC+1-start},data.closed);
   } else {
    const geral=find("GERAL");if(!geral)throw new Error('Não foi possível localizar "GERAL".');
    const opened=normalized.flatMap((r:any[],ri:number)=>r.map((v:string,ci:number)=>v==="ATENDIMENTOS ABERTOS"&&ri>=geral.r?{r:ri,c:ci}:null).filter(Boolean))[0] as any;
@@ -79,8 +79,8 @@ export function createVolSupService(getToken:()=>Promise<string>) {
    if(!oscFound||!incFound)throw new Error("Não foi possível localizar os cabeçalhos OSCILAÇÃO e INCONFORMIDADE em ANÁLISE ROUTETHIS.");
    const maxRows=Number(sheet.properties?.gridProperties?.rowCount??1000);
    if(header+3+Math.max(data.osc.length,data.incon.length)>maxRows)throw new Error("Não há linhas suficientes para os tickets RouteThis.");
-   addCol(2,header+3,data.osc.map(x=>x.ticket));addCol(1,header+3,data.osc.map(x=>x.open?"open":""));
-   addCol(7,header+3,data.incon.map(x=>x.ticket));addCol(12,header+3,data.incon.map(x=>x.open?"open":""));
+   addCol(1,header+3,data.osc.map(x=>x.ticket));addCol(0,header+3,data.osc.map(x=>x.open?"open":""));
+   addCol(6,header+3,data.incon.map(x=>x.ticket));addCol(11,header+3,data.incon.map(x=>x.open?"open":""));
   }
   if(writes.length)await api(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values:batchUpdate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({valueInputOption:"USER_ENTERED",data:writes})},"A GRAVAÇÃO DA IMPORTAÇÃO FALHOU");
   await api(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({requests:[{createDeveloperMetadata:{developerMetadata:{metadataKey:key,metadataValue:JSON.stringify({hash:p.hash,fileName:p.fileName,sheetTitle:title,importedAt:new Date().toISOString()}),visibility:"DOCUMENT",location:{spreadsheet:true}}}}]})},"DADOS GRAVADOS, MAS NÃO FOI POSSÍVEL REGISTRAR A DUPLICIDADE");
