@@ -135,7 +135,7 @@ export function createVolSupService(getToken:()=>Promise<string>) {
      if(!exported.ok) throw new Error(`Não foi possível exportar o XLSX filtrado (HTTP ${exported.status}).`);
      const blob=await exported.blob();
      const base64=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(",")[1]??"");reader.onerror=()=>reject(new Error("Não foi possível preparar o download."));reader.readAsDataURL(blob);});
-     return {success:true,fileName:file.name.replace(/\\.xlsx$/i,"")+(type==="OSCILACAO"?" - OSCILACAO.xlsx":" - INCONFORMIDADE.xlsx"),base64};
+     return {success:true,fileName:file.name.replace(/\.xlsx$/i,"")+(type==="OSCILACAO"?" - OSCILACAO.xlsx":" - INCONFORMIDADE.xlsx"),base64};
     } catch(e) {lastError=e;if(attempt===10)throw e;await new Promise(resolve=>setTimeout(resolve,1000));}
    }
    throw lastError instanceof Error?lastError:new Error("A planilha temporária não ficou disponível para leitura.");
