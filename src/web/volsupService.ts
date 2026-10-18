@@ -59,21 +59,21 @@ export function createVolSupService(getToken:()=>Promise<string>) {
   const addCol=(column:number,start:number,vals:unknown[])=>{if(vals.length)writes.push({range:`${quote(title)}!${col(column)}${start}:${col(column)}${start+vals.length-1}`,majorDimension:"ROWS",values:vals.map(v=>[v??""])});};
   const addPair=(block:any,list:any[])=>{if(list.length>block.capacity)throw new Error(`A lista possui ${list.length} subtipos, mas há somente ${block.capacity} linhas disponíveis.`);addCol(block.subtypeCol-1,block.start,list.map(x=>x.subtipo));addCol(block.qtyCol-1,block.start,list.map(x=>x.quantidade));};
   if(media) {
-   let headerRow=-1;
+    let headerRow=-1;
    for(let r=0;r<normalized.length;r++) {
     const hasMidias=normalized[r].some((v:string)=>v.includes("MIDIAS"));
     if(!hasMidias)continue;
     for(let h=r+1;h<=Math.min(normalized.length-1,r+10);h++) {
      const row=normalized[h]??[];
-     if(row[0]?.startsWith("SUBTIPO")&&row[1]?.startsWith("QTD")&&row[5]?.startsWith("SUBTIPO")&&row[6]?.startsWith("QTD")){headerRow=h;break;}
+     if(row[1]?.startsWith("SUBTIPO")&&row[2]?.startsWith("QTD")&&row[6]?.startsWith("SUBTIPO")&&row[7]?.startsWith("QTD")){headerRow=h;break;}
     }
     if(headerRow>=0)break;
    }
-   if(headerRow<0)throw new Error("Não foi possível localizar o título MIDIAS e os cabeçalhos SUBTIPO/QTD nas colunas A/B e F/G.");
-   const start=headerRow+2, totalA=normalized.findIndex((r:any[],i:number)=>i>=start-1&&r[0]?.startsWith("TOTAL")), totalC=normalized.findIndex((r:any[],i:number)=>i>=start-1&&r[5]?.startsWith("TOTAL"));
+   if(headerRow<0)throw new Error("Não foi possível localizar o título MIDIAS e os cabeçalhos SUBTIPO/QTD nas colunas B/C e G/H.");
+   const start=headerRow+2, totalA=normalized.findIndex((r:any[],i:number)=>i>=start-1&&r[1]?.startsWith("TOTAL")), totalC=normalized.findIndex((r:any[],i:number)=>i>=start-1&&r[6]?.startsWith("TOTAL"));
    if(totalA<0||totalC<0)throw new Error("O bloco MIDIAS não possui os dois marcadores TOTAL abaixo dos cabeçalhos.");
-   addPair({subtypeCol:1,qtyCol:2,start,capacity:totalA+1-start},data.open);
-   addPair({subtypeCol:6,qtyCol:7,start,capacity:totalC+1-start},data.closed);
+   addPair({subtypeCol:2,qtyCol:3,start,capacity:totalA+1-start},data.open);
+   addPair({subtypeCol:7,qtyCol:8,start,capacity:totalC+1-start},data.closed);
   } else {
    const geral=find("GERAL");if(!geral)throw new Error('Não foi possível localizar "GERAL".');
    const opened=normalized.flatMap((r:any[],ri:number)=>r.map((v:string,ci:number)=>v==="ATENDIMENTOS ABERTOS"&&ri>=geral.r?{r:ri,c:ci}:null).filter(Boolean))[0] as any;
