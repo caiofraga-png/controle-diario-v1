@@ -8,7 +8,9 @@ async function hashFile(file: File) {
   return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
 }
 
-export default function StatisticsImporterPanel() {
+type ImporterPanelProps = { onClose?: () => void };
+
+export default function StatisticsImporterPanel({ onClose }: ImporterPanelProps) {
   const [file, setFile] = useState<SourceFile | null>(null);
   const [spreadsheetId] = useState(() => localStorage.getItem("controle-diario-estatisticas-spreadsheet") ?? localStorage.getItem("controle-diario-importer-spreadsheet") ?? "1608bZtMCXHSbXDzYVIq-X454ZDDOpCUa4TdkHWZT5wM");
   const [sheets, setSheets] = useState<SheetInfo[]>([]);
@@ -16,6 +18,7 @@ export default function StatisticsImporterPanel() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [completed, setCompleted] = useState(false);
 
   async function readFile(selected?: File) {
     setError(""); setMessage(""); setFile(null);
@@ -50,7 +53,7 @@ export default function StatisticsImporterPanel() {
     if (!file) { setError("SELECIONE A PLANILHA XLSX TRATADA."); return; }
     if (!targetSheet) { setError("SELECIONE A ABA DE DESTINO."); return; }
     if (!window.confirm("Importar os dados do arquivo selecionado para a aba escolhida? A operação gravará dados na planilha empresarial.")) return;
-    setBusy(true); setError(""); setMessage("");
+    setBusy(true); setError(""); setMessage(""); setCompleted(false);
     try {
       const payload = { spreadsheetId, sheetTitle: targetSheet, fileName: file.name, headers: file.headers, rows: file.rows, hash: file.hash };
       let result = await (window as any).controleDiario.sistema.importarEstatisticas(payload);
@@ -91,7 +94,7 @@ export default function StatisticsImporterPanel() {
         </label>
       </div>
       <div className="importer-controls"><button className="importer-secondary-button" title="Atualizar abas disponíveis" aria-label="Atualizar abas disponíveis" disabled={busy||!spreadsheetId.trim()} onClick={()=>void loadSheets()}><span aria-hidden="true">⟳</span></button></div>
-      <button className="importer-execute-button" disabled={busy || !file || !targetSheet} onClick={() => void importFile()}>{busy ? "PROCESSANDO…" : "EXECUTAR"}</button>
+      <button className="importer-execute-button" disabled={busy || !file || !targetSheet} onClick={() => completed && onClose ? onClose() : void importFile()}>{busy ? "PROCESSANDO…" : completed && onClose ? "ENCERRAR" : "EXECUTAR"}</button>
       {error && <p className="importer-feedback error" role="alert">{error}</p>}
       {message && <p className="importer-feedback" role="status">{message}</p>}
     </div>
