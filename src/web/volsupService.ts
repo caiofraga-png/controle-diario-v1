@@ -59,11 +59,19 @@ export function createVolSupService(getToken:()=>Promise<string>) {
   const addCol=(column:number,start:number,vals:unknown[])=>{if(vals.length)writes.push({range:`${quote(title)}!${col(column)}${start}:${col(column)}${start+vals.length-1}`,majorDimension:"ROWS",values:vals.map(v=>[v??""])});};
   const addPair=(block:any,list:any[])=>{if(list.length>block.capacity)throw new Error(`A lista possui ${list.length} subtipos, mas há somente ${block.capacity} linhas disponíveis.`);addCol(block.subtypeCol-1,block.start,list.map(x=>x.subtipo));addCol(block.qtyCol-1,block.start,list.map(x=>x.quantidade));};
   if(media) {
-   let marker:any=null;
-   for(let r=0;r<normalized.length;r++)if(normalized[r].includes("MIDIAS")){const h=r+3;if(normalized[h]?.[0]==="SUBTIPO"&&normalized[h]?.[1]==="QTD"&&normalized[h]?.[5]==="SUBTIPO"&&normalized[h]?.[6]==="QTD"){marker=r+1;break;}}
-   if(marker===null)throw new Error("Não foi possível localizar o bloco MIDIAS com SUBTIPO/QTD em A/B e F/G.");
-   const start=marker+4, totalA=normalized.findIndex((r:any[],i:number)=>i>=start-1&&r[0]==="TOTAL"), totalC=normalized.findIndex((r:any[],i:number)=>i>=start-1&&r[5]==="TOTAL");
-   if(totalA<0||totalC<0)throw new Error("O bloco MIDIAS não possui os dois marcadores TOTAL.");
+   let headerRow=-1;
+   for(let r=0;r<normalized.length;r++) {
+    const hasMidias=normalized[r].some((v:string)=>v.includes("MIDIAS"));
+    if(!hasMidias)continue;
+    for(let h=r+1;h<=Math.min(normalized.length-1,r+10);h++) {
+     const row=normalized[h]??[];
+     if(row[0]?.startsWith("SUBTIPO")&&row[1]?.startsWith("QTD")&&row[5]?.startsWith("SUBTIPO")&&row[6]?.startsWith("QTD")){headerRow=h;break;}
+    }
+    if(headerRow>=0)break;
+   }
+   if(headerRow<0)throw new Error("Não foi possível localizar o título MIDIAS e os cabeçalhos SUBTIPO/QTD nas colunas A/B e F/G.");
+   const start=headerRow+2, totalA=normalized.findIndex((r:any[],i:number)=>i>=start-1&&r[0]?.startsWith("TOTAL")), totalC=normalized.findIndex((r:any[],i:number)=>i>=start-1&&r[5]?.startsWith("TOTAL"));
+   if(totalA<0||totalC<0)throw new Error("O bloco MIDIAS não possui os dois marcadores TOTAL abaixo dos cabeçalhos.");
    addPair({subtypeCol:1,qtyCol:2,start,capacity:totalA+1-start},data.open);
    addPair({subtypeCol:6,qtyCol:7,start,capacity:totalC+1-start},data.closed);
   } else {
@@ -71,7 +79,7 @@ export function createVolSupService(getToken:()=>Promise<string>) {
    const opened=normalized.flatMap((r:any[],ri:number)=>r.map((v:string,ci:number)=>v==="ATENDIMENTOS ABERTOS"&&ri>=geral.r?{r:ri,c:ci}:null).filter(Boolean))[0] as any;
    const closed=normalized.flatMap((r:any[],ri:number)=>r.map((v:string,ci:number)=>v==="ATENDIMENTOS ENCERRADOS"&&ri>=geral.r?{r:ri,c:ci}:null).filter(Boolean))[0] as any;
    if(!opened||!closed)throw new Error("Não foi possível localizar os blocos ATENDIMENTOS ABERTOS e ENCERRADOS.");
-   const locate=(b:any,left:number,right:number,label:string)=>{let sub:any=null,q:any=null;for(let r=b.r;r<=Math.min(normalized.length-1,b.r+12);r++){for(let c=0;c<normalized[r].length;c++){if(normalized[r]?.[c]==="SUBTIPO"&&(sub===null||Math.abs(c-b.c)<Math.abs(sub.c-b.c)))sub={r,c};if(normalized[r]?.[c]==="QTD"&&(q===null||Math.abs(c-b.c)<Math.abs(q.c-b.c)))q={r,c};}if(sub&&q&&sub.r===r&&q.r===r)break;}if(!sub||!q)throw new Error(`Não foi possível localizar SUBTIPO/QTD no bloco ${label}.`);let total=-1;for(let r=sub.r+1;r<normalized.length;r++){if(normalized[r]?.slice(left,right+1).includes("TOTAL")){total=r;break;}}if(total<0)throw new Error(`Não foi possível localizar TOTAL no bloco ${label}.`);return {subtypeCol:sub.c+1,qtyCol:q.c+1,start:sub.r+2,capacity:total-sub.r-1};};
+   const locate=(b:any,left:number,right:number,label:string)=>{let sub:any=null,q:any=null;for(let r=b.r;r<=Math.min(normalized.length-1,b.r+12);r++){for(let c=0;c<normalized[r].length;c++){if(normalized[r]?.[c]?.startsWith("SUBTIPO")&&(sub===null||Math.abs(c-b.c)<Math.abs(sub.c-b.c)))sub={r,c};if(normalized[r]?.[c]?.startsWith("QTD")&&(q===null||Math.abs(c-b.c)<Math.abs(q.c-b.c)))q={r,c};}if(sub&&q&&sub.r===r&&q.r===r)break;}if(!sub||!q)throw new Error("Não foi possível localizar SUBTIPO/QTD no bloco "+label+".");let total=-1;for(let r=sub.r+1;r<normalized.length;r++){const row=normalized[r]??[];const maxCol=Math.max(row.length-1,right);if(row.slice(Math.max(0,left),maxCol+1).some((v:string)=>v?.startsWith("TOTAL"))){total=r;break;}}if(total<0)throw new Error("Não foi possível localizar TOTAL no bloco "+label+".");return {subtypeCol:sub.c+1,qtyCol:q.c+1,start:sub.r+2,capacity:total-sub.r-1};};
    addPair(locate(opened,opened.c,closed.c-1,"ABERTOS"),data.open);
    addPair(locate(closed,closed.c,normalized[0].length-1,"ENCERRADOS"),data.closed);
    const route=find("ANALISE ROUTETHIS");if(!route)throw new Error('Não foi possível localizar "ANÁLISE ROUTETHIS".');
