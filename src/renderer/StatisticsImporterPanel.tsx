@@ -67,6 +67,7 @@ export default function StatisticsImporterPanel({ onClose }: ImporterPanelProps)
       setMessage(result.warning
         ? `IMPORTAÇÃO CONCLUÍDA: ${result.records.toLocaleString("pt-BR")} REGISTROS GRAVADOS NA ABA “${result.sheetTitle}”. ${result.warning}`
         : `IMPORTAÇÃO CONCLUÍDA: ${result.records.toLocaleString("pt-BR")} REGISTROS GRAVADOS NA ABA “${result.sheetTitle}”.`);
+      setCompleted(true);
     } catch (e) { setError(e instanceof Error ? e.message : "A IMPORTAÇÃO NÃO FOI CONCLUÍDA."); }
     finally { setBusy(false); }
   }
