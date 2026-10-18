@@ -9,9 +9,9 @@ import VolSupImporterPanel from "./VolSupImporterPanel";
 
 type Importer = "estatisticas" | "callback" | "prodsac" | "chatmidias" | "chatfinanceiro" | "chatcomercial" | "volsup";
 
-type ImporterPanelProps = { initialImporter?: Importer; showSelector?: boolean };
+type ImporterPanelProps = { initialImporter?: Importer; showSelector?: boolean; onClose?: () => void };
 
-export default function ImporterPanel({ initialImporter = "estatisticas", showSelector = true }: ImporterPanelProps) {
+export default function ImporterPanel({ initialImporter = "estatisticas", showSelector = true, onClose }: ImporterPanelProps) {
   const [selected, setSelected] = useState<Importer>(initialImporter);
   return (
     <div className="importer-host">
@@ -24,7 +24,7 @@ export default function ImporterPanel({ initialImporter = "estatisticas", showSe
         <button type="button" role="tab" aria-selected={selected === "chatcomercial"} className={selected === "chatcomercial" ? "active" : ""} onClick={() => setSelected("chatcomercial")}>CHAT MÍDIAS - COMERCIAL</button>
         <button type="button" role="tab" aria-selected={selected === "volsup"} className={selected === "volsup" ? "active" : ""} onClick={() => setSelected("volsup")}>VOLUMETRIA SUPORTE</button>
       </div>}
-      {selected === "estatisticas" ? <StatisticsImporterPanel /> : selected === "callback" ? <CallbackImporterPanel /> : selected === "prodsac" ? <ProductivitySacImporterPanel /> : selected === "chatmidias" ? <ChatMidiasImporterPanel /> : selected === "chatfinanceiro" ? <ChatMidiasFinanceiroImporterPanel /> : selected === "chatcomercial" ? <ChatMidiasComercialImporterPanel /> : <VolSupImporterPanel /> }
+      {selected === "estatisticas" ? <StatisticsImporterPanel onClose={onClose} /> : selected === "callback" ? <CallbackImporterPanel onClose={onClose} /> : selected === "prodsac" ? <ProductivitySacImporterPanel onClose={onClose} /> : selected === "chatmidias" ? <ChatMidiasImporterPanel onClose={onClose} /> : selected === "chatfinanceiro" ? <ChatMidiasFinanceiroImporterPanel onClose={onClose} /> : selected === "chatcomercial" ? <ChatMidiasComercialImporterPanel onClose={onClose} /> : <VolSupImporterPanel onClose={onClose} /> }
     </div>
   );
 }
