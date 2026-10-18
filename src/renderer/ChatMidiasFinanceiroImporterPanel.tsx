@@ -2,12 +2,13 @@ import { useState } from "react";
 type SheetInfo={sheetId:number;title:string;hidden:boolean};
 type SourceFile={name:string;headers:string[];rows:unknown[][];hash:string};
 async function hashFile(file:File){const digest=await crypto.subtle.digest("SHA-256",await file.arrayBuffer());return Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,"0")).join("");}
-export default function ChatMidiasFinanceiroImporterPanel(){
+type ImporterPanelProps={onClose?:()=>void};
+export default function ChatMidiasFinanceiroImporterPanel({onClose}:ImporterPanelProps){
  const [spreadsheetId]=useState(()=>localStorage.getItem("controle-diario-chatmidias-financeiro-spreadsheet")??"");
  const [sheets,setSheets]=useState<SheetInfo[]>([]);
  const [targetSheet,setTargetSheet]=useState(()=>localStorage.getItem("controle-diario-chatmidias-financeiro-tab")??"");
  const [file,setFile]=useState<SourceFile|null>(null);
- const [busy,setBusy]=useState(false),[error,setError]=useState(""),[message,setMessage]=useState("");
+ const [busy,setBusy]=useState(false),[error,setError]=useState(""),[message,setMessage]=useState(""),[completed,setCompleted]=useState(false);
  async function readFile(selected?:File){
   setError("");setMessage("");setFile(null);if(!selected)return;
   if(!selected.name.toLowerCase().endsWith(".xlsx")){setError("SELECIONE UM ARQUIVO .XLSX.");return;}
@@ -27,7 +28,7 @@ export default function ChatMidiasFinanceiroImporterPanel(){
  async function importFile(){
   if(!file){setError("SELECIONE UM ARQUIVO XLSX.");return;}if(!targetSheet){setError("SELECIONE A ABA DE DESTINO.");return;}
   if(!window.confirm("Importar o arquivo CHAT MÍDIAS - FINANCEIRO para a aba escolhida? A operação gravará dados na planilha empresarial."))return;
-  setBusy(true);setError("");setMessage("");
+  setBusy(true);setError("");setMessage("");setCompleted(false);
   try{const payload={spreadsheetId,sheetTitle:targetSheet,fileName:file.name,headers:file.headers,rows:file.rows,hash:file.hash};
    let result=await (window as any).controleDiario.sistema.importarChatMidiasFinanceiro(payload);
    if(result.duplicate){if(!window.confirm("ESTE ARQUIVO JÁ FOI IMPORTADO HOJE. Deseja importá-lo novamente?")){setMessage("IMPORTAÇÃO CANCELADA. NENHUM DADO FOI GRAVADO.");return;}
@@ -36,14 +37,14 @@ export default function ChatMidiasFinanceiroImporterPanel(){
    localStorage.setItem("controle-diario-chatmidias-financeiro-spreadsheet",spreadsheetId);localStorage.setItem("controle-diario-chatmidias-financeiro-tab",targetSheet);
    const missing=result.missingColumns?.length?" COLUNAS AUSENTES NA ORIGEM: "+result.missingColumns.join(", ")+".":"";
    const warning=result.warning?" "+result.warning:"";
-   setMessage(`IMPORTAÇÃO CONCLUÍDA: ${result.records.toLocaleString("pt-BR")} REGISTROS.${missing}${warning}`);
+   setMessage(`IMPORTAÇÃO CONCLUÍDA: ${result.records.toLocaleString("pt-BR")} REGISTROS.${missing}${warning}`);setCompleted(true);
   }catch(e){setError(e instanceof Error?e.message:"A IMPORTAÇÃO CHAT MÍDIAS - FINANCEIRO NÃO FOI CONCLUÍDA.");}finally{setBusy(false);}
  }
  return <div className="importer-shell"><header className="importer-brand"><img src="./leste-logo.svg" alt="Leste"/><h2>CHAT MÍDIAS - FINANCEIRO</h2><p>Compilação de Dados - Madrugada</p></header>
   <div className="importer-fields"><label className="importer-field"><span>Aba</span><select value={targetSheet} onChange={e=>{setTargetSheet(e.target.value);if(e.target.value)localStorage.setItem("controle-diario-chatmidias-financeiro-tab",e.target.value);}} disabled={busy||sheets.length===0}>{sheets.length===0&&<option value="">Carregue as abas disponíveis</option>}{sheets.map(s=><option key={s.sheetId} value={s.title}>{s.title}</option>)}</select></label>
    <label className="importer-field"><span>Arquivo</span><input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={busy} onChange={e=>void readFile(e.target.files?.[0])}/>{file&&<small>{file.name} · {file.rows.length.toLocaleString("pt-BR")} registros</small>}</label></div>
   <div className="importer-controls"><button className="importer-secondary-button" title="Atualizar abas disponíveis" aria-label="Atualizar abas disponíveis" disabled={busy||!spreadsheetId.trim()} onClick={()=>void loadSheets()}><span aria-hidden="true">⟳</span></button></div>
-  <button className="importer-execute-button" disabled={busy||!file||!targetSheet} onClick={()=>void importFile()}>{busy?"PROCESSANDO…":"EXECUTAR"}</button>
+  <button className="importer-execute-button" disabled={busy||!file||!targetSheet} onClick={()=>completed&&onClose?onClose():void importFile()}>{busy?"PROCESSANDO…":completed&&onClose?"ENCERRAR":"EXECUTAR"}</button>
   {error&&<p className="importer-feedback error" role="alert">{error}</p>}{message&&<p className="importer-feedback" role="status">{message}</p>}
  </div>;
 }
