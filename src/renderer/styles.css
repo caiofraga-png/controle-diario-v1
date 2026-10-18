@@ -632,6 +632,7 @@ body::before { background: none; }
   padding: 20px;
 }
 .task-importer-popup > .modal-head { position: sticky; top: -20px; z-index: 5; background: #fff; padding: 8px 0 12px; }
+.task-importer-popup > .modal-head h2 { margin: 0; font-size: 18px; line-height: 1.3; font-weight: 700; }
 .task-importer-popup .import-workspace { padding: 0; margin: 0; min-height: 0; }
 .task-importer-popup .workspace-intro { display: none; }
 .task-importer-popup .importer-shell { width: 100%; max-width: none; margin: 0; box-shadow: none; }
