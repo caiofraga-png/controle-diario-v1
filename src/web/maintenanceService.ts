@@ -11,20 +11,16 @@ const PRAZO_PROTECTED=[...FEITAS_PROTECTED,"DATA DA VISITA/TICKET","RESOLUÇÃO 
 const CANCEL=["MOTIVO DO CANCELAMENTO - 1º OS","DATA/HORA - 1º OS","MOTIVO DO CANCELAMENTO - 2º","DATA/HORA - 2º OS","MOTIVO DO CANCELAMENTO - 3º - ULTIMA OS","DATA/HORA - 3º OS"];
 const formatCancelDate=(raw:string)=>{
  const br=raw.match(/(\d{2}\/\d{2}\/\d{4})(?:\s+|T)(\d{2}:\d{2}(?::\d{2})?)/);
- if(br)return br[1]+" "+(br[2].length===5?br[2]+":00":br[2]);
- const parsed=new Date(raw);if(Number.isNaN(parsed.getTime()))return "";
- const parts=new Intl.DateTimeFormat("en-GB",{timeZone:TZ,day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"}).formatToParts(parsed);
- const get=(type:string)=>parts.find(p=>p.type===type)?.value??"";
- return get("day")+"/"+get("month")+"/"+get("year")+" "+get("hour")+":"+get("minute")+":"+get("second");
+ if(!br)return "";
+ return br[1]+" "+(br[2].length===5?br[2]+":00":br[2]);
 };
 const cancelValues=(value:unknown)=>{
  const out=["","","","","",""];const text=String(value??"").trim();if(!text)return out;
  const events=text.split(/\s*\|\s*/).map(x=>x.trim()).filter(Boolean);
  const rx=/(\d{2}\/\d{2}\/\d{4})(?:\s+|T)(\d{2}:\d{2}(?::\d{2})?)/;
- const hasDate=events.some(e=>rx.test(e)||(/\d{4}-\d{2}-\d{2}/.test(e)&&!Number.isNaN(new Date(e).getTime())));
- if(!hasDate){out[0]=text;return out;}
+ if(!events.some(event=>rx.test(event))){out[0]=text;return out;}
  const selected=events.length<=3?events:[events[0],events[events.length-2],events[events.length-1]];
- selected.forEach((event,i)=>{const m=event.match(rx);if(m){out[i*2]=event.replace(m[0],"").trim();out[i*2+1]=formatCancelDate(m[0]);}else{const parsed=formatCancelDate(event);if(parsed){out[i*2]=event.replace(/\d{4}-\d{2}-\d{2}[^ ]*(?:\s+\d{2}:\d{2}(?::\d{2})?)?/,"").trim();out[i*2+1]=parsed;}else out[i*2]=event;}});
+ selected.forEach((event,i)=>{const m=event.match(rx);if(m){out[i*2]=event.replace(m[0],"").trim();out[i*2+1]=formatCancelDate(m[0]);}else out[i*2]=event;});
  return out;
 };
 
@@ -48,7 +44,7 @@ export function createMaintenanceService(getToken:()=>Promise<string>){
   const headerRow=lastTicketRow+2,firstData=headerRow+1,lastData=firstData+p.rows.length-1,needed=lastData-rowCount;
   if(needed>0)await api(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({requests:[{appendDimension:{sheetId:Number(s.properties.sheetId),dimension:"ROWS",length:needed}}]})},"NÃO FOI POSSÍVEL AMPLIAR A ABA DE DESTINO");
   const mappedHeaders=destHeaders.map((h,i)=>{if(i+1===statusColumn||norm(h)==="STATUS"||protectedNames.includes(norm(h))||!h)return h;const source=map[h]??h;const idx=sourceMap[norm(source)];return idx===undefined?h:sourceHeaders[idx];});
-  const outputHeaders=destHeaders.map((h,i)=>{if(i+1===statusColumn||norm(h)==="STATUS"||protectedNames.includes(norm(h))||!h)return null;return mappedHeaders[i]??"";});
+  const outputHeaders=destHeaders.map((h,i)=>{if(i+1===statusColumn||norm(h)==="STATUS"||!h)return null;return protectedNames.includes(norm(h))?h:(mappedHeaders[i]??"");});
   const missing:string[]=[],requests:any[]=[];
   const add=(column:number,values:unknown[])=>{requests.push({range:`${quote(title)}!${col(column+1)}${firstData}:${col(column+1)}${lastData}`,majorDimension:"ROWS",values:values.map(v=>[sheetValue(v)])});};
   for(let c=0;c<destHeaders.length;c++){
@@ -59,7 +55,7 @@ export function createMaintenanceService(getToken:()=>Promise<string>){
    }
    const source=map[h]??h,si=sourceMap[norm(source)];if(si===undefined){if(map[h])missing.push(h);continue;}add(c,p.rows.map(row=>{let value=row?.[si]??"";if(n===norm("BAIRRO")&&value!==""&&value!==null&&value!==undefined)value=kind==="prazo"?String(value).trim().toUpperCase():String(value).toUpperCase();return value;}));
   }
-  const headerRequests:any[]=[];for(let c=0;c<destHeaders.length;c++)if(c+1!==statusColumn&&norm(destHeaders[c])!=="STATUS"&&!protectedNames.includes(norm(destHeaders[c]))){headerRequests.push({range:`${quote(title)}!${col(c+1)}${headerRow}`,values:[[outputHeaders[c]??""]]});}
+  const headerRequests:any[]=[];for(let c=0;c<destHeaders.length;c++)if(c+1!==statusColumn&&norm(destHeaders[c])!=="STATUS"){headerRequests.push({range:`${quote(title)}!${col(c+1)}${headerRow}`,values:[[outputHeaders[c]??""]]});}
   const all=[...headerRequests,...requests];if(all.length)await api(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values:batchUpdate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({valueInputOption:"RAW",data:all})},"A GRAVAÇÃO DO IMPORTADOR DE MANUTENÇÃO FALHOU");
   const dateCols=destHeaders.map((h,i)=>({h:norm(h),i})).filter(x=>["DATA ATIV. CRIADA","DATA DA VISITA/TICKET"].includes(x.h)&&x.i+1!==statusColumn&&!protectedNames.includes(x.h));
   if(dateCols.length)await api(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({requests:dateCols.map(x=>({repeatCell:{range:{sheetId:Number(s.properties.sheetId),startRowIndex:firstData-1,endRowIndex:lastData,startColumnIndex:x.i,endColumnIndex:x.i+1},cell:{userEnteredFormat:{numberFormat:{type:"DATE",pattern:"dd/MM/yyyy"}}},fields:"userEnteredFormat.numberFormat"}}))})},"NÃO FOI POSSÍVEL FORMATAR AS COLUNAS DE DATA");
