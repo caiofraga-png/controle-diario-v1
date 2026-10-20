@@ -64,11 +64,19 @@ export default function MaintenanceImporterPanel({onClose,operation="import"}:Pr
  async function run(kind:"feitas"|"prazo"|"abertas",confirm=false):Promise<boolean>{
   const f=kind==="feitas"?feitas:kind==="prazo"?prazo:abertas;
   if(!f||!targetSheet||validatedId!==spreadsheetId.trim())return false;
+  const day=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()).replace(/-/g,"");
+  const prefix=kind==="feitas"?"MANUTFEITAS":kind==="prazo"?"MANUTPRAZO":"MANUTTODASABERTAS";
+  const duplicateKey=`${prefix}_PROCESSADO_${day}_${targetSheet.trim().toUpperCase()}_${f.hash}`;
+  if(!confirm&&localStorage.getItem(duplicateKey)){
+   if(!window.confirm(`Este arquivo já foi processado hoje para a aba “${targetSheet}”. Deseja executá-lo novamente?`)){setMessage("OPERAÇÃO CANCELADA. NENHUM DADO FOI GRAVADO NESTA ETAPA.");return false;}
+   confirm=true;
+  }
   const payload={spreadsheetId:validatedId,sheetTitle:targetSheet,fileName:f.name,headers:f.headers,rows:f.rows,hash:f.hash,confirmarDuplicidade:confirm};
   const method=kind==="feitas"?"importarManutFeitas":kind==="prazo"?"importarManutPrazo":"atualizarManutTodasAbertas";
   let r=await (window as any).controleDiario.sistema[method](payload);
   if(r.duplicate){if(!window.confirm(r.mensagem??`O arquivo “${f.name}” já foi processado hoje para a aba “${targetSheet}”. Deseja continuar?`)){setMessage("OPERAÇÃO CANCELADA. NENHUM DADO FOI GRAVADO NESTA ETAPA.");return false;}r=await (window as any).controleDiario.sistema[method]({...payload,confirmarDuplicidade:true});}
   if(r.duplicate)throw new Error("A VERIFICAÇÃO DE DUPLICIDADE NÃO FOI CONCLUÍDA.");
+  localStorage.setItem(duplicateKey,JSON.stringify({fileName:f.name,spreadsheetId:validatedId,sheetTitle:targetSheet,at:new Date().toISOString()}));
   return true;
  }
  async function execute(){
