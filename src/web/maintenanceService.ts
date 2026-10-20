@@ -60,14 +60,18 @@ export function createMaintenanceService(getToken:()=>Promise<string>){
   const srcHeaders=p.headers.map(v=>String(v??"").trim()),srcMap:Record<string,number>={};srcHeaders.forEach((h,i)=>{if(norm(h))srcMap[norm(h)]=i;});
   const required=["ticket","fila_atual","estado_atividade","visitas_canceladas","priorityStart","priorityEnd","motivo_cancel"];const missingSrc=required.filter(h=>srcMap[norm(h)]===undefined);if(missingSrc.length)throw new Error("CABEÇALHOS AUSENTES NO ARQUIVO: "+missingSrc.join(", "));
   const countRows=Math.max(2,Number(s.properties?.gridProperties?.rowCount??1000)),width=Math.max(1,Number(s.properties?.gridProperties?.columnCount??26));
-  const dest=await values(id,`${quote(title)}!A1:${col(width)}${countRows}`);const dh:string[]=(dest[0]??[]).map((v:any)=>String(v??"").trim()),idx=(name:string)=>dh.findIndex((h:string)=>norm(h)===norm(name));
+  const header=await values(id,`${quote(title)}!A1:${col(width)}1`),dh:string[]=(header[0]??[]).map((v:any)=>String(v??"").trim()),idx=(name:string)=>dh.findIndex((h:string)=>norm(h)===norm(name));
   const ticketCol=idx("TICKET DA VISITA"),statusCol=idx("STATUS");if(ticketCol<0||statusCol<0)throw new Error('A ABA PRECISA CONTER "TICKET DA VISITA" E "STATUS".');
   const targetNames=["FILA ATUAL","ESTADO ATIVIDADE","VISITAS CANCELADAS","PREF. START","PREF. END",...CANCEL];const targetCols=targetNames.map(n=>idx(n));const absent=targetNames.filter((n,i)=>targetCols[i]<0);if(absent.length)throw new Error("COLUNAS AUSENTES NA ABA DE DESTINO: "+absent.join(", "));
-  const destIndex=new Map<string,number>();for(let r=1;r<dest.length;r++){const t=String(dest[r]?.[ticketCol]??"").trim();if(t&&!destIndex.has(t))destIndex.set(t,r);}
+  const columnsToRead=Array.from(new Set([ticketCol,statusCol,...targetCols]));
+  const columnData=await Promise.all(columnsToRead.map(c=>values(id,`${quote(title)}!${col(c+1)}2:${col(c+1)}${countRows}`)));
+  const byColumn=new Map<number,any[][]>();columnsToRead.forEach((c,i)=>byColumn.set(c,columnData[i] as any[][]));
+  const ticketValues=byColumn.get(ticketCol)??[],statusValues=byColumn.get(statusCol)??[];
+  const destIndex=new Map<string,number>();for(let i=0;i<ticketValues.length;i++){const t=String(ticketValues[i]?.[0]??"").trim();if(t&&!destIndex.has(t))destIndex.set(t,i+2);}
   const updates:any[]=[],counts={updated:0,notFound:0,empty:0,skippedStatus:0};
-  for(const row of p.rows){const raw=row?.[srcMap[norm("ticket")]],ticket=String(raw??"").trim();if(!ticket){counts.empty++;continue;}const r=destIndex.get(ticket);if(r===undefined){counts.notFound++;continue;}if(String(dest[r]?.[statusCol]??"").trim()!=="🕒"){counts.skippedStatus++;continue;}
+  for(const row of p.rows){const raw=row?.[srcMap[norm("ticket")]],ticket=String(raw??"").trim();if(!ticket){counts.empty++;continue;}const sheetRow=destIndex.get(ticket);if(sheetRow===undefined){counts.notFound++;continue;}const offset=sheetRow-2;if(String(statusValues[offset]?.[0]??"").trim()!=="🕒"){counts.skippedStatus++;continue;}
    const vals=[row[srcMap[norm("fila_atual")]],row[srcMap[norm("estado_atividade")]],row[srcMap[norm("visitas_canceladas")]],row[srcMap[norm("priorityStart")]],row[srcMap[norm("priorityEnd")]],...cancelValues(row[srcMap[norm("motivo_cancel")]])];
-   vals.forEach((v,i)=>updates.push({range:`${quote(title)}!${col(targetCols[i]+1)}${r+1}`,values:[[v instanceof Date?v.toISOString():v??""]]}));counts.updated++;
+   vals.forEach((v,i)=>updates.push({range:`${quote(title)}!${col(targetCols[i]+1)}${sheetRow}`,values:[[v instanceof Date?v.toISOString():v??""]]}));counts.updated++;
   }
   for(let i=0;i<updates.length;i+=500){await api(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values:batchUpdate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({valueInputOption:"USER_ENTERED",data:updates.slice(i,i+500)})},"A ATUALIZAÇÃO MANUT TODAS ABERTAS FALHOU");}
   await mark(id,key,p,title);return {duplicate:false,fileName:p.fileName,sheetTitle:title,...counts};
