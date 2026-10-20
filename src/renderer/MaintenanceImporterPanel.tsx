@@ -3,6 +3,7 @@ import {useState} from "react";
 type SheetInfo={sheetId:number;title:string;hidden:boolean};
 type SourceFile={name:string;headers:string[];rows:unknown[][];hash:string};
 type Props={onClose?:()=>void;operation?:"import"|"update"};
+const TEST_SPREADSHEET_ID="1IDBzTnJBXfsMbkW35xTbjSeoqghNghCn-1uPXrqDAQc";
 function md5Hex(buffer:ArrayBuffer){
  const bytes=new Uint8Array(buffer),length=bytes.length,paddedLength=Math.ceil((length+9)/64)*64,data=new Uint8Array(paddedLength);data.set(bytes);data[length]=0x80;
  const bitLength=length*8,view=new DataView(data.buffer);view.setUint32(paddedLength-8,bitLength>>>0,true);view.setUint32(paddedLength-4,Math.floor(bitLength/0x100000000),true);
@@ -19,8 +20,8 @@ async function hashFile(file:File){return md5Hex(await file.arrayBuffer());}
 
 export default function MaintenanceImporterPanel({onClose,operation="import"}:Props){
  const isUpdate=operation==="update";
- // Segurança: não liberar gravações enquanto a adaptação do serviço não estiver conferida com os GS originais.
- const processingRulesApproved=false;
+ // Publicação de homologação: gravações permitidas exclusivamente na cópia de teste.
+ const processingRulesApproved=true;
  const [spreadsheetId,setSpreadsheetId]=useState(()=>localStorage.getItem("controle-diario-manut-spreadsheet")??"");
  const [validatedId,setValidatedId]=useState("");
  const [spreadsheetName,setSpreadsheetName]=useState("");
@@ -34,6 +35,7 @@ export default function MaintenanceImporterPanel({onClose,operation="import"}:Pr
  async function loadSheets(){
   const id=spreadsheetId.trim();
   if(!id){setError("INFORME O ID DA PLANILHA DE DESTINO.");return;}
+  if(id!==TEST_SPREADSHEET_ID){setError("ESTA VERSÃO ESTÁ RESTRITA À PLANILHA DE HOMOLOGAÇÃO. Use o ID autorizado da cópia de testes.");return;}
   setBusy(true);setError("");setMessage("");setCompleted(false);
   try{
    const r=await (window as any).controleDiario.sistema.testarSheets(id);
@@ -81,6 +83,7 @@ export default function MaintenanceImporterPanel({onClose,operation="import"}:Pr
  }
  async function execute(){
   if(validatedId!==spreadsheetId.trim()){setError("VALIDE O ID DA PLANILHA E CARREGUE AS ABAS ANTES DE CONTINUAR.");return;}
+  if(validatedId!==TEST_SPREADSHEET_ID){setError("EXECUÇÃO PERMITIDA SOMENTE NA PLANILHA DE HOMOLOGAÇÃO.");return;}
   if(!targetSheet){setError("SELECIONE A ABA DE DESTINO.");return;}
   if(!isUpdate&&(!feitas||!prazo)){setError("SELECIONE OS DOIS ARQUIVOS: MANUT FEITAS E MANUT PRAZO.");return;}
   if(isUpdate&&!abertas){setError("SELECIONE O ARQUIVO MANUT TODAS ABERTAS.");return;}
@@ -113,9 +116,9 @@ export default function MaintenanceImporterPanel({onClose,operation="import"}:Pr
     <label className="importer-field"><span>MANUT FEITAS — MANUTENCAO - DEMANDA DO DIA</span><input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={busy} onChange={e=>void readFile(e.target.files?.[0],"feitas")}/>{feitas&&<small>{feitas.name} · {feitas.rows.length.toLocaleString("pt-BR")} registros</small>}</label>
     <label className="importer-field"><span>MANUT PRAZO — MANUTENCAO - ABERTAS DO DIA</span><input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={busy} onChange={e=>void readFile(e.target.files?.[0],"prazo")}/>{prazo&&<small>{prazo.name} · {prazo.rows.length.toLocaleString("pt-BR")} registros</small>}</label>
    </div>}
-   {!processingRulesApproved&&<p className="importer-feedback error" role="status">A EXECUÇÃO ESTÁ TEMPORARIAMENTE BLOQUEADA ENQUANTO AS REGRAS DE GRAVAÇÃO SÃO CONFERIDAS COM OS SCRIPTS ORIGINAIS. NENHUM DADO SERÁ GRAVADO NESTA VERSÃO.</p>}
+   <p className="importer-feedback" role="status">MODO DE HOMOLOGAÇÃO: esta publicação só permite gravações na cópia de testes autorizada. A planilha operacional oficial está bloqueada nesta versão.</p>
    <p className="importer-feedback">{isUpdate?"Use esta operação separadamente, depois das importações MANUT FEITAS e MANUT PRAZO. Ela atualiza somente registros existentes elegíveis.":"Execute MANUT FEITAS e MANUT PRAZO nesta tela. MANUT TODAS ABERTAS fica em uma tela separada e deve ser executada por último."}</p>
-   <button className="importer-execute-button" disabled={busy||!activeFiles||!targetSheet||validatedId!==spreadsheetId.trim()||!processingRulesApproved} onClick={()=>completed&&onClose?onClose():void execute()}>{busy?"PROCESSANDO…":!processingRulesApproved?"PROCESSAMENTO EM REVISÃO":completed&&onClose?"ENCERRAR":isUpdate?"ATUALIZAR":"EXECUTAR"}</button>
+   <button className="importer-execute-button" disabled={busy||!activeFiles||!targetSheet||validatedId!==spreadsheetId.trim()||!processingRulesApproved||validatedId!==TEST_SPREADSHEET_ID} onClick={()=>completed&&onClose?onClose():void execute()}>{busy?"PROCESSANDO…":!processingRulesApproved?"PROCESSAMENTO EM REVISÃO":completed&&onClose?"ENCERRAR":isUpdate?"ATUALIZAR":"EXECUTAR"}</button>
    {error&&<p className="importer-feedback error" role="alert">{error}</p>}{message&&<p className="importer-feedback" role="status">{message}</p>}
   </div>
  </section>;
