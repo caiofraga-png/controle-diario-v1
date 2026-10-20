@@ -8,11 +8,13 @@ import { WebGoogleAuth, loadBootstrap, saveBootstrap } from "./webAuth";
 import { pickDriveFolder } from "./webPicker";
 import { WebSessionService } from "./webSessionService";
 import { createVolSupService } from "./volsupService";
+import { createMaintenanceService } from "./maintenanceService";
 
 const auth=new WebGoogleAuth(); const drive=new DriveService(auth); const data=new DataRepository(drive); const calendarHistory=new CalendarHistoryService(drive); const session=new WebSessionService(drive);
 
 const boot=()=>loadBootstrap();
 const volSupService=createVolSupService(()=>auth.getAccessToken());
+const maintenanceService=createMaintenanceService(()=>auth.getAccessToken());
 
 /**
  * Reproduz o fluxo do importador Apps Script: envia o arquivo escolhido
@@ -96,6 +98,9 @@ export function installWebBridge(){
   ready:true,
   sistema:{
    importarVolSup:volSupService.importarVolSup,
+   importarManutFeitas:maintenanceService.importarManutFeitas,
+   importarManutPrazo:maintenanceService.importarManutPrazo,
+   atualizarManutTodasAbertas:maintenanceService.atualizarManutTodasAbertas,
    importarVolSupMid:volSupService.importarVolSupMid,
    gerarVolSupArquivoFiltrado:volSupService.gerarVolSupArquivoFiltrado,
    status:async()=>({auth:await auth.getStatus(),bootstrap:boot()}),
