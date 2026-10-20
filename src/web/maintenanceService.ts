@@ -9,14 +9,25 @@ const PRAZO_MAP:Record<string,string>={"NOME":"nome_cli","CODIGO":"codcli","FILA
 const FEITAS_PROTECTED=["MEIO DE CONTATO","SETOR","DIAS Ñ UTEIS","HORAS DIAS Ñ UTEIS","TEMPO REAL (ATÉ)","TEMPO TOTAL","SLA","STATUS","TENT. DE VISITA - 1º OS","TENT. DE VISITA - EM 3 OS","CONV. HORAS - REAIS","T. TOTAL - 1º OS","T. TOTAL - 2º OS","T. TOTAL - 3º OS","PREF. START/END"];
 const PRAZO_PROTECTED=[...FEITAS_PROTECTED,"DATA DA VISITA/TICKET","RESOLUÇÃO DA VISITA","DESCONTO"];
 const CANCEL=["MOTIVO DO CANCELAMENTO - 1º OS","DATA/HORA - 1º OS","MOTIVO DO CANCELAMENTO - 2º","DATA/HORA - 2º OS","MOTIVO DO CANCELAMENTO - 3º - ULTIMA OS","DATA/HORA - 3º OS"];
+const formatCancelDate=(raw:string)=>{
+ const br=raw.match(/(\\d{2}\\/\\d{2}\\/\\d{4})(?:\\s+|T)(\\d{2}:\\d{2}(?::\\d{2})?)/);
+ if(br)return br[1]+" "+(br[2].length===5?br[2]+":00":br[2]);
+ const parsed=new Date(raw);if(Number.isNaN(parsed.getTime()))return "";
+ const parts=new Intl.DateTimeFormat("en-GB",{timeZone:TZ,day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"}).formatToParts(parsed);
+ const get=(type:string)=>parts.find(p=>p.type===type)?.value??"";
+ return get("day")+"/"+get("month")+"/"+get("year")+" "+get("hour")+":"+get("minute")+":"+get("second");
+};
 const cancelValues=(value:unknown)=>{
  const out=["","","","","",""];const text=String(value??"").trim();if(!text)return out;
- const events=text.split(/\s*\|\s*/).map(x=>x.trim()).filter(Boolean);const rx=/(\d{2}\/\d{2}\/\d{4})(?:\s+|T)(\d{2}:\d{2}(?::\d{2})?)/;
- if(!events.some(e=>rx.test(e))){out[0]=text;return out;}
+ const events=text.split(/\\s*\\|\\s*/).map(x=>x.trim()).filter(Boolean);
+ const rx=/(\\d{2}\\/\\d{2}\\/\\d{4})(?:\\s+|T)(\\d{2}:\\d{2}(?::\\d{2})?)/;
+ const hasDate=events.some(e=>rx.test(e)||(/\\d{4}-\\d{2}-\\d{2}/.test(e)&&!Number.isNaN(new Date(e).getTime())));
+ if(!hasDate){out[0]=text;return out;}
  const selected=events.length<=3?events:[events[0],events[events.length-2],events[events.length-1]];
- selected.forEach((event,i)=>{const m=event.match(rx);if(m){out[i*2]=event.replace(m[0],"").trim();out[i*2+1]=m[1]+" "+(m[2].length===5?m[2]+":00":m[2]);}else out[i*2]=event;});
+ selected.forEach((event,i)=>{const m=event.match(rx);if(m){out[i*2]=event.replace(m[0],"").trim();out[i*2+1]=formatCancelDate(m[0]);}else{const parsed=formatCancelDate(event);if(parsed){out[i*2]=event.replace(/\\d{4}-\\d{2}-\\d{2}[^ ]*(?:\\s+\\d{2}:\\d{2}(?::\\d{2})?)?/,"").trim();out[i*2+1]=parsed;}else out[i*2]=event;}});
  return out;
 };
+
 export function createMaintenanceService(getToken:()=>Promise<string>){
  async function api(url:string,init:RequestInit={},label="ERRO NA API GOOGLE"){const token=await getToken();const r=await fetch(url,{...init,headers:{Authorization:`Bearer ${token}`,...(init.headers||{})}});if(!r.ok){let msg=`${label} (HTTP ${r.status}).`;try{const b=await r.json();if(b?.error?.message)msg=b.error.message;}catch{}throw new Error(msg);}return r;}
  async function book(id:string){return (await (await api(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}?fields=sheets(properties(sheetId,title,hidden,gridProperties(rowCount,columnCount)))`,{},"NÃO FOI POSSÍVEL ABRIR A PLANILHA DE DESTINO")).json());}
