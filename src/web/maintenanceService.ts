@@ -27,7 +27,7 @@ export function createMaintenanceService(getToken:()=>Promise<string>){
   const {id,title,s}=await validate(p),day=new Intl.DateTimeFormat("en-CA",{timeZone:TZ,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()).replace(/-/g,"");
   const key=`MANUT_${kind.toUpperCase()}_PROCESSADO_${day}_${title.trim().toUpperCase()}_${p.hash}`;
   const previous=await metadata(id,key);if(previous.length&&!p.confirmarDuplicidade)return {duplicate:true,fileName:p.fileName,sheetTitle:title};
-  const destRows=await values(id,`${quote(title)}!1:1`),destHeaders=(destRows[0]??[]).map((v:any)=>String(v??"").trim());if(!destHeaders.length)throw new Error("A ABA DE DESTINO NÃO POSSUI CABEÇALHOS.");
+  const destRows=await values(id,`${quote(title)}!1:1`),destHeaders:string[]=(destRows[0]??[]).map((v:any)=>String(v??"").trim());if(!destHeaders.length)throw new Error("A ABA DE DESTINO NÃO POSSUI CABEÇALHOS.");
   const sourceHeaders=p.headers.map(v=>String(v??"").trim()),sourceMap:Record<string,number>={};sourceHeaders.forEach((h,i)=>{const k=norm(h);if(k)sourceMap[k]=i;});
   const map=kind==="feitas"?FEITAS_MAP:PRAZO_MAP,protectedNames=(kind==="feitas"?FEITAS_PROTECTED:PRAZO_PROTECTED).map(norm),statusColumn=kind==="feitas"?16:18;
   const ticketIndex=destHeaders.findIndex(h=>norm(h)==="TICKET DA VISITA");if(ticketIndex<0)throw new Error('A COLUNA "TICKET DA VISITA" NÃO FOI ENCONTRADA NA ABA DE DESTINO.');
@@ -58,7 +58,7 @@ export function createMaintenanceService(getToken:()=>Promise<string>){
   const srcHeaders=p.headers.map(v=>String(v??"").trim()),srcMap:Record<string,number>={};srcHeaders.forEach((h,i)=>{if(norm(h))srcMap[norm(h)]=i;});
   const required=["ticket","fila_atual","estado_atividade","visitas_canceladas","priorityStart","priorityEnd","motivo_cancel"];const missingSrc=required.filter(h=>srcMap[norm(h)]===undefined);if(missingSrc.length)throw new Error("CABEÇALHOS AUSENTES NO ARQUIVO: "+missingSrc.join(", "));
   const countRows=Math.max(2,Number(s.properties?.gridProperties?.rowCount??1000)),width=Math.max(1,Number(s.properties?.gridProperties?.columnCount??26));
-  const dest=await values(id,`${quote(title)}!A1:${col(width)}${countRows}`);const dh=(dest[0]??[]).map((v:any)=>String(v??"").trim()),idx=(name:string)=>dh.findIndex(h=>norm(h)===norm(name));
+  const dest=await values(id,`${quote(title)}!A1:${col(width)}${countRows}`);const dh:string[]=(dest[0]??[]).map((v:any)=>String(v??"").trim()),idx=(name:string)=>dh.findIndex((h:string)=>norm(h)===norm(name));
   const ticketCol=idx("TICKET DA VISITA"),statusCol=idx("STATUS");if(ticketCol<0||statusCol<0)throw new Error('A ABA PRECISA CONTER "TICKET DA VISITA" E "STATUS".');
   const targetNames=["FILA ATUAL","ESTADO ATIVIDADE","VISITAS CANCELADAS","PREF. START","PREF. END",...CANCEL];const targetCols=targetNames.map(n=>idx(n));const absent=targetNames.filter((n,i)=>targetCols[i]<0);if(absent.length)throw new Error("COLUNAS AUSENTES NA ABA DE DESTINO: "+absent.join(", "));
   const destIndex=new Map<string,number>();for(let r=1;r<dest.length;r++){const t=String(dest[r]?.[ticketCol]??"").trim();if(t&&!destIndex.has(t))destIndex.set(t,r);}
@@ -68,7 +68,7 @@ export function createMaintenanceService(getToken:()=>Promise<string>){
    vals.forEach((v,i)=>updates.push({range:`${quote(title)}!${col(targetCols[i]+1)}${r+1}`,values:[[v instanceof Date?v.toISOString():v??""]]}));counts.updated++;
   }
   for(let i=0;i<updates.length;i+=500){await api(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values:batchUpdate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({valueInputOption:"USER_ENTERED",data:updates.slice(i,i+500)})},"A ATUALIZAÇÃO MANUT TODAS ABERTAS FALHOU");}
-  await mark(id,key,p);return {duplicate:false,fileName:p.fileName,sheetTitle:title,...counts};
+  await mark(id,key,p,title);return {duplicate:false,fileName:p.fileName,sheetTitle:title,...counts};
  }
  return { importarManutFeitas:(p:Payload)=>importMaintenance(p,"feitas"), importarManutPrazo:(p:Payload)=>importMaintenance(p,"prazo"), atualizarManutTodasAbertas:updateAllOpen };
 }
