@@ -45,7 +45,7 @@ export function createMaintenanceService(getToken:()=>Promise<string>){
     const mi=sourceMap[norm("motivo_cancel")];if(mi===undefined){missing.push(h);continue;}const idx=CANCEL.findIndex(x=>norm(x)===n);
     add(c,p.rows.map(row=>cancelValues(row[mi])[idx]));continue;
    }
-   const source=map[h]??h,si=sourceMap[norm(source)];if(si===undefined){if(map[h])missing.push(h);continue;}add(c,p.rows.map(row=>row?.[si] instanceof Date?(row[si] as Date).toISOString():row?.[si]??""));
+   const source=map[h]??h,si=sourceMap[norm(source)];if(si===undefined){if(map[h])missing.push(h);continue;}add(c,p.rows.map(row=>{let value=row?.[si]??"";if(n===norm("BAIRRO")&&value!==""&&value!==null&&value!==undefined)value=kind==="prazo"?String(value).trim().toUpperCase():String(value).toUpperCase();return value instanceof Date?value.toISOString():value;}));
   }
   const headerRequests:any[]=[];for(let c=0;c<destHeaders.length;c++)if(c+1!==statusColumn&&norm(destHeaders[c])!=="STATUS"&&!protectedNames.includes(norm(destHeaders[c]))){headerRequests.push({range:`${quote(title)}!${col(c+1)}${headerRow}`,values:[[outputHeaders[c]??""]]});}
   const all=[...headerRequests,...requests];if(all.length)await api(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values:batchUpdate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({valueInputOption:"USER_ENTERED",data:all})},"A GRAVAÇÃO DO IMPORTADOR DE MANUTENÇÃO FALHOU");
