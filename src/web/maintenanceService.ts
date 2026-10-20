@@ -38,7 +38,7 @@ export function createMaintenanceService(getToken:()=>Promise<string>){
   const mappedHeaders=destHeaders.map((h,i)=>{if(i+1===statusColumn||norm(h)==="STATUS"||protectedNames.includes(norm(h))||!h)return h;const source=map[h]??h;const idx=sourceMap[norm(source)];return idx===undefined?h:sourceHeaders[idx];});
   const outputHeaders=destHeaders.map((h,i)=>{if(i+1===statusColumn||norm(h)==="STATUS"||protectedNames.includes(norm(h))||!h)return null;return mappedHeaders[i]??"";});
   const missing:string[]=[],requests:any[]=[];
-  const add=(column:number,values:unknown[])=>{requests.push({range:`${quote(title)}!${col(column+1)}${headerRow}:${col(column+1)}${lastData}`,majorDimension:"ROWS",values:values.map(v=>[v??""])});};
+  const add=(column:number,values:unknown[])=>{requests.push({range:`${quote(title)}!${col(column+1)}${firstData}:${col(column+1)}${lastData}`,majorDimension:"ROWS",values:values.map(v=>[v??""])});};
   for(let c=0;c<destHeaders.length;c++){
    const h=destHeaders[c],n=norm(h);if(!h||c+1===statusColumn||n==="STATUS"||protectedNames.includes(n))continue;
    if(CANCEL.some(x=>norm(x)===n)){
@@ -49,6 +49,8 @@ export function createMaintenanceService(getToken:()=>Promise<string>){
   }
   const headerRequests:any[]=[];for(let c=0;c<destHeaders.length;c++)if(c+1!==statusColumn&&norm(destHeaders[c])!=="STATUS"&&!protectedNames.includes(norm(destHeaders[c]))){headerRequests.push({range:`${quote(title)}!${col(c+1)}${headerRow}`,values:[[outputHeaders[c]??""]]});}
   const all=[...headerRequests,...requests];if(all.length)await api(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values:batchUpdate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({valueInputOption:"USER_ENTERED",data:all})},"A GRAVAÇÃO DO IMPORTADOR DE MANUTENÇÃO FALHOU");
+  const dateCols=destHeaders.map((h,i)=>({h:norm(h),i})).filter(x=>["DATA ATIV. CRIADA","DATA DA VISITA/TICKET"].includes(x.h)&&x.i+1!==statusColumn&&!protectedNames.includes(x.h));
+  if(dateCols.length)await api(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({requests:dateCols.map(x=>({repeatCell:{range:{sheetId:Number(s.properties.sheetId),startRowIndex:firstData-1,endRowIndex:lastData,startColumnIndex:x.i,endColumnIndex:x.i+1},cell:{userEnteredFormat:{numberFormat:{type:"DATE",pattern:"dd/MM/yyyy"}}},fields:"userEnteredFormat.numberFormat"}}))})},"NÃO FOI POSSÍVEL FORMATAR AS COLUNAS DE DATA");
   await mark(id,key,p,title);
   return {duplicate:false,fileName:p.fileName,sheetTitle:title,records:p.rows.length,columns:requests.length,headerRow,firstDataRow:firstData,missingColumns:missing};
  }
