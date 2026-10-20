@@ -68,7 +68,7 @@ export function createMaintenanceService(getToken:()=>Promise<string>){
   const srcHeaders=p.headers.map(v=>String(v??"").trim()),srcMap:Record<string,number>={};srcHeaders.forEach((h,i)=>{if(norm(h))srcMap[norm(h)]=i;});
   const required=["ticket","fila_atual","estado_atividade","visitas_canceladas","priorityStart","priorityEnd","motivo_cancel"];const missingSrc=required.filter(h=>srcMap[norm(h)]===undefined);if(missingSrc.length)throw new Error("CABEÇALHOS AUSENTES NO ARQUIVO: "+missingSrc.join(", "));
   const countRows=Math.max(2,Number(s.properties?.gridProperties?.rowCount??1000)),width=Math.max(1,Number(s.properties?.gridProperties?.columnCount??26));
-  const header=await values(id,`${quote(title)}!A1:${col(width)}1`),dh:string[]=(header[0]??[]).map((v:any)=>String(v??"").trim()),idx=(name:string)=>dh.findIndex((h:string)=>norm(h)===norm(name));
+  const header=await values(id,`${quote(title)}!A1:${col(width)}1`),dh:string[]=(header[0]??[]).map((v:any)=>String(v??"").trim()),idx=(name:string)=>{let found=-1;dh.forEach((h:string,i:number)=>{if(norm(h)===norm(name))found=i;});return found;};
   const ticketCol=idx("TICKET DA VISITA"),statusCol=idx("STATUS");if(ticketCol<0||statusCol<0)throw new Error('A ABA PRECISA CONTER "TICKET DA VISITA" E "STATUS".');
   const targetNames=["FILA ATUAL","ESTADO ATIVIDADE","VISITAS CANCELADAS","PREF. START","PREF. END",...CANCEL];const targetCols=targetNames.map(n=>idx(n));const absent=targetNames.filter((n,i)=>targetCols[i]<0);if(absent.length)throw new Error("COLUNAS AUSENTES NA ABA DE DESTINO: "+absent.join(", "));
   const columnsToRead=Array.from(new Set([ticketCol,statusCol,...targetCols]));
