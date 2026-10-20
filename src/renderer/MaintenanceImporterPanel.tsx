@@ -7,6 +7,8 @@ async function hashFile(file:File){const d=await crypto.subtle.digest("SHA-256",
 
 export default function MaintenanceImporterPanel({onClose,operation="import"}:Props){
  const isUpdate=operation==="update";
+ // Segurança: não liberar gravações enquanto a adaptação do serviço não estiver conferida com os GS originais.
+ const processingRulesApproved=false;
  const [spreadsheetId,setSpreadsheetId]=useState(()=>localStorage.getItem("controle-diario-manut-spreadsheet")??"");
  const [validatedId,setValidatedId]=useState("");
  const [spreadsheetName,setSpreadsheetName]=useState("");
@@ -91,8 +93,9 @@ export default function MaintenanceImporterPanel({onClose,operation="import"}:Pr
     <label className="importer-field"><span>MANUT FEITAS — MANUTENCAO - DEMANDA DO DIA</span><input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={busy} onChange={e=>void readFile(e.target.files?.[0],"feitas")}/>{feitas&&<small>{feitas.name} · {feitas.rows.length.toLocaleString("pt-BR")} registros</small>}</label>
     <label className="importer-field"><span>MANUT PRAZO — MANUTENCAO - ABERTAS DO DIA</span><input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={busy} onChange={e=>void readFile(e.target.files?.[0],"prazo")}/>{prazo&&<small>{prazo.name} · {prazo.rows.length.toLocaleString("pt-BR")} registros</small>}</label>
    </div>}
+   {!processingRulesApproved&&<p className="importer-feedback error" role="status">A EXECUÇÃO ESTÁ TEMPORARIAMENTE BLOQUEADA ENQUANTO AS REGRAS DE GRAVAÇÃO SÃO CONFERIDAS COM OS SCRIPTS ORIGINAIS. NENHUM DADO SERÁ GRAVADO NESTA VERSÃO.</p>}
    <p className="importer-feedback">{isUpdate?"Use esta operação separadamente, depois das importações MANUT FEITAS e MANUT PRAZO. Ela atualiza somente registros existentes elegíveis.":"Execute MANUT FEITAS e MANUT PRAZO nesta tela. MANUT TODAS ABERTAS fica em uma tela separada e deve ser executada por último."}</p>
-   <button className="importer-execute-button" disabled={busy||!activeFiles||!targetSheet||validatedId!==spreadsheetId.trim()} onClick={()=>completed&&onClose?onClose():void execute()}>{busy?"PROCESSANDO…":completed&&onClose?"ENCERRAR":isUpdate?"ATUALIZAR":"EXECUTAR"}</button>
+   <button className="importer-execute-button" disabled={busy||!activeFiles||!targetSheet||validatedId!==spreadsheetId.trim()||!processingRulesApproved} onClick={()=>completed&&onClose?onClose():void execute()}>{busy?"PROCESSANDO…":!processingRulesApproved?"PROCESSAMENTO EM REVISÃO":completed&&onClose?"ENCERRAR":isUpdate?"ATUALIZAR":"EXECUTAR"}</button>
    {error&&<p className="importer-feedback error" role="alert">{error}</p>}{message&&<p className="importer-feedback" role="status">{message}</p>}
   </div>
  </section>;
