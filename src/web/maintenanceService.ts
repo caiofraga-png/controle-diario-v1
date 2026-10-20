@@ -1,6 +1,6 @@
 type Payload = { spreadsheetId:string; sheetTitle:string; fileName:string; headers:string[]; rows:unknown[][]; hash:string; confirmarDuplicidade?:boolean };
 const TZ="America/Sao_Paulo";
-const norm=(v:unknown)=>String(v??"").trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").toUpperCase();
+const norm=(v:unknown)=>String(v??"").trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
 const quote=(v:string)=>"'"+v.replace(/'/g,"''")+"'";
 const sheetValue=(v:unknown)=>v instanceof Date?v.getTime()/86400000+25569:v??"";
 const col=(n:number)=>{let s="";for(let x=n;x>0;x=Math.floor((x-1)/26))s=String.fromCharCode(65+(x-1)%26)+s;return s;};
