@@ -2,6 +2,7 @@ type Payload = { spreadsheetId:string; sheetTitle:string; fileName:string; heade
 const TZ="America/Sao_Paulo";
 const norm=(v:unknown)=>String(v??"").trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").toUpperCase();
 const quote=(v:string)=>"'"+v.replace(/'/g,"''")+"'";
+const sheetValue=(v:unknown)=>v instanceof Date?v.getTime()/86400000+25569:v??"";
 const col=(n:number)=>{let s="";for(let x=n;x>0;x=Math.floor((x-1)/26))s=String.fromCharCode(65+(x-1)%26)+s;return s;};
 const FEITAS_MAP:Record<string,string>={"NOME":"nome_cli","CODIGO":"codcli","SUBTIPO":"subtipo","CIDADE":"cidade","BAIRRO":"bairro","TECH":"tecnologia","ATIVIDADE CRIADA POR":"atividade_criada_por","DATA ATIV. CRIADA":"atividade_criada_em","DATA DA VISITA/TICKET":"data_visita","RESOLUÇÃO DA VISITA":"motivo_visita","DESCONTO":"desconto","VISITAS CANCELADAS":"visitas_canceladas","PREF. START":"priorityStart","PREF. END":"priorityEnd","TICKET DA VISITA":"ticket"};
 const PRAZO_MAP:Record<string,string>={"NOME":"nome_cli","CODIGO":"codcli","FILA ATUAL":"fila_atual","SUBTIPO":"subtipo","CIDADE":"cidade","BAIRRO":"bairro","TECH":"tecnologia","ATIVIDADE CRIADA POR":"atividade_criada_por","DATA ATIV. CRIADA":"atividade_criada_em","DATA DA VISITA/TICKET":"data_visita","ESTADO ATIVIDADE":"estado_atividade","RESOLUÇÃO DA VISITA":"motivo_visita","DESCONTO":"desconto","VISITAS CANCELADAS":"visitas_canceladas","PREF. START":"priorityStart","PREF. END":"priorityEnd","TICKET DA VISITA":"ticket"};
@@ -38,7 +39,7 @@ export function createMaintenanceService(getToken:()=>Promise<string>){
   const mappedHeaders=destHeaders.map((h,i)=>{if(i+1===statusColumn||norm(h)==="STATUS"||protectedNames.includes(norm(h))||!h)return h;const source=map[h]??h;const idx=sourceMap[norm(source)];return idx===undefined?h:sourceHeaders[idx];});
   const outputHeaders=destHeaders.map((h,i)=>{if(i+1===statusColumn||norm(h)==="STATUS"||protectedNames.includes(norm(h))||!h)return null;return mappedHeaders[i]??"";});
   const missing:string[]=[],requests:any[]=[];
-  const add=(column:number,values:unknown[])=>{requests.push({range:`${quote(title)}!${col(column+1)}${firstData}:${col(column+1)}${lastData}`,majorDimension:"ROWS",values:values.map(v=>[v??""])});};
+  const add=(column:number,values:unknown[])=>{requests.push({range:`${quote(title)}!${col(column+1)}${firstData}:${col(column+1)}${lastData}`,majorDimension:"ROWS",values:values.map(v=>[sheetValue(v)])});};
   for(let c=0;c<destHeaders.length;c++){
    const h=destHeaders[c],n=norm(h);if(!h||c+1===statusColumn||n==="STATUS"||protectedNames.includes(n))continue;
    if(CANCEL.some(x=>norm(x)===n)){
@@ -48,7 +49,7 @@ export function createMaintenanceService(getToken:()=>Promise<string>){
    const source=map[h]??h,si=sourceMap[norm(source)];if(si===undefined){if(map[h])missing.push(h);continue;}add(c,p.rows.map(row=>{let value=row?.[si]??"";if(n===norm("BAIRRO")&&value!==""&&value!==null&&value!==undefined)value=kind==="prazo"?String(value).trim().toUpperCase():String(value).toUpperCase();return value instanceof Date?value.toISOString():value;}));
   }
   const headerRequests:any[]=[];for(let c=0;c<destHeaders.length;c++)if(c+1!==statusColumn&&norm(destHeaders[c])!=="STATUS"&&!protectedNames.includes(norm(destHeaders[c]))){headerRequests.push({range:`${quote(title)}!${col(c+1)}${headerRow}`,values:[[outputHeaders[c]??""]]});}
-  const all=[...headerRequests,...requests];if(all.length)await api(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values:batchUpdate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({valueInputOption:"USER_ENTERED",data:all})},"A GRAVAÇÃO DO IMPORTADOR DE MANUTENÇÃO FALHOU");
+  const all=[...headerRequests,...requests];if(all.length)await api(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values:batchUpdate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({valueInputOption:"RAW",data:all})},"A GRAVAÇÃO DO IMPORTADOR DE MANUTENÇÃO FALHOU");
   const dateCols=destHeaders.map((h,i)=>({h:norm(h),i})).filter(x=>["DATA ATIV. CRIADA","DATA DA VISITA/TICKET"].includes(x.h)&&x.i+1!==statusColumn&&!protectedNames.includes(x.h));
   if(dateCols.length)await api(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({requests:dateCols.map(x=>({repeatCell:{range:{sheetId:Number(s.properties.sheetId),startRowIndex:firstData-1,endRowIndex:lastData,startColumnIndex:x.i,endColumnIndex:x.i+1},cell:{userEnteredFormat:{numberFormat:{type:"DATE",pattern:"dd/MM/yyyy"}}},fields:"userEnteredFormat.numberFormat"}}))})},"NÃO FOI POSSÍVEL FORMATAR AS COLUNAS DE DATA");
   await mark(id,key,p,title);
@@ -71,9 +72,9 @@ export function createMaintenanceService(getToken:()=>Promise<string>){
   const updates:any[]=[],counts={updated:0,notFound:0,empty:0,skippedStatus:0};
   for(const row of p.rows){const raw=row?.[srcMap[norm("ticket")]],ticket=String(raw??"").trim();if(!ticket){counts.empty++;continue;}const sheetRow=destIndex.get(ticket);if(sheetRow===undefined){counts.notFound++;continue;}const offset=sheetRow-2;if(String(statusValues[offset]?.[0]??"").trim()!=="🕒"){counts.skippedStatus++;continue;}
    const vals=[row[srcMap[norm("fila_atual")]],row[srcMap[norm("estado_atividade")]],row[srcMap[norm("visitas_canceladas")]],row[srcMap[norm("priorityStart")]],row[srcMap[norm("priorityEnd")]],...cancelValues(row[srcMap[norm("motivo_cancel")]])];
-   vals.forEach((v,i)=>updates.push({range:`${quote(title)}!${col(targetCols[i]+1)}${sheetRow}`,values:[[v instanceof Date?v.toISOString():v??""]]}));counts.updated++;
+   vals.forEach((v,i)=>updates.push({range:`${quote(title)}!${col(targetCols[i]+1)}${sheetRow}`,values:[[sheetValue(v)]]}));counts.updated++;
   }
-  for(let i=0;i<updates.length;i+=500){await api(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values:batchUpdate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({valueInputOption:"USER_ENTERED",data:updates.slice(i,i+500)})},"A ATUALIZAÇÃO MANUT TODAS ABERTAS FALHOU");}
+  for(let i=0;i<updates.length;i+=500){await api(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values:batchUpdate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({valueInputOption:"RAW",data:updates.slice(i,i+500)})},"A ATUALIZAÇÃO MANUT TODAS ABERTAS FALHOU");}
   await mark(id,key,p,title);return {duplicate:false,fileName:p.fileName,sheetTitle:title,...counts};
  }
  return { importarManutFeitas:(p:Payload)=>importMaintenance(p,"feitas"), importarManutPrazo:(p:Payload)=>importMaintenance(p,"prazo"), atualizarManutTodasAbertas:updateAllOpen };
