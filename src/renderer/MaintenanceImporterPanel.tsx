@@ -48,8 +48,8 @@ export default function MaintenanceImporterPanel({onClose,operation="import"}:Pr
    const savedFeitas=localStorage.getItem("controle-diario-manut-tab-feitas")??"";
    const savedPrazo=localStorage.getItem("controle-diario-manut-tab-prazo")??"";
    setTargetSheet(visible.some(s=>s.title===saved)?saved:(visible[0]?.title??""));
-   setTargetSheetFeitas(visible.some(s=>s.title===savedFeitas)?savedFeitas:(visible[0]?.title??""));
-   setTargetSheetPrazo(visible.some(s=>s.title===savedPrazo)?savedPrazo:(visible[0]?.title??""));
+   setTargetSheetFeitas(visible.some(s=>s.title===savedFeitas)?savedFeitas:"");
+   setTargetSheetPrazo(visible.some(s=>s.title===savedPrazo)?savedPrazo:"");
    setMessage(visible.length? `PLANILHA VALIDADA: ${String(r.title??"PLANILHA")}. ${visible.length} ABA(S) VISÍVEL(IS).`:"NENHUMA ABA VISÍVEL FOI ENCONTRADA.");
   }catch(e){setSheets([]);setValidatedId("");setSpreadsheetName("");setTargetSheet("");setTargetSheetFeitas("");setTargetSheetPrazo("");setError(e instanceof Error?e.message:"NÃO FOI POSSÍVEL VALIDAR A PLANILHA.");}
   finally{setBusy(false);}
