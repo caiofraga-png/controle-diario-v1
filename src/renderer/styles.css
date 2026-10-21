@@ -1002,3 +1002,32 @@ body::before { background: none; }
     min-height:0;
   }
 }
+
+/* MANUTENÇÕES — ID e botão de atualização alinhados */
+.maintenance-spreadsheet-row {
+  display:flex;
+  align-items:stretch;
+  gap:10px;
+  width:min(100%,560px);
+  margin:0 auto 18px;
+  position:relative;
+  z-index:1;
+}
+.maintenance-spreadsheet-field { flex:1; min-width:0; }
+.maintenance-refresh-button {
+  align-self:center;
+  flex:0 0 44px;
+  width:44px;
+  height:44px;
+  border:1px solid rgba(205,232,217,.25);
+  border-radius:10px;
+  color:#f5faf7;
+  background:#315f4e;
+  font-size:28px;
+  line-height:1;
+  cursor:pointer;
+}
+.maintenance-refresh-button:disabled { opacity:.5; cursor:not-allowed; }
+@media (max-width:620px) {
+  .maintenance-spreadsheet-row { width:100%; }
+}
