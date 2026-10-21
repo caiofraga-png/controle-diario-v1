@@ -61,9 +61,8 @@ export function createMaintenanceService(getToken:()=>Promise<string>){
   for(let c=0;c<destHeaders.length;c++){
    const h=destHeaders[c],n=norm(h);if(!h||c+1===statusColumn||n==="STATUS"||protectedNames.includes(n))continue;
    if(CANCEL.some(x=>norm(x)===n)){
-    const idx=CANCEL.findIndex(x=>norm(x)===n);
-    const mi=sourceMap[norm("motivo_cancel")];if(mi===undefined){missing.push(h);continue;}const idx=CANCEL.findIndex(x=>norm(x)===n);
-    add(c,p.rows.map(row=>cancelValues(row[mi])[idx]));continue;
+    const mi=sourceMap[norm("motivo_cancel")];if(mi===undefined){missing.push(h);continue;}const cancelIndex=CANCEL.findIndex(x=>norm(x)===n);
+    add(c,p.rows.map(row=>cancelValues(row[mi])[cancelIndex]));continue;
    }
    const source=map[h]??h,si=sourceMap[norm(source)];if(si===undefined){if(map[h])missing.push(h);continue;}add(c,p.rows.map(row=>{let value=row?.[si]??"";if(norm(source)===norm("data_visita"))value=dateValue(value);if(n===norm("BAIRRO")&&value!==""&&value!==null&&value!==undefined)value=kind==="prazo"?String(value).trim().toUpperCase():String(value).toUpperCase();return value;}));
   }
