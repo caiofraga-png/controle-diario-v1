@@ -55,7 +55,7 @@ export function createMaintenanceService(getToken:()=>Promise<string>){
    const source=map[h]??h,si=sourceMap[norm(source)];if(si===undefined){if(map[h])missing.push(h);continue;}
    add(c,p.rows.map(row=>{
     const raw:unknown=row?.[si]??"";
-    const converted:unknown=(norm(source)===norm("data_visita")||norm(source)===norm("atividade_criada_em"))?dateValue(raw):raw;
+    const converted:unknown=raw;
     if(n===norm("BAIRRO")&&converted!==""&&converted!==null&&converted!==undefined)return kind==="prazo"?String(converted).trim().toUpperCase():String(converted).toUpperCase();
     return converted;
    }));
