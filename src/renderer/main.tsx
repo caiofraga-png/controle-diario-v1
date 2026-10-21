@@ -58,12 +58,13 @@ function App() {
     const label = taskLabel(task);
     return label.includes("VOLUMETRIA") && label.includes("MIDIAS");
   }
-  function importerForTask(task: any): "estatisticas" | "callback" | "prodsac" | "chatmidias" | "chatfinanceiro" | "chatcomercial" | "volsup" {
+  function importerForTask(task: any): "estatisticas" | "callback" | "prodsac" | "chatmidias" | "chatfinanceiro" | "chatcomercial" | "volsup" | "manutencao" {
     // VOLUMETRIA - MÍDIAS é um conjunto de três importadores CHAT MÍDIAS, não VOLUMETRIA SUPORTE.
     if (isVolumetriaMidiasTask(task)) return "chatmidias";
     const configured = task?.importador ?? config?.tarefas?.tarefas?.find((t:any)=>t.id===task?.id)?.importador;
-    if (["estatisticas", "callback", "prodsac", "chatmidias", "chatfinanceiro", "chatcomercial", "volsup"].includes(configured)) return configured;
+    if (["estatisticas", "callback", "prodsac", "chatmidias", "chatfinanceiro", "chatcomercial", "volsup", "manutencao"].includes(configured)) return configured;
     const label = taskLabel(task);
+    if (label.includes("ESTATISTICA") && label.includes("MANUTENCAO")) return "manutencao";
     if (label.includes("CALLBACK")) return "callback";
     if (label.includes("PRODUTIVIDADE SAC") || label.includes("PRODSAC")) return "prodsac";
     if (label.includes("CHAT") && label.includes("FINANCEIRO")) return "chatfinanceiro";
@@ -82,7 +83,8 @@ function App() {
       chatmidias: "CHAT MÍDIAS — SUPORTE",
       chatfinanceiro: "CHAT MÍDIAS — FINANCEIRO",
       chatcomercial: "CHAT MÍDIAS — COMERCIAL",
-      volsup: "VOLUMETRIA SUPORTE"
+      volsup: "VOLUMETRIA SUPORTE",
+      manutencao: "MANUTENÇÕES — SUPORTE"
     };
     return titles[importer] ?? "IMPORTADOR";
   }
