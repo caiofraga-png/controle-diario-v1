@@ -55,14 +55,14 @@ export function createMaintenanceService(getToken:()=>Promise<string>){
    const source=map[h]??h,si=sourceMap[norm(source)];if(si===undefined){if(map[h])missing.push(h);continue;}
    add(c,p.rows.map(row=>{
     const raw:unknown=row?.[si]??"";
-    const converted:unknown=norm(source)===norm("data_visita")?dateValue(raw):raw;
+    const converted:unknown=(norm(source)===norm("data_visita")||norm(source)===norm("atividade_criada_em"))?dateValue(raw):raw;
     if(n===norm("BAIRRO")&&converted!==""&&converted!==null&&converted!==undefined)return kind==="prazo"?String(converted).trim().toUpperCase():String(converted).toUpperCase();
     return converted;
    }));
   }
   const headerRequests:any[]=[];for(let c=0;c<destHeaders.length;c++)if(c+1!==statusColumn&&norm(destHeaders[c])!=="STATUS"){headerRequests.push({range:`${quote(title)}!${col(c+1)}${headerRow}`,values:[[outputHeaders[c]??""]]});}
   const all=[...headerRequests,...requests];if(all.length)await api(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values:batchUpdate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({valueInputOption:"RAW",data:all})},"A GRAVAÇÃO DO IMPORTADOR DE MANUTENÇÃO FALHOU");
-  const dateCols=destHeaders.map((h,i)=>({h:norm(h),mapped:norm(map[h]??h),i})).filter(x=>(["DATA ATIV. CRIADA","DATA DA VISITA/TICKET","DATA_VISITA"].includes(x.h)||x.mapped===norm("data_visita"))&&x.i+1!==statusColumn);
+  const dateCols=destHeaders.map((h,i)=>({h:norm(h),mapped:norm(map[h]??h),i})).filter(x=>(["DATA ATIV. CRIADA","DATA DA VISITA/TICKET","DATA_VISITA"].includes(x.h)||x.mapped===norm("data_visita")||x.mapped===norm("atividade_criada_em"))&&x.i+1!==statusColumn);
   if(dateCols.length)await api(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({requests:dateCols.map(x=>({repeatCell:{range:{sheetId:Number(s.properties.sheetId),startRowIndex:firstData-1,endRowIndex:lastData,startColumnIndex:x.i,endColumnIndex:x.i+1},cell:{userEnteredFormat:{numberFormat:{type:"DATE",pattern:"dd/MM/yyyy"}}},fields:"userEnteredFormat.numberFormat"}}))})},"NÃO FOI POSSÍVEL FORMATAR AS COLUNAS DE DATA");
   await mark(id,key,p,title);
   return {duplicate:false,fileName:p.fileName,sheetTitle:title,records:p.rows.length,columns:requests.length,headerRow,firstDataRow:firstData,missingColumns:missing};
