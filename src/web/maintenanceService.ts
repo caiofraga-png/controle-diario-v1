@@ -3,11 +3,11 @@ const TZ="America/Sao_Paulo";
 const norm=(v:unknown)=>String(v??"").trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
 const quote=(v:string)=>"'"+v.replace(/'/g,"''")+"'";
 const sheetValue=(v:unknown)=>v instanceof Date?v.getTime()/86400000+25569:v??"";
-const dateValue=(v:unknown)=>{
+const dateValue=(v:unknown):unknown=>{
  if(v instanceof Date)return v.getTime()/86400000+25569;
  if(typeof v==="number")return v;
  const s=String(v??"").trim();if(!s)return "";
- const m=s.match(/^(\\d{1,2})[\\/-](\\d{1,2})[\\/-](\\d{4})(?:\\s+.*)?$/);
+ const m=s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})(?:\s+.*)?$/);
  if(!m)return v;
  const d=Number(m[1]),mo=Number(m[2]),y=Number(m[3]);
  const dt=new Date(Date.UTC(y,mo-1,d));
@@ -20,20 +20,8 @@ const PRAZO_MAP:Record<string,string>={"NOME":"nome_cli","CODIGO":"codcli","FILA
 const FEITAS_PROTECTED=["MEIO DE CONTATO","SETOR","DIAS Ñ UTEIS","HORAS DIAS Ñ UTEIS","TEMPO REAL (ATÉ)","TEMPO TOTAL","SLA","STATUS","TENT. DE VISITA - 1º OS","TENT. DE VISITA - EM 3 OS","CONV. HORAS - REAIS","T. TOTAL - 1º OS","T. TOTAL - 2º OS","T. TOTAL - 3º OS","PREF. START/END"];
 const PRAZO_PROTECTED=[...FEITAS_PROTECTED,"DATA DA VISITA/TICKET","RESOLUÇÃO DA VISITA","DESCONTO"];
 const CANCEL=["MOTIVO DO CANCELAMENTO - 1º OS","DATA/HORA - 1º OS","MOTIVO DO CANCELAMENTO - 2º","DATA/HORA - 2º OS","MOTIVO DO CANCELAMENTO - 3º - ULTIMA OS","DATA/HORA - 3º OS"];
-const formatCancelDate=(raw:string)=>{
- const br=raw.match(/(\d{2}\/\d{2}\/\d{4})(?:\s+|T)(\d{2}:\d{2}(?::\d{2})?)/);
- if(!br)return "";
- return br[1]+" "+(br[2].length===5?br[2]+":00":br[2]);
-};
-const cancelValues=(value:unknown)=>{
- const out=["","","","","",""];const text=String(value??"").trim();if(!text)return out;
- const events=text.split(/\s*\|\s*/).map(x=>x.trim()).filter(Boolean);
- const rx=/(\d{2}\/\d{2}\/\d{4})(?:\s+|T)(\d{2}:\d{2}(?::\d{2})?)/;
- if(!events.some(event=>rx.test(event))){out[0]=text;return out;}
- const selected=events.length<=3?events:[events[0],events[events.length-2],events[events.length-1]];
- selected.forEach((event,i)=>{const m=event.match(rx);if(m){out[i*2]=event.replace(m[0],"").trim();out[i*2+1]=formatCancelDate(m[0]);}else out[i*2]=event;});
- return out;
-};
+const formatCancelDate=(raw:string)=>{const br=raw.match(/(\d{2}\/\d{2}\/\d{4})(?:\s+|T)(\d{2}:\d{2}(?::\d{2})?)/);if(!br)return "";return br[1]+" "+(br[2].length===5?br[2]+":00":br[2]);};
+const cancelValues=(value:unknown)=>{const out=["","","","","",""];const text=String(value??"").trim();if(!text)return out;const events=text.split(/\s*\|\s*/).map(x=>x.trim()).filter(Boolean);const rx=/(\d{2}\/\d{2}\/\d{4})(?:\s+|T)(\d{2}:\d{2}(?::\d{2})?)/;if(!events.some(event=>rx.test(event))){out[0]=text;return out;}const selected=events.length<=3?events:[events[0],events[events.length-2],events[events.length-1]];selected.forEach((event,i)=>{const m=event.match(rx);if(m){out[i*2]=event.replace(m[0],"").trim();out[i*2+1]=formatCancelDate(m[0]);}else out[i*2]=event;});return out;};
 
 export function createMaintenanceService(getToken:()=>Promise<string>){
  async function api(url:string,init:RequestInit={},label="ERRO NA API GOOGLE"){const token=await getToken();const r=await fetch(url,{...init,headers:{Authorization:`Bearer ${token}`,...(init.headers||{})}});if(!r.ok){let msg=`${label} (HTTP ${r.status}).`;try{const b=await r.json();if(b?.error?.message)msg=b.error.message;}catch{}throw new Error(msg);}return r;}
@@ -64,7 +52,13 @@ export function createMaintenanceService(getToken:()=>Promise<string>){
     const mi=sourceMap[norm("motivo_cancel")];if(mi===undefined){missing.push(h);continue;}const cancelIndex=CANCEL.findIndex(x=>norm(x)===n);
     add(c,p.rows.map(row=>cancelValues(row[mi])[cancelIndex]));continue;
    }
-   const source=map[h]??h,si=sourceMap[norm(source)];if(si===undefined){if(map[h])missing.push(h);continue;}add(c,p.rows.map(row=>{let value:unknown=row?.[si]??"";if(norm(source)===norm("data_visita"))value=dateValue(value);if(n===norm("BAIRRO")&&value!==""&&value!==null&&value!==undefined)value=kind==="prazo"?String(value).trim().toUpperCase():String(value).toUpperCase();return value;}));
+   const source=map[h]??h,si=sourceMap[norm(source)];if(si===undefined){if(map[h])missing.push(h);continue;}
+   add(c,p.rows.map(row=>{
+    const raw:unknown=row?.[si]??"";
+    const converted:unknown=norm(source)===norm("data_visita")?dateValue(raw):raw;
+    if(n===norm("BAIRRO")&&converted!==""&&converted!==null&&converted!==undefined)return kind==="prazo"?String(converted).trim().toUpperCase():String(converted).toUpperCase();
+    return converted;
+   }));
   }
   const headerRequests:any[]=[];for(let c=0;c<destHeaders.length;c++)if(c+1!==statusColumn&&norm(destHeaders[c])!=="STATUS"){headerRequests.push({range:`${quote(title)}!${col(c+1)}${headerRow}`,values:[[outputHeaders[c]??""]]});}
   const all=[...headerRequests,...requests];if(all.length)await api(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values:batchUpdate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({valueInputOption:"RAW",data:all})},"A GRAVAÇÃO DO IMPORTADOR DE MANUTENÇÃO FALHOU");
