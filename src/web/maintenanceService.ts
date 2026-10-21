@@ -3,6 +3,17 @@ const TZ="America/Sao_Paulo";
 const norm=(v:unknown)=>String(v??"").trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
 const quote=(v:string)=>"'"+v.replace(/'/g,"''")+"'";
 const sheetValue=(v:unknown)=>v instanceof Date?v.getTime()/86400000+25569:v??"";
+const dateValue=(v:unknown)=>{
+ if(v instanceof Date)return v.getTime()/86400000+25569;
+ if(typeof v==="number")return v;
+ const s=String(v??"").trim();if(!s)return "";
+ const m=s.match(/^(\\d{1,2})[\\/-](\\d{1,2})[\\/-](\\d{4})(?:\\s+.*)?$/);
+ if(!m)return v;
+ const d=Number(m[1]),mo=Number(m[2]),y=Number(m[3]);
+ const dt=new Date(Date.UTC(y,mo-1,d));
+ if(dt.getUTCFullYear()!==y||dt.getUTCMonth()!==mo-1||dt.getUTCDate()!==d)return v;
+ return (dt.getTime()/86400000)+25569;
+};
 const col=(n:number)=>{let s="";for(let x=n;x>0;x=Math.floor((x-1)/26))s=String.fromCharCode(65+(x-1)%26)+s;return s;};
 const FEITAS_MAP:Record<string,string>={"NOME":"nome_cli","CODIGO":"codcli","SUBTIPO":"subtipo","CIDADE":"cidade","BAIRRO":"bairro","TECH":"tecnologia","ATIVIDADE CRIADA POR":"atividade_criada_por","DATA ATIV. CRIADA":"atividade_criada_em","DATA DA VISITA/TICKET":"data_visita","RESOLUÇÃO DA VISITA":"motivo_visita","DESCONTO":"desconto","VISITAS CANCELADAS":"visitas_canceladas","PREF. START":"priorityStart","PREF. END":"priorityEnd","TICKET DA VISITA":"ticket"};
 const PRAZO_MAP:Record<string,string>={"NOME":"nome_cli","CODIGO":"codcli","FILA ATUAL":"fila_atual","SUBTIPO":"subtipo","CIDADE":"cidade","BAIRRO":"bairro","TECH":"tecnologia","ATIVIDADE CRIADA POR":"atividade_criada_por","DATA ATIV. CRIADA":"atividade_criada_em","DATA DA VISITA/TICKET":"data_visita","ESTADO ATIVIDADE":"estado_atividade","RESOLUÇÃO DA VISITA":"motivo_visita","DESCONTO":"desconto","VISITAS CANCELADAS":"visitas_canceladas","PREF. START":"priorityStart","PREF. END":"priorityEnd","TICKET DA VISITA":"ticket"};
@@ -54,11 +65,11 @@ export function createMaintenanceService(getToken:()=>Promise<string>){
     const mi=sourceMap[norm("motivo_cancel")];if(mi===undefined){missing.push(h);continue;}const idx=CANCEL.findIndex(x=>norm(x)===n);
     add(c,p.rows.map(row=>cancelValues(row[mi])[idx]));continue;
    }
-   const source=map[h]??h,si=sourceMap[norm(source)];if(si===undefined){if(map[h])missing.push(h);continue;}add(c,p.rows.map(row=>{let value=row?.[si]??"";if(n===norm("BAIRRO")&&value!==""&&value!==null&&value!==undefined)value=kind==="prazo"?String(value).trim().toUpperCase():String(value).toUpperCase();return value;}));
+   const source=map[h]??h,si=sourceMap[norm(source)];if(si===undefined){if(map[h])missing.push(h);continue;}add(c,p.rows.map(row=>{let value=row?.[si]??"";if(norm(source)===norm("data_visita"))value=dateValue(value);if(n===norm("BAIRRO")&&value!==""&&value!==null&&value!==undefined)value=kind==="prazo"?String(value).trim().toUpperCase():String(value).toUpperCase();return value;}));
   }
   const headerRequests:any[]=[];for(let c=0;c<destHeaders.length;c++)if(c+1!==statusColumn&&norm(destHeaders[c])!=="STATUS"){headerRequests.push({range:`${quote(title)}!${col(c+1)}${headerRow}`,values:[[outputHeaders[c]??""]]});}
   const all=[...headerRequests,...requests];if(all.length)await api(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values:batchUpdate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({valueInputOption:"RAW",data:all})},"A GRAVAÇÃO DO IMPORTADOR DE MANUTENÇÃO FALHOU");
-  const dateCols=destHeaders.map((h,i)=>({h:norm(h),i})).filter(x=>["DATA ATIV. CRIADA","DATA DA VISITA/TICKET"].includes(x.h)&&x.i+1!==statusColumn&&!protectedNames.includes(x.h));
+  const dateCols=destHeaders.map((h,i)=>({h:norm(h),mapped:norm(map[h]??h),i})).filter(x=>(["DATA ATIV. CRIADA","DATA DA VISITA/TICKET","DATA_VISITA"].includes(x.h)||x.mapped===norm("data_visita"))&&x.i+1!==statusColumn);
   if(dateCols.length)await api(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}:batchUpdate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({requests:dateCols.map(x=>({repeatCell:{range:{sheetId:Number(s.properties.sheetId),startRowIndex:firstData-1,endRowIndex:lastData,startColumnIndex:x.i,endColumnIndex:x.i+1},cell:{userEnteredFormat:{numberFormat:{type:"DATE",pattern:"dd/MM/yyyy"}}},fields:"userEnteredFormat.numberFormat"}}))})},"NÃO FOI POSSÍVEL FORMATAR AS COLUNAS DE DATA");
   await mark(id,key,p,title);
   return {duplicate:false,fileName:p.fileName,sheetTitle:title,records:p.rows.length,columns:requests.length,headerRow,firstDataRow:firstData,missingColumns:missing};
