@@ -27,11 +27,13 @@ export default function MaintenanceImporterPanel({onClose,operation="import"}:Pr
  const [spreadsheetName,setSpreadsheetName]=useState("");
  const [sheets,setSheets]=useState<SheetInfo[]>([]);
  const [targetSheet,setTargetSheet]=useState("");
+ const [targetSheetFeitas,setTargetSheetFeitas]=useState("");
+ const [targetSheetPrazo,setTargetSheetPrazo]=useState("");
  const [feitas,setFeitas]=useState<SourceFile|null>(null);
  const [prazo,setPrazo]=useState<SourceFile|null>(null);
  const [abertas,setAbertas]=useState<SourceFile|null>(null);
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[message,setMessage]=useState(""),[completed,setCompleted]=useState(false);
- function changeSpreadsheetId(value:string){setSpreadsheetId(value);setValidatedId("");setSpreadsheetName("");setSheets([]);setTargetSheet("");setError("");setMessage("");setCompleted(false);}
+ function changeSpreadsheetId(value:string){setSpreadsheetId(value);setValidatedId("");setSpreadsheetName("");setSheets([]);setTargetSheet("");setTargetSheetFeitas("");setTargetSheetPrazo("");setError("");setMessage("");setCompleted(false);}
  async function loadSheets(){
   const id=spreadsheetId.trim();
   if(!id){setError("INFORME O ID DA PLANILHA DE DESTINO.");return;}
@@ -43,9 +45,13 @@ export default function MaintenanceImporterPanel({onClose,operation="import"}:Pr
    setSheets(visible);setValidatedId(id);setSpreadsheetName(String(r.title??""));
    localStorage.setItem("controle-diario-manut-spreadsheet",id);
    const saved=localStorage.getItem("controle-diario-manut-tab")??"";
+   const savedFeitas=localStorage.getItem("controle-diario-manut-tab-feitas")??"";
+   const savedPrazo=localStorage.getItem("controle-diario-manut-tab-prazo")??"";
    setTargetSheet(visible.some(s=>s.title===saved)?saved:(visible[0]?.title??""));
+   setTargetSheetFeitas(visible.some(s=>s.title===savedFeitas)?savedFeitas:(visible[0]?.title??""));
+   setTargetSheetPrazo(visible.some(s=>s.title===savedPrazo)?savedPrazo:(visible[0]?.title??""));
    setMessage(visible.length? `PLANILHA VALIDADA: ${String(r.title??"PLANILHA")}. ${visible.length} ABA(S) VISÍVEL(IS).`:"NENHUMA ABA VISÍVEL FOI ENCONTRADA.");
-  }catch(e){setSheets([]);setValidatedId("");setSpreadsheetName("");setTargetSheet("");setError(e instanceof Error?e.message:"NÃO FOI POSSÍVEL VALIDAR A PLANILHA.");}
+  }catch(e){setSheets([]);setValidatedId("");setSpreadsheetName("");setTargetSheet("");setTargetSheetFeitas("");setTargetSheetPrazo("");setError(e instanceof Error?e.message:"NÃO FOI POSSÍVEL VALIDAR A PLANILHA.");}
   finally{setBusy(false);}
  }
  async function readFile(file:File|undefined,kind:"feitas"|"prazo"|"abertas"){
@@ -65,41 +71,43 @@ export default function MaintenanceImporterPanel({onClose,operation="import"}:Pr
  }
  async function run(kind:"feitas"|"prazo"|"abertas",confirm=false):Promise<boolean>{
   const f=kind==="feitas"?feitas:kind==="prazo"?prazo:abertas;
-  if(!f||!targetSheet||validatedId!==spreadsheetId.trim())return false;
+  const selectedSheet=kind==="feitas"?targetSheetFeitas:kind==="prazo"?targetSheetPrazo:targetSheet;
+  if(!f||!selectedSheet||validatedId!==spreadsheetId.trim())return false;
   const day=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()).replace(/-/g,"");
   const prefix=kind==="feitas"?"MANUTFEITAS":kind==="prazo"?"MANUTPRAZO":"MANUTTODASABERTAS";
-  const duplicateKey=`${prefix}_PROCESSADO_${day}_${targetSheet.trim().toUpperCase()}_${f.hash}`;
+  const duplicateKey=`${prefix}_PROCESSADO_${day}_${selectedSheet.trim().toUpperCase()}_${f.hash}`;
   if(!confirm&&localStorage.getItem(duplicateKey)){
-   if(!window.confirm(`Este arquivo já foi processado hoje para a aba “${targetSheet}”. Deseja executá-lo novamente?`)){setMessage("OPERAÇÃO CANCELADA. NENHUM DADO FOI GRAVADO NESTA ETAPA.");return false;}
+   if(!window.confirm(`Este arquivo já foi processado hoje para a aba “${selectedSheet}”. Deseja executá-lo novamente?`)){setMessage("OPERAÇÃO CANCELADA. NENHUM DADO FOI GRAVADO NESTA ETAPA.");return false;}
    confirm=true;
   }
-  const payload={spreadsheetId:validatedId,sheetTitle:targetSheet,fileName:f.name,headers:f.headers,rows:f.rows,hash:f.hash,confirmarDuplicidade:confirm};
+  const payload={spreadsheetId:validatedId,sheetTitle:selectedSheet,fileName:f.name,headers:f.headers,rows:f.rows,hash:f.hash,confirmarDuplicidade:confirm};
   const method=kind==="feitas"?"importarManutFeitas":kind==="prazo"?"importarManutPrazo":"atualizarManutTodasAbertas";
   let r=await (window as any).controleDiario.sistema[method](payload);
-  if(r.duplicate){if(!window.confirm(r.mensagem??`O arquivo “${f.name}” já foi processado hoje para a aba “${targetSheet}”. Deseja continuar?`)){setMessage("OPERAÇÃO CANCELADA. NENHUM DADO FOI GRAVADO NESTA ETAPA.");return false;}r=await (window as any).controleDiario.sistema[method]({...payload,confirmarDuplicidade:true});}
+  if(r.duplicate){if(!window.confirm(r.mensagem??`O arquivo “${f.name}” já foi processado hoje para a aba “${selectedSheet}”. Deseja continuar?`)){setMessage("OPERAÇÃO CANCELADA. NENHUM DADO FOI GRAVADO NESTA ETAPA.");return false;}r=await (window as any).controleDiario.sistema[method]({...payload,confirmarDuplicidade:true});}
   if(r.duplicate)throw new Error("A VERIFICAÇÃO DE DUPLICIDADE NÃO FOI CONCLUÍDA.");
-  localStorage.setItem(duplicateKey,JSON.stringify({fileName:f.name,spreadsheetId:validatedId,sheetTitle:targetSheet,at:new Date().toISOString()}));
+  localStorage.setItem(duplicateKey,JSON.stringify({fileName:f.name,spreadsheetId:validatedId,sheetTitle:selectedSheet,at:new Date().toISOString()}));
   return true;
  }
  async function execute(){
   if(validatedId!==spreadsheetId.trim()){setError("VALIDE O ID DA PLANILHA E CARREGUE AS ABAS ANTES DE CONTINUAR.");return;}
   if(validatedId!==TEST_SPREADSHEET_ID){setError("EXECUÇÃO PERMITIDA SOMENTE NA PLANILHA DE HOMOLOGAÇÃO.");return;}
-  if(!targetSheet){setError("SELECIONE A ABA DE DESTINO.");return;}
+  if(isUpdate&&!targetSheet){setError("SELECIONE A ABA DE DESTINO.");return;}
+  if(!isUpdate&&(!targetSheetFeitas||!targetSheetPrazo)){setError("SELECIONE UMA ABA PARA CADA ARQUIVO: MANUT FEITAS E MANUT PRAZO.");return;}
   if(!isUpdate&&(!feitas||!prazo)){setError("SELECIONE OS DOIS ARQUIVOS: MANUT FEITAS E MANUT PRAZO.");return;}
   if(isUpdate&&!abertas){setError("SELECIONE O ARQUIVO MANUT TODAS ABERTAS.");return;}
-  const destination=`PLANILHA: ${spreadsheetName||validatedId}\nABA: ${targetSheet}`;
+  const destination=isUpdate?`PLANILHA: ${spreadsheetName||validatedId}\nABA: ${targetSheet}`:`PLANILHA: ${spreadsheetName||validatedId}\nMANUT FEITAS — ABA: ${targetSheetFeitas}\nMANUT PRAZO — ABA: ${targetSheetPrazo}`;
   if(!window.confirm(isUpdate?`Atualizar registros elegíveis existentes? Nenhuma linha nova será importada.\n\n${destination}`:`Executar MANUT FEITAS e depois MANUT PRAZO?\n\n${destination}`))return;
   setBusy(true);setError("");setMessage("");setCompleted(false);
   try{
    if(!isUpdate){
     const a=await run("feitas");if(!a)return;
     const b=await run("prazo");if(!b)return;
-    setMessage(`IMPORTAÇÃO CONCLUÍDA. MANUT FEITAS: ${feitas?.rows.length.toLocaleString("pt-BR")} registros; MANUT PRAZO: ${prazo?.rows.length.toLocaleString("pt-BR")} registros. Aba: “${targetSheet}”.`);
+    setMessage(`IMPORTAÇÃO CONCLUÍDA. MANUT FEITAS: ${feitas?.rows.length.toLocaleString("pt-BR")} registros na aba “${targetSheetFeitas}”; MANUT PRAZO: ${prazo?.rows.length.toLocaleString("pt-BR")} registros na aba “${targetSheetPrazo}”.`);
    }else{
     const ok=await run("abertas");if(!ok)return;
     setMessage(`ATUALIZAÇÃO CONCLUÍDA NA ABA “${targetSheet}”.`);
    }
-   localStorage.setItem("controle-diario-manut-tab",targetSheet);setCompleted(true);
+   if(isUpdate)localStorage.setItem("controle-diario-manut-tab",targetSheet);else{localStorage.setItem("controle-diario-manut-tab-feitas",targetSheetFeitas);localStorage.setItem("controle-diario-manut-tab-prazo",targetSheetPrazo);}setCompleted(true);
   }catch(e){setError(e instanceof Error?e.message:"A OPERAÇÃO NÃO FOI CONCLUÍDA.");}
   finally{setBusy(false);}
  }
@@ -111,14 +119,14 @@ export default function MaintenanceImporterPanel({onClose,operation="import"}:Pr
    <label className="importer-field"><span>ID da planilha</span><input type="text" value={spreadsheetId} onChange={e=>changeSpreadsheetId(e.target.value)} placeholder="Cole o ID da planilha de teste ou destino" disabled={busy}/></label>
    <div className="importer-controls"><button className="importer-secondary-button" type="button" disabled={busy||!spreadsheetId.trim()} onClick={()=>void loadSheets()}>VALIDAR ID E CARREGAR ABAS</button></div>
    {validatedId===spreadsheetId.trim()&&validatedId&&<p className="importer-feedback">Destino validado: <strong>{spreadsheetName||validatedId}</strong></p>}
-   <label className="importer-field"><span>Aba</span><select value={targetSheet} onChange={e=>{setTargetSheet(e.target.value);if(e.target.value)localStorage.setItem("controle-diario-manut-tab",e.target.value);}} disabled={busy||validatedId!==spreadsheetId.trim()||!sheets.length}><option value="">Valide o ID para carregar as abas</option>{sheets.map(s=><option key={s.sheetId} value={s.title}>{s.title}</option>)}</select></label>
+   {isUpdate&&<label className="importer-field"><span>Aba de destino</span><select value={targetSheet} onChange={e=>{setTargetSheet(e.target.value);if(e.target.value)localStorage.setItem("controle-diario-manut-tab",e.target.value);}} disabled={busy||validatedId!==spreadsheetId.trim()||!sheets.length}><option value="">Valide o ID para carregar as abas</option>{sheets.map(s=><option key={s.sheetId} value={s.title}>{s.title}</option>)}</select></label>}
    {isUpdate?<label className="importer-field"><span>MANUT PRAZO — MANUTENÇÃO — TODAS ABERTAS</span><input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={busy} onChange={e=>void readFile(e.target.files?.[0],"abertas")}/>{abertas&&<small>{abertas.name} · {abertas.rows.length.toLocaleString("pt-BR")} registros</small>}</label>:<div className="maintenance-files">
-    <label className="importer-field"><span>MANUT FEITAS — MANUTENCAO - DEMANDA DO DIA</span><input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={busy} onChange={e=>void readFile(e.target.files?.[0],"feitas")}/>{feitas&&<small>{feitas.name} · {feitas.rows.length.toLocaleString("pt-BR")} registros</small>}</label>
-    <label className="importer-field"><span>MANUT PRAZO — MANUTENCAO - ABERTAS DO DIA</span><input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={busy} onChange={e=>void readFile(e.target.files?.[0],"prazo")}/>{prazo&&<small>{prazo.name} · {prazo.rows.length.toLocaleString("pt-BR")} registros</small>}</label>
+    <label className="importer-field"><span>MANUT FEITAS — MANUTENCAO - DEMANDA DO DIA</span><input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={busy} onChange={e=>void readFile(e.target.files?.[0],"feitas")}/>{feitas&&<small>{feitas.name} · {feitas.rows.length.toLocaleString("pt-BR")} registros</small>}<span>Aba de destino — MANUT FEITAS</span><select value={targetSheetFeitas} onChange={e=>{setTargetSheetFeitas(e.target.value);if(e.target.value)localStorage.setItem("controle-diario-manut-tab-feitas",e.target.value);}} disabled={busy||validatedId!==spreadsheetId.trim()||!sheets.length}><option value="">Selecione a aba para MANUT FEITAS</option>{sheets.map(s=><option key={s.sheetId} value={s.title}>{s.title}</option>)}</select></label>
+    <label className="importer-field"><span>MANUT PRAZO — MANUTENCAO - ABERTAS DO DIA</span><input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={busy} onChange={e=>void readFile(e.target.files?.[0],"prazo")}/>{prazo&&<small>{prazo.name} · {prazo.rows.length.toLocaleString("pt-BR")} registros</small>}<span>Aba de destino — MANUT PRAZO</span><select value={targetSheetPrazo} onChange={e=>{setTargetSheetPrazo(e.target.value);if(e.target.value)localStorage.setItem("controle-diario-manut-tab-prazo",e.target.value);}} disabled={busy||validatedId!==spreadsheetId.trim()||!sheets.length}><option value="">Selecione a aba para MANUT PRAZO</option>{sheets.map(s=><option key={s.sheetId} value={s.title}>{s.title}</option>)}</select></label>
    </div>}
    <p className="importer-feedback" role="status">MODO DE HOMOLOGAÇÃO: esta publicação só permite gravações na cópia de testes autorizada. A planilha operacional oficial está bloqueada nesta versão.</p>
    <p className="importer-feedback">{isUpdate?"Use esta operação separadamente, depois das importações MANUT FEITAS e MANUT PRAZO. Ela atualiza somente registros existentes elegíveis.":"Execute MANUT FEITAS e MANUT PRAZO nesta tela. MANUT TODAS ABERTAS fica em uma tela separada e deve ser executada por último."}</p>
-   <button className="importer-execute-button" disabled={busy||!activeFiles||!targetSheet||validatedId!==spreadsheetId.trim()||!processingRulesApproved||validatedId!==TEST_SPREADSHEET_ID} onClick={()=>completed&&onClose?onClose():void execute()}>{busy?"PROCESSANDO…":!processingRulesApproved?"PROCESSAMENTO EM REVISÃO":completed&&onClose?"ENCERRAR":isUpdate?"ATUALIZAR":"EXECUTAR"}</button>
+   <button className="importer-execute-button" disabled={busy||!activeFiles||(isUpdate?!targetSheet:(!targetSheetFeitas||!targetSheetPrazo))||validatedId!==spreadsheetId.trim()||!processingRulesApproved||validatedId!==TEST_SPREADSHEET_ID} onClick={()=>completed&&onClose?onClose():void execute()}>{busy?"PROCESSANDO…":!processingRulesApproved?"PROCESSAMENTO EM REVISÃO":completed&&onClose?"ENCERRAR":isUpdate?"ATUALIZAR":"EXECUTAR"}</button>
    {error&&<p className="importer-feedback error" role="alert">{error}</p>}{message&&<p className="importer-feedback" role="status">{message}</p>}
   </div>
  </section>;
