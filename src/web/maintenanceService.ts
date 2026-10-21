@@ -51,13 +51,7 @@ export function createMaintenanceService(getToken:()=>Promise<string>){
    const h=destHeaders[c],n=norm(h);if(!h||c+1===statusColumn||n==="STATUS"||protectedNames.includes(n))continue;
    if(CANCEL.some(x=>norm(x)===n)){
     const idx=CANCEL.findIndex(x=>norm(x)===n);
-    // Prefer the matching individual source column; fall back to the legacy combined motivo_cancel field.
-    const directAliases=[norm(h),norm(h.replace(/\\s*-\\s*/g," ")),norm(h.replace(/\\b1[º°]\\s*OS\\b/g,"1 OS").replace(/\\b2[º°]\\b/g,"2").replace(/\\b3[º°]\\s*-?\\s*ULTIMA\\s*OS\\b/g,"3 OS"))];
-    let directIndex:number|undefined;
-    for(const alias of directAliases){if(sourceMap[alias]!==undefined){directIndex=sourceMap[alias];break;}}
-    if(directIndex!==undefined){add(c,p.rows.map(row=>row?.[directIndex]??""));continue;}
-    const mi=sourceMap[norm("motivo_cancel")];
-    if(mi===undefined){missing.push(h);continue;}
+    const mi=sourceMap[norm("motivo_cancel")];if(mi===undefined){missing.push(h);continue;}const idx=CANCEL.findIndex(x=>norm(x)===n);
     add(c,p.rows.map(row=>cancelValues(row[mi])[idx]));continue;
    }
    const source=map[h]??h,si=sourceMap[norm(source)];if(si===undefined){if(map[h])missing.push(h);continue;}add(c,p.rows.map(row=>{let value=row?.[si]??"";if(n===norm("BAIRRO")&&value!==""&&value!==null&&value!==undefined)value=kind==="prazo"?String(value).trim().toUpperCase():String(value).toUpperCase();return value;}));
