@@ -1031,3 +1031,15 @@ body::before { background: none; }
 @media (max-width:620px) {
   .maintenance-spreadsheet-row { width:100%; }
 }
+
+
+/* MANUTENÇÕES — subtítulos entre a seleção da aba e do arquivo */
+.maintenance-file-subtitle {
+  margin: -3px 0 0;
+  padding: 0 5px;
+  color: #c9ded3;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .25px;
+  line-height: 1.35;
+}
