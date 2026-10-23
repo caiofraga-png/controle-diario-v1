@@ -3,7 +3,6 @@ import {useState} from "react";
 type SheetInfo={sheetId:number;title:string;hidden:boolean};
 type SourceFile={name:string;headers:string[];rows:unknown[][];hash:string};
 type Props={onClose?:()=>void;operation?:"import"|"update"};
-const TEST_SPREADSHEET_ID="1YqagsawoZ0INjsnfJt4OO_rzfk1pnkX1bi1ni5e4sUo";
 function md5Hex(buffer:ArrayBuffer){
  const bytes=new Uint8Array(buffer),length=bytes.length,paddedLength=Math.ceil((length+9)/64)*64,data=new Uint8Array(paddedLength);data.set(bytes);data[length]=0x80;
  const bitLength=length*8,view=new DataView(data.buffer);view.setUint32(paddedLength-8,bitLength>>>0,true);view.setUint32(paddedLength-4,Math.floor(bitLength/0x100000000),true);
@@ -127,7 +126,7 @@ export default function MaintenanceImporterPanel({onClose,operation="import"}:Pr
    </div>}
    <p className="importer-feedback" role="status">ACESSO RESTRITO: esta versão permite gravações somente na planilha autorizada para o teste.</p>
    <p className="importer-feedback">{isUpdate?"Use esta operação separadamente, depois das importações MANUT FEITAS e MANUT PRAZO. Ela atualiza somente registros existentes elegíveis.":"Execute MANUT FEITAS e MANUT PRAZO nesta tela. MANUT TODAS ABERTAS fica em uma tela separada e deve ser executada por último."}</p>
-   <button className="importer-execute-button" disabled={busy||!activeFiles||(isUpdate?!targetSheet:(!targetSheetFeitas||!targetSheetPrazo))||validatedId!==spreadsheetId.trim()||!processingRulesApproved||validatedId!==TEST_SPREADSHEET_ID} onClick={()=>completed&&onClose?onClose():void execute()}>{busy?"PROCESSANDO…":!processingRulesApproved?"PROCESSAMENTO EM REVISÃO":completed&&onClose?"ENCERRAR":isUpdate?"ATUALIZAR":"EXECUTAR"}</button>
+   <button className="importer-execute-button" disabled={busy||!activeFiles||(isUpdate?!targetSheet:(!targetSheetFeitas||!targetSheetPrazo))||validatedId!==spreadsheetId.trim()||!processingRulesApproved} onClick={()=>completed&&onClose?onClose():void execute()}>{busy?"PROCESSANDO…":!processingRulesApproved?"PROCESSAMENTO EM REVISÃO":completed&&onClose?"ENCERRAR":isUpdate?"ATUALIZAR":"EXECUTAR"}</button>
    {error&&<p className="importer-feedback error" role="alert">{error}</p>}{message&&<p className="importer-feedback" role="status">{message}</p>}
   </div>
  </section>;
