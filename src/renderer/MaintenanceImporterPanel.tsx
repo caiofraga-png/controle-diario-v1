@@ -19,7 +19,6 @@ async function hashFile(file:File){return md5Hex(await file.arrayBuffer());}
 
 export default function MaintenanceImporterPanel({onClose,operation="import"}:Props){
  const isUpdate=operation==="update";
- // Publicação de homologação: gravações permitidas exclusivamente na cópia de teste.
  const processingRulesApproved=true;
  const [spreadsheetId,setSpreadsheetId]=useState(()=>localStorage.getItem("controle-diario-manut-spreadsheet")??"");
  const [validatedId,setValidatedId]=useState("");
@@ -36,7 +35,6 @@ export default function MaintenanceImporterPanel({onClose,operation="import"}:Pr
  async function loadSheets(){
   const id=spreadsheetId.trim();
   if(!id){setError("INFORME O ID DA PLANILHA DE DESTINO.");return;}
-  if(id!==TEST_SPREADSHEET_ID){setError("ESTA VERSÃO ESTÁ RESTRITA À PLANILHA DE HOMOLOGAÇÃO. Use o ID autorizado da cópia de testes.");return;}
   setBusy(true);setError("");setMessage("");setCompleted(false);
   try{
    const r=await (window as any).controleDiario.sistema.testarSheets(id);
@@ -89,7 +87,6 @@ export default function MaintenanceImporterPanel({onClose,operation="import"}:Pr
  }
  async function execute(){
   if(validatedId!==spreadsheetId.trim()){setError("VALIDE O ID DA PLANILHA E CARREGUE AS ABAS ANTES DE CONTINUAR.");return;}
-  if(validatedId!==TEST_SPREADSHEET_ID){setError("EXECUÇÃO PERMITIDA SOMENTE NA PLANILHA DE HOMOLOGAÇÃO.");return;}
   if(isUpdate&&!targetSheet){setError("SELECIONE A ABA DE DESTINO.");return;}
   if(!isUpdate&&(!targetSheetFeitas||!targetSheetPrazo)){setError("SELECIONE UMA ABA PARA CADA ARQUIVO: MANUT FEITAS E MANUT PRAZO.");return;}
   if(!isUpdate&&(!feitas||!prazo)){setError("SELECIONE OS DOIS ARQUIVOS: MANUT FEITAS E MANUT PRAZO.");return;}
@@ -124,8 +121,6 @@ export default function MaintenanceImporterPanel({onClose,operation="import"}:Pr
     <div className="importer-field"><span>MANUT FEITAS</span><select value={targetSheetFeitas} onChange={e=>{setTargetSheetFeitas(e.target.value);if(e.target.value)localStorage.setItem("controle-diario-manut-tab-feitas",e.target.value);}} disabled={busy||validatedId!==spreadsheetId.trim()||!sheets.length}><option value="">Selecionar aba</option>{sheets.map(s=><option key={s.sheetId} value={s.title}>{s.title}</option>)}</select><div className="maintenance-file-subtitle">MANUTENCAO - DEMANDA DO DIA</div><input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={busy} onChange={e=>void readFile(e.target.files?.[0],"feitas")}/>{feitas&&<small>{feitas.name} · {feitas.rows.length.toLocaleString("pt-BR")} registros</small>}</div>
     <div className="importer-field"><span>MANUT PRAZO</span><select value={targetSheetPrazo} onChange={e=>{setTargetSheetPrazo(e.target.value);if(e.target.value)localStorage.setItem("controle-diario-manut-tab-prazo",e.target.value);}} disabled={busy||validatedId!==spreadsheetId.trim()||!sheets.length}><option value="">Selecionar aba</option>{sheets.map(s=><option key={s.sheetId} value={s.title}>{s.title}</option>)}</select><div className="maintenance-file-subtitle">MANUTENCAO — ABERTAS DO DIA</div><input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={busy} onChange={e=>void readFile(e.target.files?.[0],"prazo")}/>{prazo&&<small>{prazo.name} · {prazo.rows.length.toLocaleString("pt-BR")} registros</small>}</div>
    </div>}
-   <p className="importer-feedback" role="status">ACESSO RESTRITO: esta versão permite gravações somente na planilha autorizada para o teste.</p>
-   <p className="importer-feedback">{isUpdate?"Use esta operação separadamente, depois das importações MANUT FEITAS e MANUT PRAZO. Ela atualiza somente registros existentes elegíveis.":"Execute MANUT FEITAS e MANUT PRAZO nesta tela. MANUT TODAS ABERTAS fica em uma tela separada e deve ser executada por último."}</p>
    <button className="importer-execute-button" disabled={busy||!activeFiles||(isUpdate?!targetSheet:(!targetSheetFeitas||!targetSheetPrazo))||validatedId!==spreadsheetId.trim()||!processingRulesApproved} onClick={()=>completed&&onClose?onClose():void execute()}>{busy?"PROCESSANDO…":!processingRulesApproved?"PROCESSAMENTO EM REVISÃO":completed&&onClose?"ENCERRAR":isUpdate?"ATUALIZAR":"EXECUTAR"}</button>
    {error&&<p className="importer-feedback error" role="alert">{error}</p>}{message&&<p className="importer-feedback" role="status">{message}</p>}
   </div>
