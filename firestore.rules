@@ -38,7 +38,15 @@ service cloud.firestore {
     // A client cannot approve itself, alter its organizational fields, or grant roles.
     match /users/{uid} {
       allow read: if ownUserDocument(uid) || activeAdmin();
-      allow create, update, delete: if activeAdmin();
+      // Admin role assignment/removal is reserved for a trusted server-side
+      // operation so the last administrator cannot be removed by client code.
+      allow create: if activeAdmin()
+        && request.resource.data.role == "employee"
+        && request.resource.data.status in ["pending", "approved", "blocked", "rejected"];
+      allow update: if activeAdmin()
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.uid == resource.data.uid;
+      allow delete: if false;
 
       // Administrators may read operational records for oversight, but cannot
       // create/update/delete operational data belonging to another user.
