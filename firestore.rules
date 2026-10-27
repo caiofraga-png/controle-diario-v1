@@ -25,15 +25,23 @@ service cloud.firestore {
         && userRecord(request.auth.uid).data.role == "admin";
     }
 
-    // User profile documents are provisioned/maintained by an administrator
-    // through a trusted process. A client cannot approve itself or grant roles.
+    function allowedCorporateDomain() {
+      return signedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email is string
+        && exists(/databases/$(database)/documents/settings/allowedDomains)
+        && get(/databases/$(database)/documents/settings/allowedDomains).data.domains
+          .has(request.auth.token.email.split("@")[1].lower());
+    }
+
+    // Profile documents are provisioned/maintained by a trusted admin process.
+    // A client cannot approve itself, alter its organizational fields, or grant roles.
     match /users/{uid} {
       allow read: if ownUserDocument(uid) || activeAdmin();
       allow create, update, delete: if activeAdmin();
 
-      // Operational records belong to the collaborator. Administrators may
-      // read them for oversight, but cannot create, update, or delete another
-      // user's operational data. The owner may write their own records.
+      // Administrators may read operational records for oversight, but cannot
+      // create/update/delete operational data belonging to another user.
       match /operational/{document=**} {
         allow read: if approvedUser()
           && (request.auth.uid == uid || activeAdmin());
@@ -54,13 +62,13 @@ service cloud.firestore {
       }
     }
 
-    // Access requests are separate from approved user profiles. This permits
-    // a signed-in identity to request access but never to approve itself.
+    // Requests are separate from user profiles and never grant access themselves.
     match /accessRequests/{uid} {
       allow create: if ownUserDocument(uid)
+        && allowedCorporateDomain()
+        && request.resource.data.keys().hasOnly(["uid", "email", "status", "requestedAt"])
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.email == request.auth.token.email
-        && request.auth.token.email_verified == true
         && request.resource.data.status == "pending";
       allow read: if ownUserDocument(uid) || activeAdmin();
       allow update, delete: if activeAdmin();
@@ -84,7 +92,8 @@ service cloud.firestore {
     match /adminAudit/{auditId} {
       allow read: if activeAdmin();
       allow create: if activeAdmin()
-        && request.resource.data.actorUid == request.auth.uid;
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.createdAt == request.time;
       allow update, delete: if false;
     }
 
