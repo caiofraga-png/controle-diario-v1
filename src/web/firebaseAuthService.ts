@@ -81,6 +81,17 @@ export async function signInWithCorporateGoogle(): Promise<AccessResult> {
     };
   }
 
+  const requestRef = doc(db, "accessRequests", identity.uid);
+  const requestSnapshot = await getDoc(requestRef);
+  if (requestSnapshot.exists()) {
+    const requestStatus = String(requestSnapshot.data().status ?? "pending");
+    await signOut(auth);
+    if (requestStatus === "rejected" || requestStatus === "blocked") {
+      return { status: requestStatus, email };
+    }
+    return { status: "pending", email };
+  }
+
   const domainSnapshot = await getDoc(doc(db, ALLOWED_DOMAINS_DOC));
   const domains = domainSnapshot.exists()
     ? (domainSnapshot.data().domains as unknown[] | undefined) ?? []
@@ -92,7 +103,7 @@ export async function signInWithCorporateGoogle(): Promise<AccessResult> {
 
   // Firestore rules independently verify the verified email and allowed domain.
   // This request never creates an approved user profile or grants a role.
-  await setDoc(doc(db, "accessRequests", identity.uid), {
+  await setDoc(requestRef, {
     uid: identity.uid,
     email,
     status: "pending",
