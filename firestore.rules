@@ -1,0 +1,96 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function ownUserDocument(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function userRecord(uid) {
+      return get(/databases/$(database)/documents/users/$(uid));
+    }
+
+    function approvedUser() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && userRecord(request.auth.uid).data.status == "approved";
+    }
+
+    function activeAdmin() {
+      return approvedUser()
+        && userRecord(request.auth.uid).data.role == "admin";
+    }
+
+    // User profile documents are provisioned/maintained by an administrator
+    // through a trusted process. A client cannot approve itself or grant roles.
+    match /users/{uid} {
+      allow read: if ownUserDocument(uid) || activeAdmin();
+      allow create, update, delete: if activeAdmin();
+
+      // Operational records belong to the collaborator. Administrators may
+      // read them for oversight, but cannot create, update, or delete another
+      // user's operational data. The owner may write their own records.
+      match /operational/{document=**} {
+        allow read: if approvedUser()
+          && (request.auth.uid == uid || activeAdmin());
+        allow create, update, delete: if approvedUser()
+          && request.auth.uid == uid;
+      }
+
+      match /configuration/{document=**} {
+        allow read, write: if approvedUser() && request.auth.uid == uid;
+      }
+
+      match /calendar/{document=**} {
+        allow read, write: if approvedUser() && request.auth.uid == uid;
+      }
+
+      match /usefulLinks/{document=**} {
+        allow read, write: if approvedUser() && request.auth.uid == uid;
+      }
+    }
+
+    // Access requests are separate from approved user profiles. This permits
+    // a signed-in identity to request access but never to approve itself.
+    match /accessRequests/{uid} {
+      allow create: if ownUserDocument(uid)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.auth.token.email_verified == true
+        && request.resource.data.status == "pending";
+      allow read: if ownUserDocument(uid) || activeAdmin();
+      allow update, delete: if activeAdmin();
+    }
+
+    match /organizationSectors/{sectorId} {
+      allow read: if approvedUser();
+      allow write: if activeAdmin();
+    }
+
+    match /organizationContacts/{contactId} {
+      allow read: if approvedUser();
+      allow write: if activeAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if approvedUser();
+      allow write: if activeAdmin();
+    }
+
+    match /adminAudit/{auditId} {
+      allow read: if activeAdmin();
+      allow create: if activeAdmin()
+        && request.resource.data.actorUid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // Deny all unspecified collections by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
