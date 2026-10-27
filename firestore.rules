@@ -84,6 +84,13 @@ service cloud.firestore {
       allow write: if activeAdmin();
     }
 
+    // The domain allow-list is not secret and must be readable before approval
+    // so a first-time visitor can determine whether they may request access.
+    match /settings/allowedDomains {
+      allow read: if signedIn();
+      allow write: if activeAdmin();
+    }
+
     match /settings/{settingId} {
       allow read: if approvedUser();
       allow write: if activeAdmin();
