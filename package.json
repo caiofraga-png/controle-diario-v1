@@ -2,13 +2,14 @@
   "name": "controle-diario-web",
   "version": "1.0.0",
   "private": true,
-  "description": "CONTROLE DIÁRIO — aplicação web",
+  "description": "Leste - Controle Diário — aplicação web",
   "author": "Caio Fraga",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build"
   },
   "dependencies": {
+    "firebase": "^12.0.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "xlsx": "^0.18.5"
