@@ -35,6 +35,7 @@ Cada expediente concluído deve preservar uma fotografia da lotação no momento
 - Administradores podem consultar registros operacionais para supervisão gerencial, mas não podem criar, alterar ou excluir registros operacionais de outras pessoas.
 - O campo booleano `isSupervisor` é atribuído somente por um administrador. Supervisores podem consultar cartões de expediente cujo `sectorId` registrado corresponda ao seu setor atual; não podem editar nem excluir registros de outros colaboradores.
 - O índice `Expediente` armazena uma fotografia histórica do Setor e do Contato, para que transferências futuras não alterem a atribuição dos registros antigos.
+- As regras atuais exigem que, ao criar um cartão, o UID e os campos de identidade/lotação correspondam ao perfil aprovado do proprietário. Depois da criação, a regra de atualização permite alterar somente `status` e `completedAt`; proprietário, data, Login, Agente, Setor, Contato e fotografia histórica não podem ser alterados pelo cliente. A exclusão do índice pelo cliente é negada.
 - Somente administradores podem manter os cadastros de usuários e os catálogos organizacionais.
 - Verificações de função no cliente servem apenas para exibição; as regras de segurança do Firestore devem impor as permissões.
 - O arquivo de regras é um ponto de partida e precisa ser testado no Emulador do Firestore para cada operação pretendida antes da implantação. O fluxo de solicitação de acesso e a validação da lista de domínios ainda precisam de implementação final e verificação.
