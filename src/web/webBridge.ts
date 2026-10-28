@@ -12,6 +12,7 @@ import { createMaintenanceService } from "./maintenanceService";
 import { signInWithCorporateGoogle, restoreCorporateGoogleSession, observeCorporateAccess, signOutCorporateGoogle } from "./firebaseAuthService";
 import { FirebasePersonalDataService } from "./firebasePersonalDataService";
 import { FirebaseOperationalService } from "./firebaseOperationalService";
+import { FirebaseWorkspaceRepository } from "./firebaseWorkspaceRepository";
 
 const auth=new WebGoogleAuth(); const drive=new DriveService(auth); const data=new DataRepository(drive); const calendarHistory=new CalendarHistoryService(drive); const session=new WebSessionService(drive);
 
@@ -20,6 +21,7 @@ const volSupService=createVolSupService(()=>auth.getAccessToken());
 const maintenanceService=createMaintenanceService(()=>auth.getAccessToken());
 const firebasePersonalData = new FirebasePersonalDataService();
 const firebaseOperational = new FirebaseOperationalService();
+const firebaseWorkspace = new FirebaseWorkspaceRepository(firebasePersonalData, firebaseOperational);
 
 /**
  * Reproduz o fluxo do importador Apps Script: envia o arquivo escolhido
@@ -108,6 +110,10 @@ export function installWebBridge(){
    restoreSession:restoreCorporateGoogleSession,
    observeAccess:observeCorporateAccess,
    signOut:signOutCorporateGoogle,
+   loadWorkspace:()=>firebaseWorkspace.load(),
+   saveWorkspaceConfiguration:(config:any)=>firebaseWorkspace.saveConfiguration(config),
+   saveWorkspaceCalendar:(calendar:any)=>firebaseWorkspace.saveCalendar(calendar),
+   saveWorkspaceCurrentState:(state:EstadoAtual|null)=>firebaseWorkspace.saveCurrentState(state),
    loadConfiguration:()=>firebasePersonalData.loadConfiguration(),
    saveConfiguration:(config:any)=>firebasePersonalData.saveConfiguration(config),
    loadCalendar:()=>firebasePersonalData.loadCalendar(),
