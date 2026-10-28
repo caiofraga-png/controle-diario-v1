@@ -504,7 +504,7 @@ function hydrateKnownTaskLinks(config: Configuracao): { config: Configuracao; ch
   return { config: next, changed };
 }
 
-function defaultConfiguration(): Configuracao {
+export function defaultConfiguration(): Configuracao {
   const tarefas = [
     ["T001","DADOS ESTATÍSTICOS - SUPORTE"],
     ["T002","ATENDIMENTOS - CALL BACK"],
