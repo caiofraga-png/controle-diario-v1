@@ -19,6 +19,8 @@ export interface OrganizationalUser {
   sectorId: string;
   /** Stable identifier of the contact/team within the sector. */
   contactId: string;
+  /** Supervisors may view operational cards for their current sector. */
+  isSupervisor: boolean;
   status: AccountStatus;
   role: UserRole;
   createdAt: string;
@@ -43,8 +45,9 @@ export interface OrganizationalContact {
 }
 
 /**
- * Snapshot stored on each completed expediente. Historical reporting must use
- * this snapshot, not the collaborator's current sector/contact.
+ * Snapshot stored on each expediente. History uses this snapshot rather than
+ * the collaborator's current sector/contact, so old records remain attributed
+ * to the assignment in force when the expediente was recorded.
  */
 export interface OrganizationalAssignmentSnapshot {
   uid: string;
