@@ -12,7 +12,7 @@ import {
   setDoc,
   type DocumentData,
 } from "firebase/firestore";
-import { requireFirebase } from "./firebaseClient";
+import { firebaseAuthPersistenceReady, requireFirebase } from "./firebaseClient";
 import type { AccountStatus, OrganizationalUser, UserRole } from "../shared/types/organization";
 
 export type AccessResult =
@@ -48,13 +48,17 @@ function asOrganizationalUser(uid: string, data: DocumentData): OrganizationalUs
 }
 
 /**
- * Signs in with the Google account picker. This does not automatically grant
- * access: the Firestore user record must be approved by an administrator.
+ * Autentica com Google e respeita a persistência local do Firebase.
+ * A sessão não substitui a aprovação administrativa nem as regras do Firestore.
  */
 export async function signInWithCorporateGoogle(): Promise<AccessResult> {
   const { auth, db } = requireFirebase();
+  // Garante que a persistência local foi configurada antes de iniciar o login.
+  await firebaseAuthPersistenceReady;
+
   const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: "select_account" });
+  // Não força a tela de seleção de conta em toda autenticação.
+  // O usuário ainda poderá trocar de conta ao sair e iniciar novo login.
 
   const credential = await signInWithPopup(auth, provider);
   const identity = credential.user;
@@ -102,8 +106,8 @@ export async function signInWithCorporateGoogle(): Promise<AccessResult> {
     return { status: "not-allowed", email };
   }
 
-  // Firestore rules independently verify the verified email and allowed domain.
-  // This request never creates an approved user profile or grants a role.
+  // As regras do Firestore também validam o e-mail verificado e o domínio.
+  // A solicitação não cria perfil aprovado nem concede privilégios.
   await setDoc(requestRef, {
     uid: identity.uid,
     email,
