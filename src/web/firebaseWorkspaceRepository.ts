@@ -1,5 +1,5 @@
 import type { Configuracao, LoadedData } from "./dataRepository";
-import { defaultConfiguration } from "./dataRepository";
+import { defaultConfiguration, normalizeConfiguration } from "./dataRepository";
 import { FirebasePersonalDataService } from "./firebasePersonalDataService";
 import { FirebaseOperationalService } from "./firebaseOperationalService";
 
@@ -15,10 +15,10 @@ export class FirebaseWorkspaceRepository {
   ) {}
 
   async load(): Promise<LoadedData> {
-    let configuracao = await this.personal.loadConfiguration();
-    if (!configuracao) {
-      configuracao = defaultConfiguration();
-      await this.personal.saveConfiguration(configuracao);
+    const loadedConfiguration = await this.personal.loadConfiguration();
+    const configuracao = normalizeConfiguration(loadedConfiguration ?? defaultConfiguration());
+    if (!loadedConfiguration) {
+      await this.personal.saveConfiguration(normalizeConfiguration(configuracao));
     }
 
     const [calendar, estado] = await Promise.all([
