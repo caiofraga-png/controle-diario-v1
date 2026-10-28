@@ -504,6 +504,20 @@ function hydrateKnownTaskLinks(config: Configuracao): { config: Configuracao; ch
   return { config: next, changed };
 }
 
+export function normalizeConfiguration(config: Configuracao): Configuracao {
+  const validated: Configuracao = {
+    tarefas: validateTarefas(config.tarefas),
+    perfis: validatePerfis(config.perfis),
+    email: validateEmails(config.email),
+    layout: validateLayout(config.layout),
+  };
+  const linked = hydrateKnownTaskLinks(validated);
+  const creation = hydrateKnownTaskCreation(linked.config);
+  const roteiro = hydrateKnownTaskRoteiro(creation.config);
+  validateConfigurationConsistency(roteiro.config);
+  return roteiro.config;
+}
+
 export function defaultConfiguration(): Configuracao {
   const tarefas = [
     ["T001","DADOS ESTATÍSTICOS - SUPORTE"],
