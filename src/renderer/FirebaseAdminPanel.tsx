@@ -14,10 +14,13 @@ import {
   updateOrganizationalUser,
 } from "../web/firebaseAdminService";
 import type { OrganizationalContact, OrganizationalSector, OrganizationalUser } from "../shared/types/organization";
+import { signInWithCorporateGoogle, signOutCorporateGoogle } from "../web/firebaseAuthService";
 
 type RequestItem = { id: string; uid?: string; email?: string; status?: string };
 
 export default function FirebaseAdminPanel() {
+  const [authorized, setAuthorized] = useState(false);
+  const [signedEmail, setSignedEmail] = useState("");
   const [requests, setRequests] = useState<RequestItem[]>([]);
   const [users, setUsers] = useState<OrganizationalUser[]>([]);
   const [sectors, setSectors] = useState<OrganizationalSector[]>([]);
@@ -53,7 +56,26 @@ export default function FirebaseAdminPanel() {
     }
   }
 
-  useEffect(() => { void refresh(); }, []);
+  async function signInAdmin() {
+    setBusy(true);
+    setMessage("");
+    try {
+      const result = await signInWithCorporateGoogle();
+      if (result.status !== "approved" || result.user.role !== "admin") {
+        await signOutCorporateGoogle();
+        setAuthorized(false);
+        setMessage("Esta conta não possui privilégios administrativos aprovados.");
+        return;
+      }
+      setAuthorized(true);
+      setSignedEmail(result.user.email);
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Não foi possível autenticar o administrador.");
+    } finally { setBusy(false); }
+  }
+
+  useEffect(() => { /* Administrative data is loaded only after role verification. */ }, []);
 
   function chooseRequest(item: RequestItem) {
     setSelected(item.id);
@@ -142,9 +164,12 @@ export default function FirebaseAdminPanel() {
     <header>
       <h2>Administração do Leste - Controle Diário</h2>
       <p>Gerencie acessos e cadastros organizacionais. Os expedientes são somente para consulta gerencial; este painel não oferece edição nem exclusão dos registros operacionais.</p>
-      <button type="button" disabled={busy} onClick={() => void refresh()}>Atualizar dados</button>
+      {!authorized
+        ? <button type="button" disabled={busy} onClick={() => void signInAdmin()}>Entrar com conta Google empresarial</button>
+        : <div><p>Administrador autenticado: {signedEmail}</p><button type="button" disabled={busy} onClick={() => void refresh()}>Atualizar dados</button> <button type="button" disabled={busy} onClick={() => { void signOutCorporateGoogle(); setAuthorized(false); setSignedEmail(""); }}>Sair da administração</button></div>}
     </header>
     {message && <p role="status" className="system-message">{message}</p>}
+    {!authorized ? <p>Entre com uma conta previamente aprovada com privilégios administrativos para acessar esta área.</p> : <>
 
     <section>
       <h3>Solicitações de acesso</h3>
@@ -220,5 +245,6 @@ export default function FirebaseAdminPanel() {
       <textarea rows={4} value={domains} onChange={(event) => setDomains(event.target.value)} />
       <button type="button" disabled={busy} onClick={() => void saveDomains()}>Salvar domínios</button>
     </section>
+    </>}
   </main>;
 }
