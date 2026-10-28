@@ -18,7 +18,7 @@ export class FirebaseWorkspaceRepository {
     const loadedConfiguration = await this.personal.loadConfiguration();
     const configuracao = normalizeConfiguration(loadedConfiguration ?? defaultConfiguration());
     if (!loadedConfiguration) {
-      await this.personal.saveConfiguration(normalizeConfiguration(configuracao));
+      await this.personal.saveConfiguration(configuracao);
     }
 
     const [calendar, estado] = await Promise.all([
@@ -34,7 +34,7 @@ export class FirebaseWorkspaceRepository {
   }
 
   async saveConfiguration(configuracao: Configuracao): Promise<void> {
-    await this.personal.saveConfiguration(configuracao);
+    await this.personal.saveConfiguration(normalizeConfiguration(configuracao));
   }
 
   async saveCalendar(calendario: LoadedData["calendario"]): Promise<void> {
