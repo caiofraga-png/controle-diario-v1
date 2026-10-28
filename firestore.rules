@@ -31,7 +31,7 @@ service cloud.firestore {
         && request.auth.token.email is string
         && exists(/databases/$(database)/documents/settings/allowedDomains)
         && get(/databases/$(database)/documents/settings/allowedDomains).data.domains
-          .has(request.auth.token.email.split("@")[1].lower());
+          .hasAny([request.auth.token.email.split("@")[1].lower()]);
     }
 
     // Profile documents are provisioned/maintained by a trusted admin process.
