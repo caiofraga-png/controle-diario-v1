@@ -111,7 +111,19 @@ function App() {
     let active = true;
     try {
       stop = window.controleDiario.firebase.observeAccess(
-        (result:any) => { if (active) setFirebaseAccess(result); },
+        (result:any) => {
+          if (!active) return;
+          setFirebaseAccess((previous:any) => {
+            // Login requests are intentionally signed out after being queued or
+            // denied. Preserve that outcome instead of replacing it with the
+            // observer's follow-up signed-out event.
+            if (result.status === "signed-out" &&
+                ["pending", "blocked", "rejected", "not-allowed"].includes(previous?.status)) {
+              return previous;
+            }
+            return result;
+          });
+        },
         (error:Error) => { if (active) setFirebaseAccess({ status:"error", message:error.message }); },
       );
     } catch (error) {
