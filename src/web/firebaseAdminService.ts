@@ -23,6 +23,7 @@ function asUser(id: string, data: DocumentData): OrganizationalUser {
     agent: String(data.agent ?? ""),
     sectorId: String(data.sectorId ?? ""),
     contactId: String(data.contactId ?? ""),
+    isSupervisor: data.isSupervisor === true,
     status: data.status,
     role: data.role,
     createdAt: String(data.createdAt ?? ""),
@@ -74,6 +75,7 @@ export async function approveAccessRequest(input: {
     agent: input.agent.trim(),
     sectorId: input.sectorId,
     contactId: input.contactId,
+    isSupervisor: false,
     status: "approved",
     role: "employee",
     createdAt: now,
@@ -98,7 +100,7 @@ export async function rejectAccessRequest(uid: string, reason = "") {
 
 export async function updateOrganizationalUser(
   uid: string,
-  changes: Pick<OrganizationalUser, "login" | "agent" | "sectorId" | "contactId">
+  changes: Pick<OrganizationalUser, "login" | "agent" | "sectorId" | "contactId" | "isSupervisor">
 ) {
   const { db } = requireFirebase();
   await updateDoc(doc(db, "users", uid), {
@@ -106,6 +108,7 @@ export async function updateOrganizationalUser(
     agent: changes.agent.trim(),
     sectorId: changes.sectorId,
     contactId: changes.contactId,
+    isSupervisor: changes.isSupervisor,
     updatedAt: new Date().toISOString(),
   });
   await audit("ORGANIZATIONAL_PROFILE_UPDATED", uid, changes);
