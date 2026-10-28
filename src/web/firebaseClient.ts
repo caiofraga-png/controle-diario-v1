@@ -1,6 +1,11 @@
 /// <reference types="vite/client" />
 import { getApp, getApps, initializeApp, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
+import {
+  browserLocalPersistence,
+  getAuth,
+  setPersistence,
+  type Auth,
+} from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 
 type FirebaseWebConfig = {
@@ -34,11 +39,11 @@ function readConfig(): FirebaseWebConfig | null {
 const config = readConfig();
 
 /**
- * Firebase client initialization only.
+ * Inicialização do Firebase no navegador.
  *
- * The Firebase web configuration identifies the project; it is not an admin
- * credential. Access control must be enforced by Firestore Security Rules.
- * Never place service-account credentials or Admin SDK secrets in VITE_* vars.
+ * A configuração web identifica o projeto; não é uma credencial administrativa.
+ * O controle de acesso deve ser aplicado pelas regras de segurança do Firestore.
+ * Nunca coloque chaves de conta de serviço ou segredos do Admin SDK em variáveis VITE_*.
  */
 export const firebaseConfigured = config !== null;
 
@@ -48,6 +53,16 @@ export const firebaseApp: FirebaseApp | null = config
 
 export const firebaseAuth: Auth | null = firebaseApp ? getAuth(firebaseApp) : null;
 export const firestore: Firestore | null = firebaseApp ? getFirestore(firebaseApp) : null;
+
+/**
+ * Mantém a sessão autenticada no armazenamento local do navegador.
+ * O Firebase renova tokens quando possível; isso não impede uma nova autenticação
+ * se o usuário sair, revogar o acesso, limpar os dados do navegador ou se uma
+ * política corporativa exigir autenticação periódica.
+ */
+export const firebaseAuthPersistenceReady: Promise<void> = firebaseAuth
+  ? setPersistence(firebaseAuth, browserLocalPersistence)
+  : Promise.resolve();
 
 export function requireFirebase(): { app: FirebaseApp; auth: Auth; db: Firestore } {
   if (!firebaseApp || !firebaseAuth || !firestore) {
