@@ -14,6 +14,7 @@ import { FirebasePersonalDataService } from "./firebasePersonalDataService";
 import { FirebaseOperationalService } from "./firebaseOperationalService";
 import { FirebaseWorkspaceRepository } from "./firebaseWorkspaceRepository";
 import { normalizeConfiguration as normalizeFirebaseConfiguration } from "./dataRepository";
+import { FirebaseWorkflowService } from "./firebaseWorkflowService";
 
 const auth=new WebGoogleAuth(); const drive=new DriveService(auth); const data=new DataRepository(drive); const calendarHistory=new CalendarHistoryService(drive); const session=new WebSessionService(drive);
 
@@ -23,6 +24,7 @@ const maintenanceService=createMaintenanceService(()=>auth.getAccessToken());
 const firebasePersonalData = new FirebasePersonalDataService();
 const firebaseOperational = new FirebaseOperationalService();
 const firebaseWorkspace = new FirebaseWorkspaceRepository(firebasePersonalData, firebaseOperational);
+const firebaseWorkflow = new FirebaseWorkflowService(firebaseWorkspace, firebaseOperational);
 
 /**
  * Reproduz o fluxo do importador Apps Script: envia o arquivo escolhido
@@ -124,7 +126,22 @@ export function installWebBridge(){
    completeState:(state:any,completedAt?:string)=>firebaseOperational.completeState(state,completedAt),
    listHistory:(date:string)=>firebaseOperational.listHistory(date),
    readHistory:(historyId:string)=>firebaseOperational.readHistory(historyId),
-   saveErrata:(source:any,edited:any)=>firebaseOperational.saveErrata(source,edited)
+   saveErrata:(source:any,edited:any)=>firebaseOperational.saveErrata(source,edited),
+   workflow:{
+    load:()=>firebaseWorkflow.load(),
+    iniciar:(input:any)=>firebaseWorkflow.start(input),
+    trocarPerfil:(profileId:string)=>firebaseWorkflow.switchProfile(profileId),
+    marcar:(input:any)=>firebaseWorkflow.mark(input),
+    observacao:(value:string)=>firebaseWorkflow.setObservation(value),
+    concluir:()=>firebaseWorkflow.complete(),
+    abandonar:()=>firebaseWorkflow.abandon(),
+    salvarConfiguracao:(config:any)=>firebaseWorkflow.saveConfiguration(config),
+    salvarTarefa:(input:any)=>firebaseWorkflow.saveTask(input),
+    novaTarefa:(input:any)=>firebaseWorkflow.addTask(input),
+    novoPerfil:(input:any)=>firebaseWorkflow.addProfile(input),
+    novoEmail:(input:any)=>firebaseWorkflow.addEmail(input),
+    salvarDataCalendario:(input:any)=>firebaseWorkflow.saveCalendarDate(input)
+   }
   },
   sistema:{
    importarVolSup:volSupService.importarVolSup,
