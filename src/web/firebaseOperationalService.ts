@@ -96,7 +96,7 @@ export class FirebaseOperationalService {
         concluidoEm: record.concluidoEm,
         origemVersao: record.origemVersao,
       };
-    });
+    }).sort((a, b) => a.versao - b.versao);
   }
 
   async readHistory(historyId: string): Promise<RegistroHistorico> {
