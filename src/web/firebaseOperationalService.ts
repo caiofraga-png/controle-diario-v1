@@ -87,8 +87,8 @@ export class FirebaseOperationalService {
   async listHistory(date: string): Promise<Array<{ versao: number; nome: string; concluidoEm: string; origemVersao: string | null }>> {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("A DATA DO HISTÓRICO É INVÁLIDA.");
     const uid = this.uid();
-    const records = await getDocs(query(this.historyCollection(uid), where("data", "==", date)));
-    return records.docs.map(snapshot => {
+    const records = await getDocs(query(this.historyCollection(uid), where("ownerUid", "==", uid)));
+    return records.docs.filter(snapshot => snapshot.data().data === date).map(snapshot => {
       const record = snapshot.data() as HistoryEntry;
       return {
         versao: record.versao,
@@ -138,8 +138,8 @@ export class FirebaseOperationalService {
       if (persistedProgress.total === 0 || persistedProgress.done !== persistedProgress.total) {
         throw new Error("O EXPEDIENTE AINDA NÃO ESTÁ 100% CONCLUÍDO.");
       }
-      const existing = await transaction.get(query(history, where("data", "==", persistedState.data)));
-      const versions = existing.docs.map(item => Number(item.data().versao)).filter(Number.isFinite);
+      const existing = await transaction.get(query(history, where("ownerUid", "==", uid)));
+      const versions = existing.docs.filter(item => item.data().data === persistedState.data).map(item => Number(item.data().versao)).filter(Number.isFinite);
       const versao = (versions.length ? Math.max(...versions) : 0) + 1;
       const recordId = persistedState.data + "_R" + String(versao).padStart(3, "0");
       const recordRef = doc(history, recordId);
@@ -221,8 +221,8 @@ export class FirebaseOperationalService {
     const { db } = requireFirebase();
     const history = this.historyCollection(uid);
     return runTransaction(db, async transaction => {
-      const existing = await transaction.get(query(history, where("data", "==", source.data)));
-      const versions = existing.docs.map(item => Number(item.data().versao)).filter(Number.isFinite);
+      const existing = await transaction.get(query(history, where("ownerUid", "==", uid)));
+      const versions = existing.docs.filter(item => item.data().data === source.data).map(item => Number(item.data().versao)).filter(Number.isFinite);
       const versao = (versions.length ? Math.max(...versions) : 0) + 1;
       const recordId = source.data + "_R" + String(versao).padStart(3, "0");
       const recordRef = doc(history, recordId);
