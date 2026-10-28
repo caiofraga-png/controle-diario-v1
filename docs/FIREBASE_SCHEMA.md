@@ -67,3 +67,42 @@ expedientes.
 - The rules file is a starting point and must be emulator-tested against every
   intended operation before deployment. The access-request flow and domain
   allow-list check require final implementation and verification.
+
+
+## Supervisor access: extensible design
+
+The initial release may use the current sector as its first access boundary, but
+`sectorId` must not become the permanent or only supervisor filter.
+
+Keep three concepts separate:
+
+1. **Supervisor designation**: an administrator-managed flag on the user's
+   organizational profile. A user cannot grant this privilege to themselves.
+2. **Access policy**: the server-enforced rule that determines which records a
+   supervisor is authorized to read. The current sector-based rule is the
+   initial policy, not the long-term policy model.
+3. **View filters**: optional filters selected in the interface (for example
+   sector, contact, agent, date range, or expediente status). UI filters may
+   narrow authorized results but must never grant access to records that the
+   access policy does not permit.
+
+When implementing richer supervisor filtering, introduce a dedicated,
+versioned policy representation/service rather than scattering hard-coded
+sector checks across components. It should be able to express permitted
+organizational dimensions and scopes, such as one or more sectors, contacts,
+agents, or explicit assignments, while retaining a safe default-deny outcome.
+The exact policy schema and editor are intentionally deferred until business
+requirements are defined.
+
+Firestore Security Rules and query design must enforce the same policy. Do not
+trust client-side filters or accept arbitrary field names/values from a client
+as authorization. Where a policy cannot be securely represented or queried in
+Firestore Rules, enforce it through a trusted backend (for example, a callable
+Cloud Function) and keep the client from reading the underlying collection
+directly. Test each allowed and denied query in the Firestore Emulator before
+deployment. Add indexes only for query combinations that are actually approved
+and used.
+
+Replacing the initial sector-based rule with a richer policy must include
+backward-compatibility handling and tests for users whose sector/contact changes
+after historical expedientes were saved.
