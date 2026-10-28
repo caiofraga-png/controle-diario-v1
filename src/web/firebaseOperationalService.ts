@@ -127,6 +127,11 @@ export class FirebaseOperationalService {
     const currentRef = this.currentRef(uid);
     const history = this.historyCollection(uid);
 
+    const existing = await getDocs(query(history, where("ownerUid", "==", uid)));
+    const versions = existing.docs.filter(item => item.data().data === state.data).map(item => Number(item.data().versao)).filter(Number.isFinite);
+    const versao = (versions.length ? Math.max(...versions) : 0) + 1;
+    const recordId = state.data + "_R" + String(versao).padStart(3, "0");
+
     return runTransaction(db, async transaction => {
       const currentSnapshot = await transaction.get(currentRef);
       const currentData = currentSnapshot.exists() ? currentSnapshot.data() : null;
@@ -138,10 +143,6 @@ export class FirebaseOperationalService {
       if (persistedProgress.total === 0 || persistedProgress.done !== persistedProgress.total) {
         throw new Error("O EXPEDIENTE AINDA NÃO ESTÁ 100% CONCLUÍDO.");
       }
-      const existing = await transaction.get(query(history, where("ownerUid", "==", uid)));
-      const versions = existing.docs.filter(item => item.data().data === persistedState.data).map(item => Number(item.data().versao)).filter(Number.isFinite);
-      const versao = (versions.length ? Math.max(...versions) : 0) + 1;
-      const recordId = persistedState.data + "_R" + String(versao).padStart(3, "0");
       const recordRef = doc(history, recordId);
       const record: HistoryEntry = {
         schemaVersion: 1,
@@ -220,11 +221,12 @@ export class FirebaseOperationalService {
     const uid = this.uid();
     const { db } = requireFirebase();
     const history = this.historyCollection(uid);
+    const existing = await getDocs(query(history, where("ownerUid", "==", uid)));
+    const versions = existing.docs.filter(item => item.data().data === source.data).map(item => Number(item.data().versao)).filter(Number.isFinite);
+    const versao = (versions.length ? Math.max(...versions) : 0) + 1;
+    const recordId = source.data + "_R" + String(versao).padStart(3, "0");
+
     return runTransaction(db, async transaction => {
-      const existing = await transaction.get(query(history, where("ownerUid", "==", uid)));
-      const versions = existing.docs.filter(item => item.data().data === source.data).map(item => Number(item.data().versao)).filter(Number.isFinite);
-      const versao = (versions.length ? Math.max(...versions) : 0) + 1;
-      const recordId = source.data + "_R" + String(versao).padStart(3, "0");
       const recordRef = doc(history, recordId);
       const record: HistoryEntry = {
         ...clone(source),
