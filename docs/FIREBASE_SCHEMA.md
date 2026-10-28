@@ -1,108 +1,56 @@
-# Leste - Controle Diário: Firebase schema (initial)
+# Leste - Controle Diário: estrutura inicial do Firebase
 
-This document records the proposed Firestore layout. It is not a claim that a
-Firebase project has been created or configured.
+Este documento descreve a estrutura proposta para o Firestore. Ele não significa que um projeto Firebase tenha sido criado ou configurado.
 
-## Identity and organization
+## Identidade e organização
 
-- `users/{uid}`: administrator-maintained organizational user profile.
-  Fields include corporate email, Login, Agente, current Setor/Contato IDs,
-  account status, role, and timestamps. The Firebase Authentication UID is
-  the stable identity key.
-- `organizationSectors/{sectorId}`: administrator-maintained sector catalog.
-- `organizationContacts/{contactId}`: administrator-maintained contact catalog;
-  each contact references its parent `sectorId`.
-- `accessRequests/{uid}`: requests awaiting an administrator's decision.
-- `settings/allowedDomains`: centrally managed list of permitted corporate
-  email domains.
-- `adminAudit/{auditId}`: append-only record of relevant administrative actions.
+- `users/{uid}`: perfil organizacional do colaborador, mantido por administradores. Inclui e-mail corporativo, Login, Agente, IDs atuais de Setor e Contato, situação da conta, função e datas de criação/atualização. O UID do Firebase Authentication é a identidade estável.
+- `organizationSectors/{sectorId}`: catálogo de setores, mantido por administradores.
+- `organizationContacts/{contactId}`: catálogo de contatos/equipes, mantido por administradores; cada contato aponta para o respectivo `sectorId`.
+- `accessRequests/{uid}`: solicitações aguardando decisão administrativa.
+- `settings/allowedDomains`: lista central de domínios de e-mail corporativo permitidos.
+- `adminAudit/{auditId}`: registro somente de acréscimo das ações administrativas relevantes.
 
-The initial administrator must be provisioned through a trusted, controlled
-procedure. A browser client must never be able to assign itself the admin role.
+O administrador inicial deve ser provisionado por um procedimento confiável e controlado. O cliente executado no navegador nunca pode conceder a si mesmo a função de administrador.
 
-## Per-user data
+## Dados individuais
 
-- `users/{uid}/configuration/{documentId}`: that user's own task/profile/email/
-  layout configuration. New users start with an independent configuration;
-  the current shared Drive configuration is not copied automatically.
-- `Expediente/{expedienteId}`: shared, queryable index of expediente cards for
-  future sector/contact oversight. Each document must include `ownerUid`,
-  `date`, `status`, `sectorId`, `sectorName`, `contactId`, `contactName`,
-  `login`, `agent`, and an assignment snapshot. The collection is intentionally
-  defined now; Firestore does not physically retain an empty collection until
-  the first document is written.
-- `users/{uid}/operational/{documentId}`: optional private per-user source/history
-  records if the final repository design needs them. The `Expediente` index must
-  not replace the user's own durable history.
-- `users/{uid}/calendar/{documentId}`: that user's calendar.
-- `users/{uid}/usefulLinks/{documentId}`: that user's useful links.
+- `users/{uid}/configuration/{documentId}`: configuração própria de tarefas, perfis, e-mails e layout. Cada novo usuário começa com configuração independente; a configuração compartilhada atual do Google Drive não é copiada automaticamente.
+- `Expediente/{expedienteId}`: índice compartilhado e consultável dos cartões de expediente, destinado à futura supervisão por setor/contato. Cada documento deve conter `ownerUid`, `date`, `status`, `sectorId`, `sectorName`, `contactId`, `contactName`, `login`, `agent` e uma fotografia histórica da lotação. A coleção está definida no projeto, mas o Firestore não mantém uma coleção vazia até que exista ao menos um documento.
+- `users/{uid}/operational/{documentId}`: registros privados individuais de operação/histórico, caso a arquitetura final os utilize. O índice `Expediente` não pode substituir o histórico durável do próprio colaborador.
+- `users/{uid}/calendar/{documentId}`: calendário individual.
+- `users/{uid}/usefulLinks/{documentId}`: links úteis individuais.
 
-The final document IDs and subcollection split must be reconciled with the
-existing repository's actual read/write operations before connecting the UI.
-Large histories should be paginated; avoid a single ever-growing document.
+Os IDs finais dos documentos e a divisão entre subcoleções precisam ser conferidos com as operações reais do repositório antes de conectar a interface. Históricos grandes devem ser paginados; evite armazenar todo o histórico em um único documento que cresce indefinidamente.
 
-## Historical organizational snapshot
+## Fotografia histórica da lotação
 
-Every completed expediente must retain an assignment snapshot captured at
-completion (and, if required by the business rules, when the expediente starts):
-UID, Login, Agente, Setor ID/name, and Contato ID/name. A later organizational
-change updates the user's current profile only; it must not rewrite past
-expedientes.
+Cada expediente concluído deve preservar uma fotografia da lotação no momento da conclusão (e, se as regras operacionais exigirem, também no início): UID, Login, Agente, ID/nome do Setor e ID/nome do Contato. Uma alteração posterior no cadastro atualiza apenas o perfil atual do colaborador; não deve reescrever os expedientes antigos.
 
-## Authorization principles
+## Princípios de autorização
 
-- Authentication does not imply approval.
-- Approved status and role are read from a trusted user record.
-- Employees read/write only their own operational data.
-- Administrators can read operational records for oversight, but cannot
-  create/update/delete another user's operational records.
-- A separate `isSupervisor` boolean is assigned only by an administrator.
-  Supervisors may read expediente cards whose recorded `sectorId` matches
-  their current sector; they cannot edit or delete another employee's records.
-- The `Expediente` collection stores a historical snapshot of sector/contact,
-  so later transfers do not rewrite the attribution of old cards.
-- Only administrators can maintain user and organizational catalog records.
-- Client-side role checks are for presentation only; Firestore rules enforce
-  access control.
-- The rules file is a starting point and must be emulator-tested against every
-  intended operation before deployment. The access-request flow and domain
-  allow-list check require final implementation and verification.
+- Autenticar-se não significa ter acesso aprovado.
+- A situação da conta e a função são consultadas em um registro confiável.
+- Cada colaborador lê e grava somente seus próprios dados operacionais.
+- Administradores podem consultar registros operacionais para supervisão gerencial, mas não podem criar, alterar ou excluir registros operacionais de outras pessoas.
+- O campo booleano `isSupervisor` é atribuído somente por um administrador. Supervisores podem consultar cartões de expediente cujo `sectorId` registrado corresponda ao seu setor atual; não podem editar nem excluir registros de outros colaboradores.
+- O índice `Expediente` armazena uma fotografia histórica do Setor e do Contato, para que transferências futuras não alterem a atribuição dos registros antigos.
+- Somente administradores podem manter os cadastros de usuários e os catálogos organizacionais.
+- Verificações de função no cliente servem apenas para exibição; as regras de segurança do Firestore devem impor as permissões.
+- O arquivo de regras é um ponto de partida e precisa ser testado no Emulador do Firestore para cada operação pretendida antes da implantação. O fluxo de solicitação de acesso e a validação da lista de domínios ainda precisam de implementação final e verificação.
 
+## Acesso de supervisores: projeto extensível
 
-## Supervisor access: extensible design
+A primeira versão pode usar o setor atual como limite inicial de acesso, mas `sectorId` não deve se tornar o único filtro permanente para supervisores.
 
-The initial release may use the current sector as its first access boundary, but
-`sectorId` must not become the permanent or only supervisor filter.
+Mantenha separados três conceitos:
 
-Keep three concepts separate:
+1. **Designação de supervisor:** sinalizador mantido no perfil organizacional por um administrador. O próprio usuário não pode conceder esse privilégio a si mesmo.
+2. **Política de acesso:** regra aplicada no servidor que determina quais registros o supervisor pode consultar. A regra inicial baseada no setor é apenas a primeira política, não o modelo definitivo.
+3. **Filtros da visualização:** filtros opcionais escolhidos na interface, como setor, contato, agente, intervalo de datas ou situação do expediente. Os filtros da interface podem restringir os resultados autorizados, mas nunca podem conceder acesso a registros que a política não permita.
 
-1. **Supervisor designation**: an administrator-managed flag on the user's
-   organizational profile. A user cannot grant this privilege to themselves.
-2. **Access policy**: the server-enforced rule that determines which records a
-   supervisor is authorized to read. The current sector-based rule is the
-   initial policy, not the long-term policy model.
-3. **View filters**: optional filters selected in the interface (for example
-   sector, contact, agent, date range, or expediente status). UI filters may
-   narrow authorized results but must never grant access to records that the
-   access policy does not permit.
+Ao implementar filtros mais avançados para supervisores, crie uma representação/versionamento específico de política e um serviço responsável por aplicá-la, em vez de espalhar verificações fixas de setor pelos componentes. A estrutura deve permitir diferentes dimensões e escopos autorizados, como vários setores, contatos, agentes ou colaboradores específicos, mantendo o padrão seguro de negar acesso quando não houver autorização. O formato exato da política e sua interface de administração ficam para uma etapa posterior, quando os requisitos estiverem definidos.
 
-When implementing richer supervisor filtering, introduce a dedicated,
-versioned policy representation/service rather than scattering hard-coded
-sector checks across components. It should be able to express permitted
-organizational dimensions and scopes, such as one or more sectors, contacts,
-agents, or explicit assignments, while retaining a safe default-deny outcome.
-The exact policy schema and editor are intentionally deferred until business
-requirements are defined.
+As regras de segurança do Firestore e as consultas devem impor a mesma política. Não confie em filtros executados somente no cliente nem aceite nomes de campos ou valores arbitrários como autorização. Se uma política não puder ser representada ou consultada com segurança pelas regras do Firestore, aplique-a em um serviço confiável no servidor (por exemplo, uma Cloud Function chamada pelo cliente) e impeça o acesso direto do cliente à coleção subjacente. Teste no Emulador do Firestore cada consulta permitida e cada consulta negada antes da implantação. Crie índices apenas para combinações de consulta aprovadas e efetivamente utilizadas.
 
-Firestore Security Rules and query design must enforce the same policy. Do not
-trust client-side filters or accept arbitrary field names/values from a client
-as authorization. Where a policy cannot be securely represented or queried in
-Firestore Rules, enforce it through a trusted backend (for example, a callable
-Cloud Function) and keep the client from reading the underlying collection
-directly. Test each allowed and denied query in the Firestore Emulator before
-deployment. Add indexes only for query combinations that are actually approved
-and used.
-
-Replacing the initial sector-based rule with a richer policy must include
-backward-compatibility handling and tests for users whose sector/contact changes
-after historical expedientes were saved.
+A substituição da regra inicial baseada em setor por uma política mais completa deve incluir compatibilidade com dados existentes e testes para colaboradores cujo Setor ou Contato tenha mudado depois do registro de expedientes antigos.
