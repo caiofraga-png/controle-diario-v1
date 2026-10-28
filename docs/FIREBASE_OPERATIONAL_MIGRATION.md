@@ -1,90 +1,90 @@
-# Operational persistence migration plan
+# Plano de migração do armazenamento operacional
 
-Status: design contract for the feature branch; not yet wired into the application.
+**Situação:** especificação técnica da branch de desenvolvimento; ainda não conectada ao funcionamento do aplicativo.
 
-This plan is intentionally additive. The current Drive-backed repository remains the runtime source until the Firestore adapter and UI flow are integrated and validated. Do not remove Drive compatibility or change `main` as part of this design step.
+Este plano acrescenta a estrutura necessária sem substituir prematuramente o armazenamento atual. O repositório baseado no Google Drive continuará sendo a fonte usada pelo aplicativo até que o adaptador do Firestore e o fluxo da interface sejam integrados e validados. Não remova a compatibilidade com o Drive nem altere a branch `main` nesta etapa de planejamento.
 
-## Existing behavior that must be preserved
+## Comportamentos atuais que precisam ser preservados
 
-The current implementation in `src/web/dataRepository.ts` and `src/web/calendarHistoryService.ts` defines these behaviors:
+A implementação em `src/web/dataRepository.ts` e `src/web/calendarHistoryService.ts` define os seguintes comportamentos:
 
-- Configuration consists of tasks, profiles, email templates/global email selections, and layout; it is validated as schema version 1 and cross-checked for valid task/profile/email references.
-- Calendar data contains special dates (days off and holidays).
-- The current expediente is nullable and contains a date, profile snapshot, task/email completion marks, observations, and creation/update timestamps.
-- Closing an expediente creates a completed historical record and clears current/previous state. The existing close flow also attempts recovery when a previous write appears to have completed already; that duplicate-recovery behavior must be retained.
-- History is versioned. Errata creates a new version rather than overwriting the original and may change only completion marks and observation. Task structure, task text/link/roteiro, email content, and email identity remain unchanged.
-- Calendar history derives completed dates from the existence of history records.
-- The existing task and importer business rules are outside the scope of this storage migration.
+- A configuração reúne tarefas, perfis, modelos de e-mail, seleção de e-mails globais e layout. Ela é validada com a versão 1 do esquema e conferida quanto à consistência das referências entre tarefas, perfis e e-mails.
+- O calendário contém datas especiais, como folgas e feriados.
+- O expediente atual pode estar vazio ou conter data, fotografia do perfil, marcações de conclusão de tarefas/e-mails, observações e datas de criação/alteração.
+- Ao concluir um expediente, é criado um registro histórico e o estado atual/anterior é limpo. O fluxo atual também tenta recuperar a operação quando uma gravação anterior aparentemente já foi concluída; esse mecanismo de recuperação de duplicidade deve ser mantido.
+- O histórico possui versões. Uma errata cria uma nova versão, em vez de sobrescrever a original, e só pode alterar marcações de conclusão e observação. Estrutura das tarefas, texto, link, roteiro, conteúdo dos e-mails e identidade dos e-mails devem permanecer iguais.
+- O histórico do calendário identifica as datas concluídas pela existência de registros históricos.
+- As regras operacionais das tarefas e dos importadores não fazem parte desta migração de armazenamento.
 
-## Proposed Firestore storage mapping
+## Mapeamento proposto para o Firestore
 
-All private records are scoped under the authenticated Firebase UID. A UID is the stable identity; email, Login, Setor, and Contato are mutable attributes and must not be used as ownership keys.
+Todos os registros privados ficam vinculados ao UID do Firebase autenticado. O UID é a identidade estável; e-mail, Login, Setor e Contato são atributos que podem mudar e não devem ser usados como chave de propriedade dos dados.
 
-| Current Drive concept | Proposed Firestore location | Notes |
+| Conceito atual no Google Drive | Local proposto no Firestore | Observações |
 |---|---|---|
-| Task/profile/email/layout configuration files | `users/{uid}/configuration/{documentId}` | Keep the current schemaVersion and existing validation. First login must not copy another user's configuration automatically. |
-| Special calendar dates | `users/{uid}/calendar/{documentId}` | Preserve special-date semantics; use bounded documents rather than one growing document. |
-| Current expediente | `users/{uid}/operational/currentState` | Store the current `EstadoAtual` payload plus owner UID and timestamps. |
-| Previous/in-progress recovery snapshot | `users/{uid}/operational/previousState` | Preserve the current recovery semantics until the close operation is migrated and tested. |
-| Durable history versions | `users/{uid}/operational/history_{date}_R{version}` | Store each complete `RegistroHistorico` version as its own document. Document ID must be deterministic so retries can detect a prior write. |
-| Shared managerial card index | `Expediente/{ownerUid}_{date}` | One current index card per owner/date; contains owner UID and assignment snapshot. It is an index only, not the authoritative history. Errata should update the card's latest-version metadata, not replace the personal history. |
-| Useful links | `users/{uid}/usefulLinks/{documentId}` | Separate from expediente state and configuration. |
+| Arquivos de configuração de tarefas, perfis, e-mails e layout | `users/{uid}/configuration/{documentId}` | Preservar a versão do esquema e as validações atuais. O primeiro acesso não copia automaticamente a configuração de outra pessoa. |
+| Datas especiais do calendário | `users/{uid}/calendar/{documentId}` | Preservar o significado das datas especiais e usar documentos de tamanho limitado, em vez de um único documento que cresça continuamente. |
+| Expediente atual | `users/{uid}/operational/currentState` | Armazenar os dados de `EstadoAtual`, além do UID proprietário e das datas de controle. |
+| Cópia anterior/de recuperação | `users/{uid}/operational/previousState` | Preservar a lógica de recuperação atual até que o fechamento seja migrado e testado. |
+| Versões permanentes do histórico | `users/{uid}/operational/history_{date}_R{version}` | Cada versão completa de `RegistroHistorico` será um documento próprio. O ID deve ser determinístico para que novas tentativas detectem uma gravação já realizada. |
+| Índice compartilhado de cartões para consulta gerencial | `Expediente/{ownerUid}_{date}` | Um cartão de índice por proprietário/data, com UID do proprietário e fotografia da lotação. É somente um índice, não o histórico oficial. Uma errata deve atualizar os metadados da versão mais recente do cartão, sem substituir o histórico individual. |
+| Links úteis | `users/{uid}/usefulLinks/{documentId}` | Manter separados do expediente e da configuração. |
 
-These are proposed IDs and must be implemented consistently in the repository, Firestore rules, and queries. If a collision-safe encoding is required for a UID/date/version, centralize it in one helper instead of constructing IDs throughout the UI.
+Esses IDs são propostas e precisam ser usados de forma consistente no repositório, nas regras do Firestore e nas consultas. Se for necessário evitar colisões ao formar IDs com UID/data/versão, concentre a lógica em uma única função auxiliar, em vez de montar os IDs em vários pontos da interface.
 
-## Historical organizational assignment
+## Fotografia histórica da lotação
 
-At the moment an expediente is completed, read the approved user's current organizational profile and the matching sector/contact names, then save a frozen snapshot containing:
+No momento da conclusão de um expediente, o sistema deve consultar o perfil organizacional aprovado do colaborador e os nomes correspondentes de Setor e Contato. Em seguida, deve gravar uma fotografia imutável contendo:
 
-- Firebase UID;
-- Login and Agente;
-- Setor ID and name;
-- Contato ID and name.
+- UID do Firebase;
+- Login e Agente;
+- ID e nome do Setor;
+- ID e nome do Contato.
 
-Write the same snapshot into the authoritative history record and the corresponding `Expediente` index. A later profile transfer must not rewrite old snapshots. A current in-progress state should not be assigned a final historical snapshot until the business flow defines the correct moment; if a start-time snapshot is needed later, store it separately from the completion-time snapshot.
+A mesma fotografia deve constar no registro histórico oficial e no índice correspondente em `Expediente`. Uma transferência posterior não pode alterar as fotografias antigas. O estado ainda em andamento não deve receber uma fotografia histórica definitiva até que o momento correto esteja definido nas regras operacionais. Se futuramente for necessária uma fotografia do início do expediente, ela deve ser armazenada separadamente da fotografia feita na conclusão.
 
-## Safe write sequence for completing an expediente
+## Sequência segura para concluir um expediente
 
-The migrated close operation must be retry-safe and preserve the existing recovery behavior:
+O fechamento migrado deve aceitar novas tentativas sem duplicar registros e preservar o mecanismo de recuperação existente:
 
-1. Validate the current state and configuration with the existing validation functions.
-2. Determine the deterministic history document ID for the next version and check for an already completed record for this date/expediente before creating a duplicate.
-3. Capture the assignment snapshot from the approved profile and organizational catalogs.
-4. Write the full history record and the denormalized `Expediente` index as a coordinated Firestore batch/transaction where the operation's read/write constraints permit it.
-5. Verify that the expected durable record can be read back.
-6. Clear current and previous state only after the durable write is confirmed.
-7. If the client loses connection during the write, the next attempt must detect and recover the already-saved record instead of creating a second completion.
+1. Validar o estado atual e a configuração usando as funções de validação já existentes.
+2. Determinar o ID previsível do documento de histórico para a próxima versão e verificar se já existe um registro concluído para aquela data/expediente.
+3. Capturar a fotografia da lotação a partir do perfil aprovado e dos catálogos organizacionais.
+4. Gravar o histórico completo e o índice desnormalizado de `Expediente` em uma operação coordenada de gravação em lote/transação do Firestore, conforme as restrições de leitura e gravação da operação.
+5. Confirmar que o registro permanente esperado pode ser lido de volta.
+6. Limpar o estado atual e o estado anterior somente depois de confirmar a gravação permanente.
+7. Se a conexão cair durante a gravação, a próxima tentativa deve detectar e recuperar o registro já salvo, em vez de criar uma segunda conclusão.
 
-A Firestore batch is atomic for writes but does not itself make arbitrary pre-write reads atomic. Use a transaction when the decision to create a version depends on reads that must be protected from races. If transaction limits or existing data shape prevent that, document the idempotency strategy and test concurrent retries.
+Uma gravação em lote do Firestore torna atômicas as gravações incluídas, mas não torna atômicas, por si só, quaisquer leituras feitas antes delas. Use uma transação quando a decisão de criar uma versão depender de leituras que precisem estar protegidas contra concorrência. Se os limites da transação ou a estrutura atual dos dados impedirem isso, documente a estratégia para evitar duplicidade e teste novas tentativas concorrentes.
 
-## History and errata
+## Histórico e erratas
 
-- The authoritative history remains under the owner's UID.
-- A new errata is a new version with `origemVersao` pointing to the source version.
-- Reuse the existing validation in `CalendarHistoryService.saveErrata`; do not relax it as part of the backend swap.
-- The index document may carry the latest version and summary fields for managerial cards, but must not contain or replace the full history.
-- List history with bounded queries and pagination; do not load every historical record into memory at startup.
+- O histórico oficial permanece associado ao UID do proprietário.
+- Uma errata cria uma nova versão com `origemVersao` apontando para a versão de origem.
+- Reutilize a validação existente em `CalendarHistoryService.saveErrata`; não a flexibilize durante a troca do armazenamento.
+- O documento de índice pode guardar a versão mais recente e os campos resumidos necessários aos cartões gerenciais, mas não deve conter nem substituir o histórico completo.
+- Consulte o histórico em lotes limitados e com paginação; não carregue todos os registros antigos na memória durante a inicialização.
 
-## Authorization and query constraints
+## Autorização e restrições das consultas
 
-- Employee access to private configuration, calendar, current state, and history is restricted to their own UID.
-- Admin read access is for oversight only; it must not grant write/delete access to another user's operational records.
-- A supervisor can read only index records allowed by the active Firestore policy. The first version uses the current sector as the baseline, but future filters must be backed by server-enforced policy rather than UI filtering.
-- Every query must be compatible with Firestore Rules. A client-side `where` filter is not itself an authorization boundary.
-- The index's `sectorId`, `contactId`, `login`, `agent`, `ownerUid`, and status/date fields must agree with the stored snapshot and authoritative record.
-- Avoid exposing arbitrary write access to identity fields, role, supervisor flag, or approval status.
+- Cada colaborador só acessa sua própria configuração, calendário, estado atual e histórico.
+- O acesso de leitura do administrador serve à supervisão gerencial; não deve permitir gravar ou excluir registros operacionais de outras pessoas.
+- Um supervisor só pode consultar os registros de índice permitidos pela política ativa do Firestore. A primeira versão usa o setor atual como regra inicial, mas filtros futuros precisam ser respaldados por uma política aplicada no servidor, não apenas pela interface.
+- Toda consulta precisa ser compatível com as regras de segurança do Firestore. Um filtro `where` executado no cliente não é, por si só, uma barreira de autorização.
+- Os campos `sectorId`, `contactId`, `login`, `agent`, `ownerUid` e os campos de situação/data do índice devem corresponder à fotografia registrada e ao registro oficial.
+- Não permita gravações arbitrárias nos campos de identidade, função, sinalizador de supervisor ou aprovação da conta.
 
-## Required validation before switching the runtime
+## Validações obrigatórias antes de trocar o armazenamento em uso
 
-1. Unit/build checks for schema conversion and existing validation.
-2. Firestore Emulator tests for own-user read/write, cross-user denial, admin read-only oversight, supervisor same-sector read, supervisor other-sector denial, and denied edits/deletes of other users' records.
-3. Complete expediente: success, network interruption, retry after success, and no duplicate history/index card.
-4. Errata: valid mark/observation edit creates a new version; changing task structure, roteiro, links, email content, or email identity is rejected.
-5. Calendar: special dates and completed-date indicators match the existing behavior.
-6. User transfer: old records retain their original Setor/Contato snapshot while new records use the new assignment.
-7. Multi-user isolation: two users can work independently on the same date without overwriting each other's current state, configuration, calendar, or history.
-8. End-to-end browser test using a real Firebase test project before deployment. CI compilation alone does not prove rules or runtime correctness.
+1. Verificar a compilação e os testes de conversão de esquema e validações existentes.
+2. Testar no Emulador do Firestore: leitura/gravação dos próprios dados, bloqueio de acesso cruzado entre usuários, leitura somente pelo administrador, leitura pelo supervisor do mesmo setor, bloqueio de leitura de outro setor e bloqueio de edição/exclusão de registros alheios.
+3. Testar a conclusão do expediente em caso de sucesso, interrupção de rede, nova tentativa após sucesso e ausência de duplicação do histórico/cartão.
+4. Testar erratas: alterações válidas de marcações/observação geram nova versão; mudanças na estrutura das tarefas, roteiro, links, conteúdo dos e-mails ou identidade dos e-mails são rejeitadas.
+5. Confirmar que datas especiais e indicadores de dias concluídos no calendário mantêm o comportamento atual.
+6. Testar transferência de colaborador: registros antigos preservam Setor/Contato anteriores e novos registros usam a lotação atual.
+7. Testar isolamento entre usuários: duas pessoas conseguem trabalhar independentemente na mesma data, sem sobrescrever estado atual, configuração, calendário ou histórico uma da outra.
+8. Fazer teste completo no navegador com um projeto Firebase de teste real antes da implantação. A compilação na integração contínua, sozinha, não comprova que as regras ou o funcionamento real estão corretos.
 
-## Migration boundary
+## Limites da migração
 
-No production Drive data is copied or deleted by this plan. Historical records remain in the current Drive until a separately approved migration procedure evaluates ownership, authorship, duplicate dates, versions, and assignment snapshots. Do not bulk-import historical records without that review.
+Este plano não copia nem exclui dados do Google Drive de produção. Os históricos antigos permanecem no Drive até que um procedimento de migração separado, aprovado previamente, avalie propriedade, autoria, datas duplicadas, versões e fotografias da lotação. Não importe históricos em massa sem essa análise.
