@@ -65,6 +65,20 @@ Uma gravação em lote do Firestore torna atômicas as gravações incluídas, m
 - O documento de índice pode guardar a versão mais recente e os campos resumidos necessários aos cartões gerenciais, mas não deve conter nem substituir o histórico completo.
 - Consulte o histórico em lotes limitados e com paginação; não carregue todos os registros antigos na memória durante a inicialização.
 
+## Contrato de segurança pendente para documentos operacionais
+
+O tipo atual `RegistroHistorico` em `src/shared/types/state.ts` descreve o conteúdo funcional do histórico, mas não inclui os metadados de propriedade e lotação exigidos pelas regras. Não use diretamente esse objeto como documento Firestore de topo sem um envelope de segurança.
+
+Antes de implementar o adaptador, definir e validar um envelope Firestore explícito para documentos operacionais. No mínimo, o envelope de histórico deve conter `ownerUid`, `kind` (por exemplo, `history`), `date`, `version`, `createdAt` e uma fotografia de atribuição aprovada com UID, Login, Agente, Setor e Contato; o conteúdo funcional deve ficar em um campo separado, como `payload`. A forma final deve ser consistente com o índice `Expediente` e com os tipos compartilhados.
+
+Ciclo de vida proposto para as regras, a confirmar e testar antes de habilitar a persistência:
+- `currentState`: leitura/gravação apenas pelo proprietário aprovado; não permitir acesso de outros usuários.
+- `previousState`: leitura/gravação apenas pelo proprietário aprovado, com semântica de recuperação documentada; não usar como substituto do histórico oficial.
+- histórico: criação pelo proprietário aprovado apenas para uma nova versão válida; leitura pelo proprietário e por perfis gerenciais autorizados; atualização e exclusão pelo cliente negadas. Erratas sempre criam uma nova versão.
+- índice `Expediente`: não permitir que alterações no índice substituam o conteúdo do histórico oficial; definir transições permitidas de estado e testar consistência com o histórico.
+
+**Até esse contrato existir e ser testado, as regras negam leitura e gravação em `users/{uid}/operational`.** O armazenamento ativo permanece no Google Drive; não habilitar o adaptador Firestore antes de concluir os testes de autorização, recuperação e concorrência.
+
 ## Autorização e restrições das consultas
 
 - Cada colaborador só acessa sua própria configuração, calendário, estado atual e histórico.
