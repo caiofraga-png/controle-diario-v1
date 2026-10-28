@@ -38,3 +38,5 @@ jobs:
           NODE
       - name: Compilar aplicação Web
         run: npm run build
+      - name: Testar regras do Firestore no emulador
+        run: npx firebase emulators:exec --only firestore --project demo-leste-controle-diario "npm run test:rules"
