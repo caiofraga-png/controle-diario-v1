@@ -203,3 +203,55 @@ test("domínio corporativo não verificado não pode abrir solicitação de aces
 test("usuário comum não pode se promover a administrador", async () => {
   await assertFails(updateDoc(doc(dbAs("alice"), "users/alice"), { role: "admin" }));
 });
+
+
+test("usuário autenticado não pode criar o próprio perfil nem atribuir papel administrativo", async () => {
+  const db = dbAs("newuser");
+  await assertFails(setDoc(doc(db, "users/newuser"), {
+    uid: "newuser",
+    email: "newuser@lestetelecom.net.br",
+    login: "newuser",
+    agent: "Novo usuário",
+    sectorId: "suporte",
+    contactId: "equipe-a",
+    isSupervisor: false,
+    status: "approved",
+    role: "admin",
+  }));
+});
+
+test("conta do domínio permitido pode criar somente a própria solicitação pendente", async () => {
+  const db = dbAs("newuser");
+  await assertSucceeds(setDoc(doc(db, "accessRequests/newuser"), {
+    uid: "newuser",
+    email: "newuser@lestetelecom.net.br",
+    status: "pending",
+    requestedAt: new Date().toISOString(),
+  }));
+  await assertFails(setDoc(doc(db, "accessRequests/other-user"), {
+    uid: "other-user",
+    email: "other-user@lestetelecom.net.br",
+    status: "pending",
+    requestedAt: new Date().toISOString(),
+  }));
+});
+
+test("solicitação de acesso não pode ser enviada como aprovada", async () => {
+  const db = dbAs("newuser");
+  await assertFails(setDoc(doc(db, "accessRequests/newuser"), {
+    uid: "newuser",
+    email: "newuser@lestetelecom.net.br",
+    status: "approved",
+    requestedAt: new Date().toISOString(),
+  }));
+});
+
+test("e-mail corporativo não verificado não pode solicitar acesso", async () => {
+  const db = dbAs("newuser", "newuser@lestetelecom.net.br", false);
+  await assertFails(setDoc(doc(db, "accessRequests/newuser"), {
+    uid: "newuser",
+    email: "newuser@lestetelecom.net.br",
+    status: "pending",
+    requestedAt: new Date().toISOString(),
+  }));
+});
