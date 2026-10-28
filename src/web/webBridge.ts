@@ -111,7 +111,13 @@ export function installWebBridge(){
    loadConfiguration:()=>firebasePersonalData.loadConfiguration(),
    saveConfiguration:(config:any)=>firebasePersonalData.saveConfiguration(config),
    loadCalendar:()=>firebasePersonalData.loadCalendar(),
-   saveCalendar:(calendar:any)=>firebasePersonalData.saveCalendar(calendar)
+   saveCalendar:(calendar:any)=>firebasePersonalData.saveCalendar(calendar),
+   loadCurrentState:()=>firebaseOperational.loadCurrentState(),
+   saveCurrentState:(state:any)=>firebaseOperational.saveCurrentState(state),
+   completeState:(state:any,completedAt?:string)=>firebaseOperational.completeState(state,completedAt),
+   listHistory:(date:string)=>firebaseOperational.listHistory(date),
+   readHistory:(historyId:string)=>firebaseOperational.readHistory(historyId),
+   saveErrata:(source:any,edited:any)=>firebaseOperational.saveErrata(source,edited)
   },
   sistema:{
    importarVolSup:volSupService.importarVolSup,
