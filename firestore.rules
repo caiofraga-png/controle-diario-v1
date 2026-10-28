@@ -25,6 +25,15 @@ service cloud.firestore {
         && userRecord(request.auth.uid).data.role == "admin";
     }
 
+    function activeSupervisor() {
+      return approvedUser()
+        && userRecord(request.auth.uid).data.isSupervisor == true;
+    }
+
+    function currentSectorId() {
+      return userRecord(request.auth.uid).data.sectorId;
+    }
+
     function allowedCorporateDomain() {
       return signedIn()
         && request.auth.token.email_verified == true
@@ -34,12 +43,9 @@ service cloud.firestore {
           .hasAny([request.auth.token.email.split("@")[1].lower()]);
     }
 
-    // Profile documents are provisioned/maintained by a trusted admin process.
-    // A client cannot approve itself, alter its organizational fields, or grant roles.
+    // User identity and organizational assignment are administrator-managed.
     match /users/{uid} {
       allow read: if ownUserDocument(uid) || activeAdmin();
-      // Admin role assignment/removal is reserved for a trusted server-side
-      // operation so the last administrator cannot be removed by client code.
       allow create: if activeAdmin()
         && request.resource.data.role == "employee"
         && request.resource.data.status in ["pending", "approved", "blocked", "rejected"];
@@ -48,15 +54,7 @@ service cloud.firestore {
         && request.resource.data.uid == resource.data.uid;
       allow delete: if false;
 
-      // Administrators may read operational records for oversight, but cannot
-      // create/update/delete operational data belonging to another user.
-      match /operational/{document=**} {
-        allow read: if approvedUser()
-          && (request.auth.uid == uid || activeAdmin());
-        allow create, update, delete: if approvedUser()
-          && request.auth.uid == uid;
-      }
-
+      // Private per-user configuration and calendar remain isolated.
       match /configuration/{document=**} {
         allow read, write: if approvedUser() && request.auth.uid == uid;
       }
@@ -68,9 +66,38 @@ service cloud.firestore {
       match /usefulLinks/{document=**} {
         allow read, write: if approvedUser() && request.auth.uid == uid;
       }
+
+      // Temporary compatibility path for operational records that may be
+      // nested under a user during migration. Supervisors see only records
+      // whose saved sector snapshot matches their own sector.
+      match /operational/{document=**} {
+        allow read: if approvedUser()
+          && (request.auth.uid == uid
+            || activeAdmin()
+            || (activeSupervisor()
+              && resource.data.sectorId == currentSectorId()));
+        allow create, update, delete: if approvedUser()
+          && request.auth.uid == uid;
+      }
     }
 
-    // Requests are separate from user profiles and never grant access themselves.
+    // Shared operational index. A card/history record stores ownerUid and a
+    // sector/contact snapshot at record time. Supervisors can query by sector;
+    // admins can read for oversight. Neither may edit/delete another person's
+    // operational records.
+    match /Expediente/{expedienteId} {
+      allow read: if approvedUser()
+        && (resource.data.ownerUid == request.auth.uid
+          || activeAdmin()
+          || (activeSupervisor()
+            && resource.data.sectorId == currentSectorId()));
+      allow create: if approvedUser()
+        && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if approvedUser()
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == request.auth.uid;
+    }
+
     match /accessRequests/{uid} {
       allow create: if ownUserDocument(uid)
         && allowedCorporateDomain()
@@ -92,8 +119,6 @@ service cloud.firestore {
       allow write: if activeAdmin();
     }
 
-    // The domain allow-list is not secret and must be readable before approval
-    // so a first-time visitor can determine whether they may request access.
     match /settings/allowedDomains {
       allow read: if signedIn();
       allow write: if activeAdmin();
@@ -112,7 +137,6 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // Deny all unspecified collections by default.
     match /{document=**} {
       allow read, write: if false;
     }
