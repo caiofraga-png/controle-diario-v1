@@ -1,5 +1,5 @@
 import {
-  collection, doc, getDoc, getDocs, orderBy, query, runTransaction,
+  collection, doc, getDoc, getDocs, query, runTransaction,
   serverTimestamp, setDoc, where, type DocumentData,
 } from "firebase/firestore";
 import type { EstadoAtual, RegistroHistorico, TarefaSnapshot } from "../shared/types/state";
@@ -87,7 +87,7 @@ export class FirebaseOperationalService {
   async listHistory(date: string): Promise<Array<{ versao: number; nome: string; concluidoEm: string; origemVersao: string | null }>> {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("A DATA DO HISTÓRICO É INVÁLIDA.");
     const uid = this.uid();
-    const records = await getDocs(query(this.historyCollection(uid), where("data", "==", date), orderBy("versao", "asc")));
+    const records = await getDocs(query(this.historyCollection(uid), where("data", "==", date)));
     return records.docs.map(snapshot => {
       const record = snapshot.data() as HistoryEntry;
       return {
@@ -134,24 +134,28 @@ export class FirebaseOperationalService {
       if (!persistedState || persistedState.id !== state.id || persistedState.criadoEm !== state.criadoEm) {
         throw new Error("O EXPEDIENTE MUDOU OU NÃO ESTÁ MAIS EM PRODUÇÃO. RECARREGUE ANTES DE CONCLUIR.");
       }
-      const existing = await transaction.get(query(history, where("data", "==", state.data), orderBy("versao", "asc")));
+      const persistedProgress = progress(persistedState);
+      if (persistedProgress.total === 0 || persistedProgress.done !== persistedProgress.total) {
+        throw new Error("O EXPEDIENTE AINDA NÃO ESTÁ 100% CONCLUÍDO.");
+      }
+      const existing = await transaction.get(query(history, where("data", "==", persistedState.data)));
       const versions = existing.docs.map(item => Number(item.data().versao)).filter(Number.isFinite);
       const versao = (versions.length ? Math.max(...versions) : 0) + 1;
-      const recordId = state.data + "_R" + String(versao).padStart(3, "0");
+      const recordId = persistedState.data + "_R" + String(versao).padStart(3, "0");
       const recordRef = doc(history, recordId);
       const record: HistoryEntry = {
         schemaVersion: 1,
-        id: state.data + "-R" + String(versao).padStart(3, "0"),
+        id: persistedState.data + "-R" + String(versao).padStart(3, "0"),
         versao,
-        data: state.data,
-        perfil: clone(state.perfil),
-        tarefas: clone(state.tarefas),
-        emailsGlobais: clone(state.emailsGlobais),
-        observacao: state.observacao,
+        data: persistedState.data,
+        perfil: clone(persistedState.perfil),
+        tarefas: clone(persistedState.tarefas),
+        emailsGlobais: clone(persistedState.emailsGlobais),
+        observacao: persistedState.observacao,
         status: "CONCLUIDO",
-        criadoEm: state.criadoEm,
+        criadoEm: persistedState.criadoEm,
         concluidoEm,
-        ultimaAlteracao: state.ultimaAlteracao,
+        ultimaAlteracao: persistedState.ultimaAlteracao,
         origemVersao: null,
         ownerUid: uid,
       };
@@ -217,7 +221,7 @@ export class FirebaseOperationalService {
     const { db } = requireFirebase();
     const history = this.historyCollection(uid);
     return runTransaction(db, async transaction => {
-      const existing = await transaction.get(query(history, where("data", "==", source.data), orderBy("versao", "asc")));
+      const existing = await transaction.get(query(history, where("data", "==", source.data)));
       const versions = existing.docs.map(item => Number(item.data().versao)).filter(Number.isFinite);
       const versao = (versions.length ? Math.max(...versions) : 0) + 1;
       const recordId = source.data + "_R" + String(versao).padStart(3, "0");
