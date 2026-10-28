@@ -8,6 +8,7 @@ import {
 import {
   doc,
   getDoc,
+  onSnapshot,
   serverTimestamp,
   setDoc,
   type DocumentData,
@@ -53,13 +54,9 @@ function asOrganizationalUser(uid: string, data: DocumentData): OrganizationalUs
  */
 export async function signInWithCorporateGoogle(): Promise<AccessResult> {
   const { auth, db } = requireFirebase();
-  // Garante que a persistência local foi configurada antes de iniciar o login.
   await firebaseAuthPersistenceReady;
 
   const provider = new GoogleAuthProvider();
-  // Não força a tela de seleção de conta em toda autenticação.
-  // O usuário ainda poderá trocar de conta ao sair e iniciar novo login.
-
   const credential = await signInWithPopup(auth, provider);
   const identity = credential.user;
   const email = normalizedEmail(identity);
@@ -106,8 +103,6 @@ export async function signInWithCorporateGoogle(): Promise<AccessResult> {
     return { status: "not-allowed", email };
   }
 
-  // As regras do Firestore também validam o e-mail verificado e o domínio.
-  // A solicitação não cria perfil aprovado nem concede privilégios.
   await setDoc(requestRef, {
     uid: identity.uid,
     email,
@@ -121,9 +116,8 @@ export async function signInWithCorporateGoogle(): Promise<AccessResult> {
 
 /**
  * Restaura e valida a sessão Firebase já persistida, sem abrir uma janela Google.
- * Aguarda o Firebase concluir a restauração inicial da autenticação antes de ler
- * currentUser, para não confundir uma sessão ainda carregando com usuário desconectado.
- * A existência da sessão, sozinha, não concede acesso: o perfil precisa continuar aprovado.
+ * Aguarda o Firebase concluir a leitura inicial do estado de autenticação antes de
+ * consultar currentUser. A sessão não concede acesso sem perfil aprovado.
  */
 export type RestoredAccessResult = AccessResult | { status: "signed-out" };
 
@@ -166,9 +160,84 @@ export async function restoreCorporateGoogleSession(): Promise<RestoredAccessRes
     return { status: "pending", email };
   }
 
-  // Uma sessão persistida sem perfil nem solicitação não deve manter acesso.
   await signOut(auth);
   return { status: "not-allowed", email };
+}
+
+/**
+ * Observa a identidade e o perfil autorizado durante a sessão.
+ * Se o perfil for removido ou deixar de estar aprovado, encerra a sessão.
+ * A autorização real continua sendo imposta pelas regras do Firestore.
+ */
+export function observeCorporateAccess(
+  callback: (result: RestoredAccessResult) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  const { auth, db } = requireFirebase();
+  let stopProfileObserver: (() => void) | undefined;
+  let generation = 0;
+
+  const stopAuthObserver = onAuthStateChanged(auth, (identity) => {
+    generation += 1;
+    const currentGeneration = generation;
+    stopProfileObserver?.();
+    stopProfileObserver = undefined;
+
+    if (!identity) {
+      callback({ status: "signed-out" });
+      return;
+    }
+
+    const email = normalizedEmail(identity);
+    if (!email || !identity.emailVerified) {
+      void signOut(auth).catch((error: unknown) => {
+        onError?.(error instanceof Error ? error : new Error(String(error)));
+      });
+      callback({ status: "not-allowed", email });
+      return;
+    }
+
+    stopProfileObserver = onSnapshot(
+      doc(db, "users", identity.uid),
+      (snapshot) => {
+        if (currentGeneration !== generation) return;
+        if (!snapshot.exists()) {
+          callback({ status: "not-allowed", email });
+          void signOut(auth).catch((error: unknown) => {
+            onError?.(error instanceof Error ? error : new Error(String(error)));
+          });
+          return;
+        }
+
+        const profile = asOrganizationalUser(identity.uid, snapshot.data());
+        if (profile.status === "approved") {
+          callback({ status: "approved", user: profile });
+          return;
+        }
+
+        callback({
+          status: profile.status === "blocked" || profile.status === "rejected"
+            ? profile.status
+            : "pending",
+          email,
+        });
+        void signOut(auth).catch((error: unknown) => {
+          onError?.(error instanceof Error ? error : new Error(String(error)));
+        });
+      },
+      (error) => {
+        if (currentGeneration === generation) onError?.(error);
+      },
+    );
+  }, (error) => {
+    onError?.(error);
+  });
+
+  return () => {
+    generation += 1;
+    stopAuthObserver();
+    stopProfileObserver?.();
+  };
 }
 
 export function observeFirebaseIdentity(callback: (user: User | null) => void): () => void {
