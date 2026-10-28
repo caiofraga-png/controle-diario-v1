@@ -8,9 +8,10 @@ Verificar que o login corporativo permanece ativo entre recargas e retornos ao n
 - A rotina de login aguarda a configuração de persistência antes de abrir o fluxo do Google.
 - A restauração da sessão aguarda o Firebase concluir a leitura inicial do estado de autenticação antes de consultar o usuário atual.
 - A rotina de restauração valida novamente o perfil no Firestore e encerra a sessão se o usuário não estiver aprovado ou não tiver perfil/solicitação válida.
+- A função `observeCorporateAccess()` observa as mudanças no perfil autorizado durante a sessão. Se o perfil deixar de existir ou deixar de estar aprovado, a função comunica o estado e solicita o encerramento da sessão.
 - O parâmetro que forçava a seleção de conta em cada login foi removido.
 - A aprovação administrativa e as regras do Firestore continuam obrigatórias.
-- A rotina de restauração foi criada, mas ainda precisa ser conectada ao fluxo principal da interface. O aplicativo ainda usa o fluxo antigo baseado no Google Drive.
+- Essas funções de autenticação ainda precisam ser conectadas ao fluxo principal da interface. O aplicativo ainda usa o fluxo antigo baseado no Google Drive.
 
 ## Testes manuais obrigatórios em ambiente de homologação
 
@@ -24,11 +25,12 @@ Verificar que o login corporativo permanece ativo entre recargas e retornos ao n
 | SESS-06 | Tentar entrar com conta sem aprovação administrativa | Nenhum acesso aos dados operacionais |
 | SESS-07 | Limpar os dados do site e abrir novamente | Nova autenticação esperada |
 | SESS-08 | Revogar o acesso no Google ou invalidar a sessão | O aplicativo deve solicitar autenticação novamente ou negar acesso |
-| SESS-09 | Abrir em outro navegador ou perfil | Não presumir sessão compartilhada entre perfis |
-| SESS-10 | Verificar políticas de sessão da empresa | Documentar eventual exigência de autenticação periódica imposta pelo Google Workspace |
+| SESS-09 | Alterar o perfil do usuário de aprovado para bloqueado durante uma sessão ativa | A observação deve detectar a mudança e encerrar a sessão; as regras do Firestore devem negar acesso aos dados |
+| SESS-10 | Abrir em outro navegador ou perfil | Não presumir sessão compartilhada entre perfis |
+| SESS-11 | Verificar políticas de sessão da empresa | Documentar eventual exigência de autenticação periódica imposta pelo Google Workspace |
 
 ## Limitações importantes
-Persistência local reduz logins repetidos, mas não pode garantir uma sessão eterna. O Google Workspace pode exigir nova autenticação; o usuário pode sair ou limpar dados do navegador; e uma sessão pode ser invalidada. Não reduzir a segurança para contornar essas políticas.
+Persistência local reduz logins repetidos, mas não pode garantir uma sessão eterna. O Google Workspace pode exigir nova autenticação; o usuário pode sair ou limpar dados do navegador; e uma sessão pode ser invalidada. A observação do perfil é uma proteção adicional na interface, não substitui as regras do Firestore. Não reduzir a segurança para contornar políticas corporativas.
 
 ## Estado da validação
 As alterações de código foram preparadas na branch de desenvolvimento. Estes cenários ainda precisam ser executados depois que a configuração Firebase de homologação estiver disponível. A alteração não deve ser considerada validada apenas porque a compilação passa.
