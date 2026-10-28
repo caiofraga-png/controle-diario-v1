@@ -119,6 +119,57 @@ export async function signInWithCorporateGoogle(): Promise<AccessResult> {
   return { status: "pending", email };
 }
 
+
+/**
+ * Restaura e valida a sessão Firebase já persistida, sem abrir uma janela Google.
+ * Pode ser chamada na inicialização da interface. A existência da sessão, sozinha,
+ * não concede acesso: o perfil precisa continuar aprovado.
+ */
+export type RestoredAccessResult = AccessResult | { status: "signed-out" };
+
+export async function restoreCorporateGoogleSession(): Promise<RestoredAccessResult> {
+  const { auth, db } = requireFirebase();
+  await firebaseAuthPersistenceReady;
+
+  const identity = auth.currentUser;
+  if (!identity) return { status: "signed-out" };
+
+  const email = normalizedEmail(identity);
+  if (!email || !identity.emailVerified) {
+    await signOut(auth);
+    return { status: "not-allowed", email };
+  }
+
+  const userSnapshot = await getDoc(doc(db, "users", identity.uid));
+  if (userSnapshot.exists()) {
+    const profile = asOrganizationalUser(identity.uid, userSnapshot.data());
+    if (profile.status === "approved") {
+      return { status: "approved", user: profile };
+    }
+    await signOut(auth);
+    return {
+      status: profile.status === "blocked" || profile.status === "rejected"
+        ? profile.status
+        : "pending",
+      email,
+    };
+  }
+
+  const requestSnapshot = await getDoc(doc(db, "accessRequests", identity.uid));
+  if (requestSnapshot.exists()) {
+    const requestStatus = String(requestSnapshot.data().status ?? "pending");
+    await signOut(auth);
+    if (requestStatus === "rejected" || requestStatus === "blocked") {
+      return { status: requestStatus, email };
+    }
+    return { status: "pending", email };
+  }
+
+  // Uma sessão persistida sem perfil nem solicitação não deve manter acesso.
+  await signOut(auth);
+  return { status: "not-allowed", email };
+}
+
 export function observeFirebaseIdentity(callback: (user: User | null) => void): () => void {
   const { auth } = requireFirebase();
   return onAuthStateChanged(auth, callback);
