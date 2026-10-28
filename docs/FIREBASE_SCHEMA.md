@@ -25,8 +25,15 @@ procedure. A browser client must never be able to assign itself the admin role.
 - `users/{uid}/configuration/{documentId}`: that user's own task/profile/email/
   layout configuration. New users start with an independent configuration;
   the current shared Drive configuration is not copied automatically.
-- `users/{uid}/operational/{documentId}`: current expediente, completed
-  expedientes, history versions, and related operational records.
+- `Expediente/{expedienteId}`: shared, queryable index of expediente cards for
+  future sector/contact oversight. Each document must include `ownerUid`,
+  `date`, `status`, `sectorId`, `sectorName`, `contactId`, `contactName`,
+  `login`, `agent`, and an assignment snapshot. The collection is intentionally
+  defined now; Firestore does not physically retain an empty collection until
+  the first document is written.
+- `users/{uid}/operational/{documentId}`: optional private per-user source/history
+  records if the final repository design needs them. The `Expediente` index must
+  not replace the user's own durable history.
 - `users/{uid}/calendar/{documentId}`: that user's calendar.
 - `users/{uid}/usefulLinks/{documentId}`: that user's useful links.
 
@@ -49,6 +56,11 @@ expedientes.
 - Employees read/write only their own operational data.
 - Administrators can read operational records for oversight, but cannot
   create/update/delete another user's operational records.
+- A separate `isSupervisor` boolean is assigned only by an administrator.
+  Supervisors may read expediente cards whose recorded `sectorId` matches
+  their current sector; they cannot edit or delete another employee's records.
+- The `Expediente` collection stores a historical snapshot of sector/contact,
+  so later transfers do not rewrite the attribution of old cards.
 - Only administrators can maintain user and organizational catalog records.
 - Client-side role checks are for presentation only; Firestore rules enforce
   access control.
