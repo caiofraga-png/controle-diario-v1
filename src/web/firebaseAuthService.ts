@@ -39,6 +39,7 @@ function asOrganizationalUser(uid: string, data: DocumentData): OrganizationalUs
     agent: String(data.agent ?? ""),
     sectorId: String(data.sectorId ?? ""),
     contactId: String(data.contactId ?? ""),
+    isSupervisor: data.isSupervisor === true,
     status: data.status as AccountStatus,
     role: data.role as UserRole,
     createdAt: String(data.createdAt ?? ""),
