@@ -81,21 +81,47 @@ service cloud.firestore {
       }
     }
 
-    // Shared operational index. A card/history record stores ownerUid and a
-    // sector/contact snapshot at record time. Supervisors can query by sector;
-    // admins can read for oversight. Neither may edit/delete another person's
-    // operational records.
+    // Shared operational index. Its owner and organizational snapshot are
+    // checked at creation and cannot be changed by a later client update.
+    function validExpedienteSnapshot() {
+      return request.resource.data.keys().hasAll([
+          "ownerUid", "date", "status", "sectorId", "sectorName",
+          "contactId", "contactName", "login", "agent", "assignment"
+        ])
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.assignment is map
+        && request.resource.data.assignment.uid == request.auth.uid
+        && request.resource.data.assignment.sectorId == userRecord(request.auth.uid).data.sectorId
+        && request.resource.data.sectorId == request.resource.data.assignment.sectorId
+        && request.resource.data.contactId == request.resource.data.assignment.contactId
+        && request.resource.data.sectorName == request.resource.data.assignment.sectorName
+        && request.resource.data.contactName == request.resource.data.assignment.contactName
+        && request.resource.data.login == request.resource.data.assignment.login
+        && request.resource.data.agent == request.resource.data.assignment.agent
+        && request.resource.data.assignment.login == userRecord(request.auth.uid).data.login
+        && request.resource.data.assignment.agent == userRecord(request.auth.uid).data.agent
+        && request.resource.data.assignment.contactId == userRecord(request.auth.uid).data.contactId;
+    }
+
     match /Expediente/{expedienteId} {
       allow read: if approvedUser()
         && (resource.data.ownerUid == request.auth.uid
           || activeAdmin()
           || (activeSupervisor()
             && resource.data.sectorId == currentSectorId()));
-      allow create: if approvedUser()
-        && request.resource.data.ownerUid == request.auth.uid;
-      allow update, delete: if approvedUser()
+
+      allow create: if approvedUser() && validExpedienteSnapshot();
+
+      // The index can update only its operational status/timestamp. Ownership,
+      // date, identity and historical assignment snapshot are immutable.
+      allow update: if approvedUser()
         && resource.data.ownerUid == request.auth.uid
-        && request.resource.data.ownerUid == request.auth.uid;
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["status", "completedAt"]);
+
+      // Operational history/index records are not deleted by the client.
+      allow delete: if false;
     }
 
     match /accessRequests/{uid} {
