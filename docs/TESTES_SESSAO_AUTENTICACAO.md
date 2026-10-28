@@ -6,8 +6,11 @@ Verificar que o login corporativo permanece ativo entre recargas e retornos ao n
 ## Implementação preparada
 - A persistência do Firebase Authentication é definida explicitamente como local no navegador.
 - A rotina de login aguarda a configuração de persistência antes de abrir o fluxo do Google.
+- A restauração da sessão aguarda o Firebase concluir a leitura inicial do estado de autenticação antes de consultar o usuário atual.
+- A rotina de restauração valida novamente o perfil no Firestore e encerra a sessão se o usuário não estiver aprovado ou não tiver perfil/solicitação válida.
 - O parâmetro que forçava a seleção de conta em cada login foi removido.
 - A aprovação administrativa e as regras do Firestore continuam obrigatórias.
+- A rotina de restauração foi criada, mas ainda precisa ser conectada ao fluxo principal da interface. O aplicativo ainda usa o fluxo antigo baseado no Google Drive.
 
 ## Testes manuais obrigatórios em ambiente de homologação
 
@@ -28,4 +31,4 @@ Verificar que o login corporativo permanece ativo entre recargas e retornos ao n
 Persistência local reduz logins repetidos, mas não pode garantir uma sessão eterna. O Google Workspace pode exigir nova autenticação; o usuário pode sair ou limpar dados do navegador; e uma sessão pode ser invalidada. Não reduzir a segurança para contornar essas políticas.
 
 ## Estado da validação
-A alteração de código foi preparada na branch de desenvolvimento. Estes cenários ainda precisam ser executados depois que a configuração Firebase de homologação estiver disponível. A alteração não deve ser considerada validada apenas porque a compilação passa.
+As alterações de código foram preparadas na branch de desenvolvimento. Estes cenários ainda precisam ser executados depois que a configuração Firebase de homologação estiver disponível. A alteração não deve ser considerada validada apenas porque a compilação passa.
