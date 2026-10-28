@@ -155,7 +155,7 @@ export default function FirebaseAdminPanel() {
     setBusy(true);
     try {
       await updateOrganizationalUser(user.uid, {
-        login: user.login, agent: user.agent, sectorId: user.sectorId, contactId: user.contactId,
+        login: user.login, agent: user.agent, sectorId: user.sectorId, contactId: user.contactId, isSupervisor: user.isSupervisor,
       });
       setMessage("Cadastro atualizado.");
       await refresh();
@@ -203,7 +203,7 @@ export default function FirebaseAdminPanel() {
       <h3>Colaboradores</h3>
       {users.map((user) => <div key={user.uid} style={{ borderTop: "1px solid #ddd", padding: 12, display: "grid", gap: 8 }}>
         <strong>{user.agent || user.email} · {user.email}</strong>
-        <span>Login: {user.login} · Status: {user.status} · Perfil: {user.role}</span>
+        <span>Login: {user.login} · Status: {user.status} · Perfil: {user.role} · {user.isSupervisor ? "Supervisor" : "Não supervisor"}</span>
         <label>Login <input value={user.login} onChange={(event) => setUsers((items) => items.map((item) => item.uid === user.uid ? { ...item, login: event.target.value } : item))} /></label>
         <label>Agente <input value={user.agent} onChange={(event) => setUsers((items) => items.map((item) => item.uid === user.uid ? { ...item, agent: event.target.value } : item))} /></label>
         <label>Setor <select value={user.sectorId} onChange={(event) => setUsers((items) => items.map((item) => item.uid === user.uid ? { ...item, sectorId: event.target.value, contactId: "" } : item))}>
@@ -212,6 +212,10 @@ export default function FirebaseAdminPanel() {
         <label>Contato <select value={user.contactId} onChange={(event) => setUsers((items) => items.map((item) => item.uid === user.uid ? { ...item, contactId: event.target.value } : item))}>
           <option value="">Selecione</option>{contacts.filter((contact) => contact.active && contact.sectorId === user.sectorId).map((contact) => <option key={contact.id} value={contact.id}>{contact.name}</option>)}
         </select></label>
+        <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <input type="checkbox" checked={Boolean(user.isSupervisor)} onChange={(event) => setUsers((items) => items.map((item) => item.uid === user.uid ? { ...item, isSupervisor: event.target.checked } : item))} />
+          Supervisor — pode consultar expedientes do próprio setor
+        </label>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button type="button" disabled={busy} onClick={() => void saveUser(user)}>Salvar cadastro</button>
           {user.status === "blocked"
@@ -222,10 +226,10 @@ export default function FirebaseAdminPanel() {
     </section>
 
     <section>
-      <h3>Consulta gerencial de expedientes</h3>
+      <h3>Expediente — visão geral</h3>
       <p>Visualização somente para acompanhamento. A estrutura final dos registros será conectada após a migração do expediente para o Firestore; este painel não disponibiliza edição ou exclusão.</p>
       {operationalRecords.length === 0
-        ? <p>Nenhum expediente disponível no Firestore para consulta.</p>
+        ? <p>A seção está criada. Quando a gravação dos expedientes no Firestore for integrada, esta área poderá listar os cards e permitir filtros por Setor e Contato. Nenhum expediente foi migrado ou criado nesta etapa.</p>
         : <div style={{ display: "grid", gap: 8 }}>{operationalRecords.map((record, index) => <article key={String(record.id ?? index)} style={{ borderTop: "1px solid #ddd", padding: 12 }}>
           <strong>{String(record.agent ?? record.agente ?? record.login ?? record.uid ?? "Expediente")}</strong>
           <div>{String(record.date ?? record.data ?? record.completedAt ?? "Data não disponível")}</div>
