@@ -119,17 +119,18 @@ export async function signInWithCorporateGoogle(): Promise<AccessResult> {
   return { status: "pending", email };
 }
 
-
 /**
  * Restaura e valida a sessão Firebase já persistida, sem abrir uma janela Google.
- * Pode ser chamada na inicialização da interface. A existência da sessão, sozinha,
- * não concede acesso: o perfil precisa continuar aprovado.
+ * Aguarda o Firebase concluir a restauração inicial da autenticação antes de ler
+ * currentUser, para não confundir uma sessão ainda carregando com usuário desconectado.
+ * A existência da sessão, sozinha, não concede acesso: o perfil precisa continuar aprovado.
  */
 export type RestoredAccessResult = AccessResult | { status: "signed-out" };
 
 export async function restoreCorporateGoogleSession(): Promise<RestoredAccessResult> {
   const { auth, db } = requireFirebase();
   await firebaseAuthPersistenceReady;
+  await auth.authStateReady();
 
   const identity = auth.currentUser;
   if (!identity) return { status: "signed-out" };
