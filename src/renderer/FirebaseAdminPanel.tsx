@@ -6,6 +6,7 @@ import {
   listOrganizationalUsers,
   listSectors,
   listContacts,
+  listRecentOperationalRecords,
   rejectAccessRequest,
   saveAllowedDomains,
   saveContact,
@@ -25,6 +26,7 @@ export default function FirebaseAdminPanel() {
   const [users, setUsers] = useState<OrganizationalUser[]>([]);
   const [sectors, setSectors] = useState<OrganizationalSector[]>([]);
   const [contacts, setContacts] = useState<OrganizationalContact[]>([]);
+  const [operationalRecords, setOperationalRecords] = useState<Record<string, unknown>[]>([]);
   const [domains, setDomains] = useState("");
   const [selected, setSelected] = useState("");
   const [login, setLogin] = useState("");
@@ -41,14 +43,15 @@ export default function FirebaseAdminPanel() {
     setBusy(true);
     setMessage("");
     try {
-      const [r, u, s, c, d] = await Promise.all([
-        listAccessRequests(), listOrganizationalUsers(), listSectors(), listContacts(), getAllowedDomains(),
+      const [r, u, s, c, d, records] = await Promise.all([
+        listAccessRequests(), listOrganizationalUsers(), listSectors(), listContacts(), getAllowedDomains(), listRecentOperationalRecords(100),
       ]);
       setRequests(r as RequestItem[]);
       setUsers(u);
       setSectors(s);
       setContacts(c);
       setDomains(d.join("\n"));
+      setOperationalRecords(records as Record<string, unknown>[]);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível carregar os dados administrativos.");
     } finally {
@@ -216,6 +219,19 @@ export default function FirebaseAdminPanel() {
             : <button type="button" disabled={busy || user.role === "admin"} onClick={() => void changeStatus(user, "blocked")}>Bloquear conta</button>}
         </div>
       </div>)}
+    </section>
+
+    <section>
+      <h3>Consulta gerencial de expedientes</h3>
+      <p>Visualização somente para acompanhamento. A estrutura final dos registros será conectada após a migração do expediente para o Firestore; este painel não disponibiliza edição ou exclusão.</p>
+      {operationalRecords.length === 0
+        ? <p>Nenhum expediente disponível no Firestore para consulta.</p>
+        : <div style={{ display: "grid", gap: 8 }}>{operationalRecords.map((record, index) => <article key={String(record.id ?? index)} style={{ borderTop: "1px solid #ddd", padding: 12 }}>
+          <strong>{String(record.agent ?? record.agente ?? record.login ?? record.uid ?? "Expediente")}</strong>
+          <div>{String(record.date ?? record.data ?? record.completedAt ?? "Data não disponível")}</div>
+          <div>{String(record.sectorName ?? record.setor ?? "Setor não disponível")} / {String(record.contactName ?? record.contato ?? "Contato não disponível")}</div>
+          <small>{String(record.status ?? record.statusExpediente ?? "Registro histórico")}</small>
+        </article>)}</div>}
     </section>
 
     <section>
