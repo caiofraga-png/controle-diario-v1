@@ -11,6 +11,7 @@ import { createVolSupService } from "./volsupService";
 import { createMaintenanceService } from "./maintenanceService";
 import { signInWithCorporateGoogle, restoreCorporateGoogleSession, observeCorporateAccess, signOutCorporateGoogle } from "./firebaseAuthService";
 import { FirebasePersonalDataService } from "./firebasePersonalDataService";
+import { FirebaseOperationalService } from "./firebaseOperationalService";
 
 const auth=new WebGoogleAuth(); const drive=new DriveService(auth); const data=new DataRepository(drive); const calendarHistory=new CalendarHistoryService(drive); const session=new WebSessionService(drive);
 
@@ -18,6 +19,7 @@ const boot=()=>loadBootstrap();
 const volSupService=createVolSupService(()=>auth.getAccessToken());
 const maintenanceService=createMaintenanceService(()=>auth.getAccessToken());
 const firebasePersonalData = new FirebasePersonalDataService();
+const firebaseOperational = new FirebaseOperationalService();
 
 /**
  * Reproduz o fluxo do importador Apps Script: envia o arquivo escolhido
