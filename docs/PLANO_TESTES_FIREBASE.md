@@ -19,11 +19,13 @@ Validar a persistência individual e a consulta gerencial do Leste – Controle 
 | AUT-04 | Usuário tenta mudar seu próprio perfil organizacional | Acesso negado |
 | EXP-01 | Colaborador cria expediente com seu UID e atribuição válida | Permitido após validação de identidade e atribuição |
 | EXP-02 | Colaborador tenta criar expediente com UID de outra pessoa | Acesso negado |
-| EXP-03 | Colaborador tenta gravar setor, contato ou agente falsificados | Acesso negado |
+| EXP-03 | Colaborador tenta gravar setor, contato, Login ou Agente falsificados | Acesso negado |
 | EXP-04 | Colaborador tenta modificar a identidade ou atribuição de expediente existente | Acesso negado |
-| EXP-05 | Supervisor consulta expedientes de seu setor atual | Somente leitura e apenas registros autorizados |
-| EXP-06 | Supervisor tenta consultar outro setor ou editar expediente alheio | Acesso negado |
-| EXP-07 | Administrador consulta expediente de outro usuário | Leitura permitida; edição negada |
+| EXP-05 | Colaborador tenta atualizar campos diferentes de `status` e `completedAt` no índice | Acesso negado |
+| EXP-06 | Cliente tenta excluir documento do índice `Expediente` | Acesso negado |
+| EXP-07 | Supervisor consulta expedientes de seu setor atual | Somente leitura e apenas registros autorizados |
+| EXP-08 | Supervisor tenta consultar outro setor ou editar expediente alheio | Acesso negado |
+| EXP-09 | Administrador consulta expediente de outro usuário | Leitura permitida; edição negada |
 | HIS-01 | Fechamento repetido do mesmo expediente | Sem duplicação de versões |
 | HIS-02 | Falha durante fechamento e nova tentativa | Recuperação consistente, sem perda de dados |
 | HIS-03 | Errata altera somente marcações e observação | Nova versão preserva conteúdo imutável |
@@ -32,9 +34,10 @@ Validar a persistência individual e a consulta gerencial do Leste – Controle 
 | DOM-01 | E-mail de domínio não autorizado solicita acesso | Acesso negado |
 | ADM-01 | Usuário comum tenta promover a si próprio a administrador | Acesso negado |
 
-## Bloqueadores identificados na revisão do código
-1. As regras atuais de `Expediente` verificam `ownerUid`, mas ainda não comprovam que setor, contato, login e agente correspondem ao cadastro aprovado. A criação ou atualização com dados organizacionais falsificados precisa ser impedida.
-2. O caminho `users/{uid}/operational` permite gravação pelo proprietário sem validar campos imutáveis do histórico. É necessário distinguir estado atual de registros finalizados e versões de errata.
+## Situação da revisão do código
+
+1. **Índice `Expediente`: endurecido na branch, ainda não testado no emulador.** A criação exige proprietário autenticado e aprovado, fotografia de atribuição correspondente ao perfil atual e correspondência entre os campos duplicados e a fotografia. A atualização pelo proprietário fica limitada a `status` e `completedAt`; a exclusão pelo cliente é negada.
+2. **Subcoleção `users/{uid}/operational`: pendente de revisão.** As regras ainda permitem ao proprietário criar, atualizar e excluir documentos sem distinguir estado atual de registros finalizados e versões de errata. É necessário restringir operações conforme o contrato definitivo de cada documento.
 3. A gravação do índice `Expediente` e a gravação do histórico pessoal precisam ser coordenadas para evitar inconsistências em falhas parciais.
 4. Consultas de supervisão precisam ser testadas com filtros compatíveis com as regras e índices do Firestore.
 5. O primeiro administrador depende de um procedimento confiável de inicialização, externo ao cliente web.
@@ -50,6 +53,7 @@ Validar a persistência individual e a consulta gerencial do Leste – Controle 
 ## Sequência de implementação
 1. Endurecer as regras e o contrato dos documentos.
 2. Implementar testes automatizados de autorização no emulador.
-3. Implementar adaptador de armazenamento por UID, com gravações transacionais onde necessário.
-4. Integrar gradualmente configuração, calendário, expediente e histórico.
-5. Validar a interface e a visão de supervisão em ambiente de testes.
+3. Restringir o acesso aos documentos operacionais e ao histórico conforme seu ciclo de vida.
+4. Implementar adaptador de armazenamento por UID, com gravações transacionais onde necessário.
+5. Integrar gradualmente configuração, calendário, expediente e histórico.
+6. Validar a interface e a visão de supervisão em ambiente de testes.
