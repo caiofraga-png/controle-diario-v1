@@ -135,11 +135,45 @@ test("conta pendente não acessa dados privados", async () => {
   await assertFails(setDoc(doc(dbAs("pending"), "users/pending/configuration/layout"), { schemaVersion: 1 }));
 });
 
-test("subcoleção operacional permanece bloqueada até a integração", async () => {
+test("estado operacional permite leitura e gravação apenas pelo proprietário aprovado", async () => {
+  const alice = dbAs("alice");
+  const own = doc(alice, "users/alice/operational/currentState");
+  await assertSucceeds(setDoc(own, {
+    schemaVersion: 1, ownerUid: "alice", estado: null, updatedAt: "2026-10-28T12:00:00Z",
+  }));
+  await assertSucceeds(getDoc(own));
+  await assertFails(getDoc(doc(dbAs("bob"), "users/alice/operational/currentState")));
+  await assertFails(setDoc(doc(dbAs("pending"), "users/pending/operational/currentState"), {
+    schemaVersion: 1, ownerUid: "pending", estado: null,
+  }));
+  await assertFails(setDoc(doc(alice, "users/bob/operational/currentState"), {
+    schemaVersion: 1, ownerUid: "alice", estado: null,
+  }));
+});
+
+test("histórico operacional é somente acréscimo e não pode ser editado nem excluído", async () => {
   const db = dbAs("alice");
-  const ref = doc(db, "users/alice/operational/currentState");
-  await assertFails(getDoc(ref));
-  await assertFails(setDoc(ref, { ownerUid: "alice", estado: null }));
+  const ref = doc(db, "users/alice/operational/history/entries/2026-10-28_R001");
+  await assertSucceeds(setDoc(ref, {
+    schemaVersion: 1,
+    ownerUid: "alice",
+    id: "2026-10-28-R001",
+    versao: 1,
+    data: "2026-10-28",
+    perfil: { id: "P001", nome: "MÍDIAS" },
+    tarefas: [],
+    emailsGlobais: [],
+    observacao: "",
+    status: "CONCLUIDO",
+    criadoEm: "2026-10-28T08:00:00Z",
+    concluidoEm: "2026-10-28T12:00:00Z",
+    ultimaAlteracao: "2026-10-28T12:00:00Z",
+    origemVersao: null,
+  }));
+  await assertSucceeds(getDoc(ref));
+  await assertFails(updateDoc(ref, { observacao: "tentativa de sobrescrita" }));
+  await assertFails(deleteDoc(ref));
+  await assertFails(getDoc(doc(dbAs("bob"), "users/alice/operational/history/entries/2026-10-28_R001")));
 });
 
 test("proprietário cria expediente com fotografia válida e catálogos ativos", async () => {
