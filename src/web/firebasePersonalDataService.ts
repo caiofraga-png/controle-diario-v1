@@ -1,7 +1,6 @@
 import {
-  collection,
   doc,
-  getDocs,
+  getDoc,
   serverTimestamp,
   setDoc,
   writeBatch,
@@ -14,7 +13,6 @@ import {
   validatePerfis,
   validateTarefas,
   type Configuracao,
-  type LayoutConfig,
   type LoadedData,
 } from "./dataRepository";
 
@@ -46,20 +44,6 @@ export class FirebasePersonalDataService {
 
   async loadConfiguration(): Promise<Configuracao | null> {
     const uid = this.currentUserId();
-    const snapshots = await Promise.all(
-      CONFIG_KINDS.map((kind) => getDocs(collection(
-        requireFirebase().db,
-        "users",
-        uid,
-        "configuration",
-        kind,
-      )))
-    );
-
-    // Configuration documents are singletons; this collection query is not used
-    // to infer a document. Read each known ID directly below instead.
-    void snapshots;
-    const { getDoc } = await import("firebase/firestore");
     const documents = await Promise.all(
       CONFIG_KINDS.map((kind) => getDoc(this.configurationRef(uid, kind)))
     );
@@ -104,7 +88,6 @@ export class FirebasePersonalDataService {
   async loadCalendar(): Promise<LoadedData["calendario"] | null> {
     const uid = this.currentUserId();
     const { db } = requireFirebase();
-    const { getDoc } = await import("firebase/firestore");
     const snapshot = await getDoc(doc(db, "users", uid, "calendar", CALENDAR_DOCUMENT));
     if (!snapshot.exists()) return null;
 
@@ -131,9 +114,17 @@ export class FirebasePersonalDataService {
     if (calendar.schemaVersion !== 1 || !Array.isArray(calendar.datas)) {
       throw new Error("O CALENDÁRIO PESSOAL NO FIREBASE ESTÁ INVÁLIDO.");
     }
-    // Reuse the same validation contract as the existing Drive repository.
-    const { validateCalendarForFirebase } = await import("./firebaseValidation");
-    validateCalendarForFirebase(calendar);
+    for (const item of calendar.datas) {
+      if (
+        !item ||
+        typeof item.data !== "string" ||
+        typeof item.folga !== "boolean" ||
+        typeof item.feriado !== "boolean" ||
+        (!item.folga && !item.feriado)
+      ) {
+        throw new Error("O CALENDÁRIO PESSOAL NO FIREBASE ESTÁ INVÁLIDO.");
+      }
+    }
 
     const uid = this.currentUserId();
     const { db } = requireFirebase();
