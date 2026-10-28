@@ -13,6 +13,7 @@ import { signInWithCorporateGoogle, restoreCorporateGoogleSession, observeCorpor
 import { FirebasePersonalDataService } from "./firebasePersonalDataService";
 import { FirebaseOperationalService } from "./firebaseOperationalService";
 import { FirebaseWorkspaceRepository } from "./firebaseWorkspaceRepository";
+import { normalizeConfiguration as normalizeFirebaseConfiguration } from "./dataRepository";
 
 const auth=new WebGoogleAuth(); const drive=new DriveService(auth); const data=new DataRepository(drive); const calendarHistory=new CalendarHistoryService(drive); const session=new WebSessionService(drive);
 
@@ -114,8 +115,8 @@ export function installWebBridge(){
    saveWorkspaceConfiguration:(config:any)=>firebaseWorkspace.saveConfiguration(config),
    saveWorkspaceCalendar:(calendar:any)=>firebaseWorkspace.saveCalendar(calendar),
    saveWorkspaceCurrentState:(state:EstadoAtual|null)=>firebaseWorkspace.saveCurrentState(state),
-   loadConfiguration:()=>firebasePersonalData.loadConfiguration(),
-   saveConfiguration:(config:any)=>firebasePersonalData.saveConfiguration(config),
+   loadConfiguration:async()=>{const config=await firebasePersonalData.loadConfiguration();return config?normalizeFirebaseConfiguration(config):null;},
+   saveConfiguration:(config:any)=>firebaseWorkspace.saveConfiguration(config),
    loadCalendar:()=>firebasePersonalData.loadCalendar(),
    saveCalendar:(calendar:any)=>firebasePersonalData.saveCalendar(calendar),
    loadCurrentState:()=>firebaseOperational.loadCurrentState(),
