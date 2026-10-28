@@ -9,12 +9,15 @@ import { pickDriveFolder } from "./webPicker";
 import { WebSessionService } from "./webSessionService";
 import { createVolSupService } from "./volsupService";
 import { createMaintenanceService } from "./maintenanceService";
+import { signInWithCorporateGoogle, restoreCorporateGoogleSession, observeCorporateAccess, signOutCorporateGoogle } from "./firebaseAuthService";
+import { FirebasePersonalDataService } from "./firebasePersonalDataService";
 
 const auth=new WebGoogleAuth(); const drive=new DriveService(auth); const data=new DataRepository(drive); const calendarHistory=new CalendarHistoryService(drive); const session=new WebSessionService(drive);
 
 const boot=()=>loadBootstrap();
 const volSupService=createVolSupService(()=>auth.getAccessToken());
 const maintenanceService=createMaintenanceService(()=>auth.getAccessToken());
+const firebasePersonalData = new FirebasePersonalDataService();
 
 /**
  * Reproduz o fluxo do importador Apps Script: envia o arquivo escolhido
@@ -96,6 +99,18 @@ async function configureRoot(id:string){ if(!id?.trim())throw new Error("INFORME
 export function installWebBridge(){
  const bridge:any={
   ready:true,
+  // New Firebase API is exposed alongside the existing Drive API during the
+  // staged migration. It is not yet the source of operational expediente/history.
+  firebase:{
+   signIn:signInWithCorporateGoogle,
+   restoreSession:restoreCorporateGoogleSession,
+   observeAccess:observeCorporateAccess,
+   signOut:signOutCorporateGoogle,
+   loadConfiguration:()=>firebasePersonalData.loadConfiguration(),
+   saveConfiguration:(config:any)=>firebasePersonalData.saveConfiguration(config),
+   loadCalendar:()=>firebasePersonalData.loadCalendar(),
+   saveCalendar:(calendar:any)=>firebasePersonalData.saveCalendar(calendar)
+  },
   sistema:{
    importarVolSup:volSupService.importarVolSup,
    importarManutFeitas:maintenanceService.importarManutFeitas,
