@@ -1,6 +1,5 @@
 import {
   collection,
-  collectionGroup,
   doc,
   getDocs,
   limit,
@@ -167,10 +166,14 @@ export async function saveAllowedDomains(domains: string[]) {
   await audit("ALLOWED_DOMAINS_UPDATED", "settings/allowedDomains", { domains: normalized });
 }
 
-export async function listRecentOperationalRecords(maxItems = 100) {
+export async function listRecentOperationalRecords(maxItems = 100, sectorId?: string) {
   const { db } = requireFirebase();
-  // Admin read-only oversight view. The final schema will standardize recordType
-  // and completedAt before this is used by the management dashboard.
-  const snapshot = await getDocs(query(collectionGroup(db, "operational"), orderBy("completedAt", "desc"), limit(maxItems)));
+  // Reads the new top-level Expediente index. A supervisor must supply their
+  // own sectorId so the query shape is compatible with Firestore Security Rules.
+  const base = collection(db, "Expediente");
+  const recordQuery = sectorId
+    ? query(base, where("sectorId", "==", sectorId), orderBy("completedAt", "desc"), limit(maxItems))
+    : query(base, orderBy("completedAt", "desc"), limit(maxItems));
+  const snapshot = await getDocs(recordQuery);
   return snapshot.docs.map((item) => ({ id: item.id, path: item.ref.path, ...item.data() }));
 }
