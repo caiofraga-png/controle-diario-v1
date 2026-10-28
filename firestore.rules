@@ -77,6 +77,14 @@ service cloud.firestore {
       }
     }
 
+    function sectorRecord(sectorId) {
+      return get(/databases/$(database)/documents/organizationSectors/$(sectorId));
+    }
+
+    function contactRecord(contactId) {
+      return get(/databases/$(database)/documents/organizationContacts/$(contactId));
+    }
+
     // Shared operational index. Its owner and organizational snapshot are
     // checked at creation and cannot be changed by a later client update.
     function validExpedienteSnapshot() {
@@ -96,7 +104,14 @@ service cloud.firestore {
         && request.resource.data.agent == request.resource.data.assignment.agent
         && request.resource.data.assignment.login == userRecord(request.auth.uid).data.login
         && request.resource.data.assignment.agent == userRecord(request.auth.uid).data.agent
-        && request.resource.data.assignment.contactId == userRecord(request.auth.uid).data.contactId;
+        && request.resource.data.assignment.contactId == userRecord(request.auth.uid).data.contactId
+        && exists(/databases/$(database)/documents/organizationSectors/$(request.resource.data.assignment.sectorId))
+        && sectorRecord(request.resource.data.assignment.sectorId).data.active == true
+        && sectorRecord(request.resource.data.assignment.sectorId).data.name == request.resource.data.assignment.sectorName
+        && exists(/databases/$(database)/documents/organizationContacts/$(request.resource.data.assignment.contactId))
+        && contactRecord(request.resource.data.assignment.contactId).data.active == true
+        && contactRecord(request.resource.data.assignment.contactId).data.sectorId == request.resource.data.assignment.sectorId
+        && contactRecord(request.resource.data.assignment.contactId).data.name == request.resource.data.assignment.contactName;
     }
 
     match /Expediente/{expedienteId} {
