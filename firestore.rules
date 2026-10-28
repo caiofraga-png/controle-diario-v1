@@ -67,17 +67,13 @@ service cloud.firestore {
         allow read, write: if approvedUser() && request.auth.uid == uid;
       }
 
-      // Temporary compatibility path for operational records that may be
-      // nested under a user during migration. Supervisors see only records
-      // whose saved sector snapshot matches their own sector.
+      // Fail closed until the Firestore operational adapter and its
+      // document envelope are implemented and tested. The current Drive
+      // adapter remains the live source of truth, so denying this unused path
+      // does not disable the existing workflow. Do not add a broad owner-write
+      // rule here: it would let a client rewrite or delete finalized history.
       match /operational/{document=**} {
-        allow read: if approvedUser()
-          && (request.auth.uid == uid
-            || activeAdmin()
-            || (activeSupervisor()
-              && resource.data.sectorId == currentSectorId()));
-        allow create, update, delete: if approvedUser()
-          && request.auth.uid == uid;
+        allow read, write: if false;
       }
     }
 
