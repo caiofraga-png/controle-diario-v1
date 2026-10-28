@@ -6,7 +6,8 @@
   "author": "Caio Fraga",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build"
+    "build": "tsc -b && vite build",
+    "test:rules": "node --test tests/firestore.rules.test.cjs"
   },
   "dependencies": {
     "firebase": "^12.0.0",
@@ -19,6 +20,8 @@
     "@types/react-dom": "^19.1.7",
     "@vitejs/plugin-react": "^5.0.2",
     "typescript": "^5.9.2",
-    "vite": "^7.1.5"
+    "vite": "^7.1.5",
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase-tools": "^14.12.1"
   }
 }
