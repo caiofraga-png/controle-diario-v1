@@ -12,11 +12,6 @@ installWebBridge();
 
 interface Bridge {
   firebase: { signIn: () => Promise<any>; restoreSession: () => Promise<any>; observeAccess: (callback:(result:any)=>void, onError?:(error:Error)=>void)=>()=>void; signOut: () => Promise<void>; workflow: any };
-  tarefas: { iniciar: (p: { data: string; perfilId: string }) => Promise<any>; trocarPerfil: (perfilId:string) => Promise<any>; marcar: (p: { tipo: "tarefa" | "email"; id: string; concluido: boolean }) => Promise<any>; observacao: (v: string) => Promise<any>; concluir: () => Promise<any>; abandonar: () => Promise<any> };
-  dados: { carregar: () => Promise<any>; salvarCalendario: (calendario: unknown) => Promise<any> };
-  calendario: { mes: (p: { year: number; month: number }) => Promise<any>; salvarData: (p: { data: string; folga: boolean; feriado: boolean }) => Promise<any> };
-  config: { salvar: (config: unknown) => Promise<any>; novaTarefa: (input:{nome:string;link:string;criacao:string})=>Promise<any>; novoPerfil:(input:{nome:string;tarefas:string[]})=>Promise<any>; novoEmail:(input:{nome:string;titulo:string;corpo:string;global?:boolean})=>Promise<any>; salvarTarefa:(p:{id:string;criacao?:string;roteiro?:any})=>Promise<any> };
-  historico: { versoes: (date: string) => Promise<any>; ler: (p: { date: string; versao: number }) => Promise<any>; errata: (p: { source: unknown; edited: unknown }) => Promise<any> };
 }
 declare global { interface Window { controleDiario: Bridge } }
 
