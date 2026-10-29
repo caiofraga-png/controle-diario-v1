@@ -1,4 +1,5 @@
 import type { EstadoAtual, RegistroHistorico } from "../shared/types/state";
+import { WebGoogleAuth } from "./webAuth";
 import { createVolSupService } from "./volsupService";
 import { createMaintenanceService } from "./maintenanceService";
 import { signInWithCorporateGoogle, restoreCorporateGoogleSession, observeCorporateAccess, signOutCorporateGoogle } from "./firebaseAuthService";
@@ -9,6 +10,7 @@ import { normalizeConfiguration as normalizeFirebaseConfiguration } from "./data
 import { FirebaseWorkflowService } from "./firebaseWorkflowService";
 
 
+const auth=new WebGoogleAuth();
 const volSupService=createVolSupService(()=>auth.getAccessToken());
 const maintenanceService=createMaintenanceService(()=>auth.getAccessToken());
 const firebasePersonalData = new FirebasePersonalDataService();
