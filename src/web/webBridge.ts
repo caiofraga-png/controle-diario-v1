@@ -144,8 +144,7 @@ export function installWebBridge(){
     versoes:(date:string)=>firebaseWorkflow.versions(date),
     ler:(input:any)=>firebaseWorkflow.readVersion(input),
     errata:(input:any)=>firebaseWorkflow.saveHistoryErrata(input.source,input.edited),
-    salvar:(config:any)=>firebaseWorkflow.saveConfiguration(config),
-    salvarTarefa:(input:any)=>firebaseWorkflow.saveTask(input)
+    salvar:(config:any)=>firebaseWorkflow.saveConfiguration(config)
    }
   },
   sistema:{
