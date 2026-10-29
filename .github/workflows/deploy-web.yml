@@ -35,9 +35,6 @@ jobs:
           VITE_FIREBASE_APP_ID: "1:694384996130:web:af87189c4b04cdd3857f7b"
         run: npm run build
 
-      - name: Compilar aplicação Web
-        run: npm run build
-
       - name: Configurar Pages
         uses: actions/configure-pages@v5
 
