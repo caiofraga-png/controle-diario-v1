@@ -24,6 +24,17 @@ export type AccessResult =
 
 const ALLOWED_DOMAINS_DOC = "settings/allowedDomains";
 
+async function firestoreStep<T>(step: string, operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    const code = typeof error === "object" && error !== null && "code" in error
+      ? String((error as { code?: unknown }).code ?? "")
+      : "";
+    throw new Error(`Falha no Firestore na etapa "${step}"${code ? ` (${code})` : ""}. Verifique as regras e a configuração de homologação.`);
+  }
+}
+
 function normalizedEmail(user: User): string {
   return (user.email ?? "").trim().toLowerCase();
 }
@@ -67,7 +78,7 @@ export async function signInWithCorporateGoogle(): Promise<AccessResult> {
   }
 
   const userRef = doc(db, "users", identity.uid);
-  const userSnapshot = await getDoc(userRef);
+  const userSnapshot = await firestoreStep("leitura do perfil users/{uid}", () => getDoc(userRef));
 
   if (userSnapshot.exists()) {
     const profile = asOrganizationalUser(identity.uid, userSnapshot.data());
@@ -84,7 +95,7 @@ export async function signInWithCorporateGoogle(): Promise<AccessResult> {
   }
 
   const requestRef = doc(db, "accessRequests", identity.uid);
-  const requestSnapshot = await getDoc(requestRef);
+  const requestSnapshot = await firestoreStep("leitura de accessRequests/{uid}", () => getDoc(requestRef));
   if (requestSnapshot.exists()) {
     const requestStatus = String(requestSnapshot.data().status ?? "pending");
     await signOut(auth);
@@ -94,7 +105,7 @@ export async function signInWithCorporateGoogle(): Promise<AccessResult> {
     return { status: "pending", email };
   }
 
-  const domainSnapshot = await getDoc(doc(db, ALLOWED_DOMAINS_DOC));
+  const domainSnapshot = await firestoreStep("leitura de settings/allowedDomains", () => getDoc(doc(db, ALLOWED_DOMAINS_DOC)));
   const domains = domainSnapshot.exists()
     ? (domainSnapshot.data().domains as unknown[] | undefined) ?? []
     : [];
@@ -103,12 +114,12 @@ export async function signInWithCorporateGoogle(): Promise<AccessResult> {
     return { status: "not-allowed", email };
   }
 
-  await setDoc(requestRef, {
+  await firestoreStep("gravação de accessRequests/{uid}", () => setDoc(requestRef, {
     uid: identity.uid,
     email,
     status: "pending",
     requestedAt: serverTimestamp(),
-  });
+  }));
 
   await signOut(auth);
   return { status: "pending", email };
