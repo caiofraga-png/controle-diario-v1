@@ -11,7 +11,7 @@ import { installWebBridge } from "../web/webBridge";
 installWebBridge();
 
 interface Bridge {
-  firebase: { signIn: () => Promise<any>; restoreSession: () => Promise<any>; observeAccess: (callback:(result:any)=>void, onError?:(error:Error)=>void)=>()=>void; signOut: () => Promise<void> };
+  firebase: { signIn: () => Promise<any>; restoreSession: () => Promise<any>; observeAccess: (callback:(result:any)=>void, onError?:(error:Error)=>void)=>()=>void; signOut: () => Promise<void>; workflow: any };
   sistema: { status: () => Promise<any>; autorizarGoogle: () => Promise<any>; definirPastaRaiz: (id: string) => Promise<any>; selecionarPasta: () => Promise<any>; testarConexao: () => Promise<boolean>; testarSheets: (spreadsheetId:string) => Promise<{spreadsheetId:string;title:string;sheets:{sheetId:number;title:string;hidden:boolean}[]}>; inspecionarDestino: (spreadsheetId:string,sheetTitle:string) => Promise<{spreadsheetId:string;sheetTitle:string;headers:string[];lastTicketRow:number;headerRow:number;firstDataRow:number;ticketColumn:string}> };
   tarefas: { iniciar: (p: { data: string; perfilId: string }) => Promise<any>; trocarPerfil: (perfilId:string) => Promise<any>; marcar: (p: { tipo: "tarefa" | "email"; id: string; concluido: boolean }) => Promise<any>; observacao: (v: string) => Promise<any>; concluir: () => Promise<any>; abandonar: () => Promise<any> };
   dados: { carregar: () => Promise<any>; salvarCalendario: (calendario: unknown) => Promise<any> };
