@@ -1,0 +1,56 @@
+name: Publicar regras Firestore de homologação
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-rules:
+    if: github.ref == 'refs/heads/feature/leste-firebase-multusuario'
+    runs-on: ubuntu-latest
+    environment: homologacao
+    steps:
+      - name: Obter código
+        uses: actions/checkout@v5
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Configurar Java para o emulador
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Instalar dependências
+        run: npm install --no-audit --no-fund
+
+      - name: Instalar Firebase CLI
+        run: npm install --global firebase-tools@14
+
+      - name: Preparar credencial temporária
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CONTROLE_DIARIO_510808 }}
+        run: |
+          test -n "$FIREBASE_SERVICE_ACCOUNT_JSON" || { echo "Falta o segredo FIREBASE_SERVICE_ACCOUNT_CONTROLE_DIARIO_510808."; exit 1; }
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/firebase-service-account.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-service-account.json" >> "$GITHUB_ENV"
+
+      - name: Validar regras no emulador
+        run: npx firebase emulators:exec --only firestore --project leste-controle-diario-rules-test "npm run test:rules"
+        env:
+          VITE_FIREBASE_API_KEY: "AIzaSyBoKGbTuUZobtC-H-PU6mFpmIpD8Z-gJG0"
+          VITE_FIREBASE_AUTH_DOMAIN: "controle-diario-510808.firebaseapp.com"
+          VITE_FIREBASE_PROJECT_ID: "controle-diario-510808"
+          VITE_FIREBASE_APP_ID: "1:694384996130:web:af87189c4b04cdd3857f7b"
+
+      - name: Publicar apenas regras do Firestore no projeto de homologação
+        run: firebase deploy --only firestore:rules --project controle-diario-510808 --non-interactive
+
+      - name: Remover credencial temporária
+        if: always()
+        run: rm -f "$RUNNER_TEMP/firebase-service-account.json"
