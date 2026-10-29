@@ -22,11 +22,8 @@ const CONFIG_KINDS: ConfigurationKind[] = ["tarefas", "perfis", "email", "layout
 const CALENDAR_DOCUMENT = "dados";
 
 /**
- * Firebase storage for private, per-user settings.
- *
- * This service is deliberately separate from DataRepository: the live workflow
- * still uses Drive until the operational-state/history adapter and UI auth flow
- * are integrated and tested. Firestore Rules enforce user ownership and approval.
+ * Firebase storage for private, per-user settings. Firestore Rules enforce
+ * user ownership and approval.
  */
 export class FirebasePersonalDataService {
   private currentUserId(): string {
