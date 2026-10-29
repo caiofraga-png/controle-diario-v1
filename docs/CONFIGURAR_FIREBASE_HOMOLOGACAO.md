@@ -91,8 +91,10 @@ Não copie automaticamente configuração, expediente ou histórico real do Goog
 - [ ] Contas de teste e seus papéis documentados.
 - [ ] Nenhum dado real importado sem autorização.
 - [ ] Variáveis de configuração disponíveis apenas no ambiente de build/hospedagem correto.
-- [ ] Fluxo principal ainda não trocado do Google Drive para Firebase até a migração e os testes serem concluídos.
+- [x] O fluxo principal da branch de migração usa os serviços Firebase para expediente, configuração, calendário e histórico; falta a homologação ponta a ponta no navegador.
 
 ## Estado atual
 
-Este arquivo é um roteiro operacional. Ele não significa que o projeto Firebase foi criado, que o provedor Google foi habilitado, que as regras foram publicadas ou que um administrador foi provisionado. Essas etapas dependem de ações autorizadas no Firebase Console e de validação em ambiente de homologação.
+Este arquivo é um roteiro operacional, não uma confirmação das configurações existentes no Firebase Console. A compilação de homologação no GitHub Actions usa atualmente o projeto `controle-diario-510808` por meio de variáveis públicas `VITE_FIREBASE_*`. Antes de realizar testes com contas reais, confirme no Firebase Console que esse é o projeto autorizado para homologação e que não contém dados de produção. Se for necessário um projeto separado, configure-o explicitamente no ambiente de build; não altere a configuração silenciosamente.
+
+Os testes automatizados de compilação e regras no emulador passaram. Isso não confirma que o provedor Google esteja habilitado no projeto real, que os domínios de hospedagem estejam autorizados, que as regras tenham sido publicadas ou que o administrador inicial tenha sido provisionado. Essas verificações exigem acesso autorizado ao Firebase Console.
