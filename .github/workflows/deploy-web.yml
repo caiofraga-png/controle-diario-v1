@@ -29,6 +29,7 @@ jobs:
 
       - name: Compilar aplicação Web
         env:
+          DEPLOY_TARGET: "github-pages"
           VITE_FIREBASE_API_KEY: "AIzaSyBoKGbTuUZobtC-H-PU6mFpmIpD8Z-gJG0"
           VITE_FIREBASE_AUTH_DOMAIN: "controle-diario-510808.firebaseapp.com"
           VITE_FIREBASE_PROJECT_ID: "controle-diario-510808"
