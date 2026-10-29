@@ -213,10 +213,10 @@ export function observeCorporateAccess(
       (snapshot) => {
         if (currentGeneration !== generation) return;
         if (!snapshot.exists()) {
+          // A conta autenticada pode ainda estar aguardando aprovação e, portanto,
+          // não possuir users/{uid}. Não encerre a sessão aqui: o fluxo de login
+          // precisa consultar/criar accessRequests/{uid} antes de decidir o acesso.
           callback({ status: "not-allowed", email });
-          void signOut(auth).catch((error: unknown) => {
-            onError?.(error instanceof Error ? error : new Error(String(error)));
-          });
           return;
         }
 
