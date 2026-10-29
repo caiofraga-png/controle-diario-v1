@@ -4,9 +4,7 @@ import { FirebasePersonalDataService } from "./firebasePersonalDataService";
 import { FirebaseOperationalService } from "./firebaseOperationalService";
 
 /**
- * Step 1 adapter for the per-user Firebase workspace.
- * This repository is not wired into the live UI yet; Drive remains the active
- * source until the complete operational flow is integrated and tested.
+ * Per-user Firebase workspace repository used by the live expediente workflow.
  */
 export class FirebaseWorkspaceRepository {
   constructor(
