@@ -2,7 +2,7 @@
 
 **Situação:** especificação técnica da branch de desenvolvimento; ainda não conectada ao funcionamento do aplicativo.
 
-Este plano acrescenta a estrutura necessária sem substituir prematuramente o armazenamento atual. O repositório baseado no Google Drive continuará sendo a fonte usada pelo aplicativo até que o adaptador do Firestore e o fluxo da interface sejam integrados e validados. Não remova a compatibilidade com o Drive nem altere a branch `main` nesta etapa de planejamento.
+O fluxo principal de expediente, configuração, calendário e histórico foi direcionado ao Firebase nesta branch. Os serviços antigos de persistência por Google Drive não devem ser usados por esse fluxo. Esta branch continua em homologação; não mesclar nem publicar antes da validação ponta a ponta.
 
 ## Comportamentos atuais que precisam ser preservados
 
@@ -77,7 +77,7 @@ Ciclo de vida proposto para as regras, a confirmar e testar antes de habilitar a
 - histórico: criação pelo proprietário aprovado apenas para uma nova versão válida; leitura pelo proprietário e por perfis gerenciais autorizados; atualização e exclusão pelo cliente negadas. Erratas sempre criam uma nova versão.
 - índice `Expediente`: não permitir que alterações no índice substituam o conteúdo do histórico oficial; definir transições permitidas de estado e testar consistência com o histórico.
 
-**Até esse contrato existir e ser testado, as regras negam leitura e gravação em `users/{uid}/operational`.** O armazenamento ativo permanece no Google Drive; não habilitar o adaptador Firestore antes de concluir os testes de autorização, recuperação e concorrência.
+As regras e o adaptador operacional do Firestore estão implementados e cobertos por testes automatizados no emulador. A aprovação desses testes não substitui os testes ponta a ponta no navegador, incluindo autorização, recuperação e concorrência.
 
 ## Autorização e restrições das consultas
 
