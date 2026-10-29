@@ -84,6 +84,17 @@ export class FirebaseOperationalService {
     });
   }
 
+  async listHistoryMonth(year: number, month: number): Promise<Array<{ data: string; versao: number; nome: string; concluidoEm: string; origemVersao: string | null }>> {
+    if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) throw new Error("O MÊS DO HISTÓRICO É INVÁLIDO.");
+    const prefix = `${year}-${String(month).padStart(2, "0")}-`;
+    const uid = this.uid();
+    const records = await getDocs(query(this.historyCollection(uid), where("ownerUid", "==", uid)));
+    return records.docs.filter(snapshot => String(snapshot.data().data ?? "").startsWith(prefix)).map(snapshot => {
+      const record = snapshot.data() as HistoryEntry;
+      return { data: record.data, versao: record.versao, nome: snapshot.id, concluidoEm: record.concluidoEm, origemVersao: record.origemVersao };
+    }).sort((a, b) => a.data.localeCompare(b.data) || a.versao - b.versao);
+  }
+
   async listHistory(date: string): Promise<Array<{ versao: number; nome: string; concluidoEm: string; origemVersao: string | null }>> {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("A DATA DO HISTÓRICO É INVÁLIDA.");
     const uid = this.uid();
