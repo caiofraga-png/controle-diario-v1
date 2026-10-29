@@ -14,7 +14,7 @@ A implementação em `src/web/dataRepository.ts` e `src/web/calendarHistoryServi
 - Ao concluir um expediente, é criado um registro histórico e o estado atual/anterior é limpo. O fluxo atual também tenta recuperar a operação quando uma gravação anterior aparentemente já foi concluída; esse mecanismo de recuperação de duplicidade deve ser mantido.
 - O histórico possui versões. Uma errata cria uma nova versão, em vez de sobrescrever a original, e só pode alterar marcações de conclusão e observação. Estrutura das tarefas, texto, link, roteiro, conteúdo dos e-mails e identidade dos e-mails devem permanecer iguais.
 - O histórico do calendário identifica as datas concluídas pela existência de registros históricos.
-- As regras operacionais das tarefas e dos importadores não fazem parte desta migração de armazenamento.
+- O sistema web migrado não inclui as rotinas antigas de importação por Google Drive/Sheets.
 
 ## Mapeamento proposto para o Firestore
 
@@ -101,4 +101,4 @@ As regras e o adaptador operacional do Firestore estão implementados e cobertos
 
 ## Limites da migração
 
-Este plano não copia nem exclui dados do Google Drive de produção. Os históricos antigos permanecem no Drive até que um procedimento de migração separado, aprovado previamente, avalie propriedade, autoria, datas duplicadas, versões e fotografias da lotação. Não importe históricos em massa sem essa análise.
+A aplicação Firebase começa sem importar configurações, expedientes ou históricos do Google Drive. Os dados antigos não são lidos nem apagados por esta aplicação; o novo sistema mantém seus próprios dados no Firestore.
