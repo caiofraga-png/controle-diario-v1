@@ -98,3 +98,17 @@ Não copie automaticamente configuração, expediente ou histórico real do Goog
 Este arquivo é um roteiro operacional, não uma confirmação das configurações existentes no Firebase Console. O responsável pelo projeto confirmou que `controle-diario-510808` é o projeto destinado à homologação. A compilação da branch usa esse projeto por meio de variáveis públicas `VITE_FIREBASE_*`. Antes de testar com contas reais, confira no Console se Authentication, domínios autorizados, Firestore e regras estão configurados nesse projeto. Não altere a configuração para outro projeto sem uma decisão explícita.
 
 Os testes automatizados de compilação e regras no emulador passaram. Isso não confirma que o provedor Google esteja habilitado no projeto real, que os domínios de hospedagem estejam autorizados, que as regras tenham sido publicadas ou que o administrador inicial tenha sido provisionado. Essas verificações exigem acesso autorizado ao Firebase Console.
+
+## 8. Hospedagem temporária e publicação controlada
+
+A branch de homologação possui workflows manuais separados para hospedagem e regras. Eles não são executados automaticamente por push e só aceitam execução quando a referência é `feature/leste-firebase-multusuario`.
+
+Antes de executá-los, configure no GitHub um segredo de repositório ou de ambiente chamado `FIREBASE_SERVICE_ACCOUNT_CONTROLE_DIARIO_510808`, contendo o JSON de uma conta de serviço autorizada somente para as operações necessárias no projeto de homologação. Não use uma chave de produção nem compartilhe o JSON no chat, em issues ou no código. Restrinja a conta de serviço às permissões de Firebase Hosting e Firebase Rules exigidas para os dois workflows e siga a política de credenciais da organização.
+
+1. Em GitHub → Settings → Secrets and variables → Actions, crie o segredo acima (ou no ambiente protegido `homologacao`, se preferir manter a credencial no ambiente).
+2. Execute **Publicar regras Firestore de homologação** manualmente. Esse workflow executa os testes no emulador antes de publicar apenas `firestore.rules` no projeto `controle-diario-510808`.
+3. Execute **Publicar homologação Firebase Hosting** manualmente. Ele compila a branch e publica um canal temporário `homologacao`, com expiração de sete dias; não publica no canal principal do Hosting.
+4. Abra a URL temporária exibida pelo workflow e teste o login Google. Se o domínio temporário não estiver autorizado no Firebase Authentication, adicione apenas o hostname exato exibido pelo Firebase e necessário ao teste.
+5. Não execute workflows de publicação a partir de `main` e não faça merge do PR até concluir os testes ponta a ponta.
+
+Os workflows não conseguem publicar enquanto o segredo de conta de serviço não estiver configurado. Não substitua essa credencial por uma chave privada em `VITE_*`; variáveis `VITE_*` são públicas no bundle do navegador.
