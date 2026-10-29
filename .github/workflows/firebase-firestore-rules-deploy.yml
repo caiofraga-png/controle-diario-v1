@@ -20,6 +20,15 @@ jobs:
         with:
           node-version: 22
 
+      - name: Configurar Java para o emulador
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Instalar dependências
+        run: npm install --no-audit --no-fund
+
       - name: Instalar Firebase CLI
         run: npm install --global firebase-tools@14
 
@@ -32,7 +41,7 @@ jobs:
           echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-service-account.json" >> "$GITHUB_ENV"
 
       - name: Validar regras no emulador
-        run: npm ci --no-audit --no-fund && npm run test:rules
+        run: npx firebase emulators:exec --only firestore --project leste-controle-diario-rules-test "npm run test:rules"
         env:
           VITE_FIREBASE_API_KEY: "AIzaSyBoKGbTuUZobtC-H-PU6mFpmIpD8Z-gJG0"
           VITE_FIREBASE_AUTH_DOMAIN: "controle-diario-510808.firebaseapp.com"
