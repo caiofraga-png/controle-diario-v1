@@ -40,9 +40,8 @@ function clone<T>(value: T): T {
 }
 
 /**
- * Per-user operational data adapter for the staged Drive-to-Firestore migration.
+ * Per-user operational data adapter for the Firebase workflow.
  * Current state is mutable; completed history is append-only (create-only in rules).
- * This adapter is intentionally not yet wired as the app's live repository.
  */
 export class FirebaseOperationalService {
   private uid(): string {
