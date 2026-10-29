@@ -1,6 +1,6 @@
 # Plano de migração do armazenamento operacional
 
-**Situação:** especificação técnica da branch de desenvolvimento; ainda não conectada ao funcionamento do aplicativo.
+**Situação:** o fluxo principal da aplicação web nesta branch foi direcionado ao Firebase. A branch permanece em homologação e não deve ser mesclada ou publicada antes dos testes ponta a ponta.
 
 O fluxo principal de expediente, configuração, calendário e histórico foi direcionado ao Firebase nesta branch. Os serviços antigos de persistência por Google Drive não devem ser usados por esse fluxo. Esta branch continua em homologação; não mesclar nem publicar antes da validação ponta a ponta.
 
@@ -25,7 +25,7 @@ Todos os registros privados ficam vinculados ao UID do Firebase autenticado. O U
 | Arquivos de configuração de tarefas, perfis, e-mails e layout | `users/{uid}/configuration/{documentId}` | Preservar a versão do esquema e as validações atuais. O primeiro acesso não copia automaticamente a configuração de outra pessoa. |
 | Datas especiais do calendário | `users/{uid}/calendar/{documentId}` | Preservar o significado das datas especiais e usar documentos de tamanho limitado, em vez de um único documento que cresça continuamente. |
 | Expediente atual | `users/{uid}/operational/currentState` | Armazenar os dados de `EstadoAtual`, além do UID proprietário e das datas de controle. |
-| Cópia anterior/de recuperação | `users/{uid}/operational/previousState` | Preservar a lógica de recuperação atual até que o fechamento seja migrado e testado. |
+| Cópia anterior/de recuperação | `users/{uid}/operational/previousState` | Validar a recuperação durante os testes ponta a ponta antes da liberação. |
 | Versões permanentes do histórico | `users/{uid}/operational/history_{date}_R{version}` | Cada versão completa de `RegistroHistorico` será um documento próprio. O ID deve ser determinístico para que novas tentativas detectem uma gravação já realizada. |
 | Índice compartilhado de cartões para consulta gerencial | `Expediente/{ownerUid}_{date}` | Um cartão de índice por proprietário/data, com UID do proprietário e fotografia da lotação. É somente um índice, não o histórico oficial. Uma errata deve atualizar os metadados da versão mais recente do cartão, sem substituir o histórico individual. |
 | Links úteis | `users/{uid}/usefulLinks/{documentId}` | Manter separados do expediente e da configuração. |
