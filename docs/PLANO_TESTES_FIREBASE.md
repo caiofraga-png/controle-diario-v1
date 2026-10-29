@@ -1,7 +1,7 @@
 # Plano de testes de segurança e integridade — Firebase
 
 ## Objetivo
-Validar a persistência individual e a consulta gerencial do Leste – Controle Diário antes de substituir o armazenamento no Google Drive. Este documento descreve testes planejados, **não resultados executados**.
+Validar a persistência individual e a consulta gerencial do Leste – Controle Diário no Firebase. Os testes automatizados das regras e da compilação são executados no GitHub Actions; este plano registra as validações manuais ainda necessárias.
 
 ## Pré-condições
 - Usar projeto Firebase exclusivo de testes e Firestore Emulator com as regras da branch de desenvolvimento.
@@ -37,7 +37,7 @@ Validar a persistência individual e a consulta gerencial do Leste – Controle 
 ## Situação da revisão do código
 
 1. **Índice `Expediente`: endurecido na branch, ainda não testado no emulador.** A criação exige proprietário autenticado e aprovado, fotografia de atribuição correspondente ao perfil atual e correspondência entre os campos duplicados e a fotografia. A atualização pelo proprietário fica limitada a `status` e `completedAt`; a exclusão pelo cliente é negada.
-2. **Subcoleção `users/{uid}/operational`: bloqueada preventivamente.** A regra agora nega leitura e gravação nessa subcoleção até que o adaptador Firestore e o contrato dos documentos sejam implementados. O aplicativo continua usando o Google Drive nesta etapa, portanto esse bloqueio não deve afetar o fluxo atual. Antes da integração, definir permissões distintas para `currentState`, `previousState` e histórico imutável; testar criação única de versões e impedir atualização/exclusão de histórico já finalizado.
+2. **Subcoleção `users/{uid}/operational`: bloqueada preventivamente.** A regra agora nega leitura e gravação nessa subcoleção até que o adaptador Firestore e o contrato dos documentos sejam implementados. O fluxo principal do aplicativo usa o Firebase nesta branch. Validar permissões distintas para `currentState`, `previousState` e histórico imutável; testar criação única de versões e impedir atualização/exclusão de histórico já finalizado.
 3. A gravação do índice `Expediente` e a gravação do histórico pessoal precisam ser coordenadas para evitar inconsistências em falhas parciais.
 4. Consultas de supervisão precisam ser testadas com filtros compatíveis com as regras e índices do Firestore.
 5. O primeiro administrador depende de um procedimento confiável de inicialização, externo ao cliente web.
