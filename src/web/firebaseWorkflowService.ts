@@ -6,8 +6,8 @@ import { FirebaseOperationalService } from "./firebaseOperationalService";
 import type { Configuracao, LoadedData } from "./dataRepository";
 
 /**
- * Firebase-backed implementation of the existing expediente domain workflow.
- * The UI still uses the Drive bridge until its provider switch is integrated.
+ * Firebase-backed implementation of the expediente domain workflow.
+ * This is the primary persistence path for the Firebase migration.
  */
 export class FirebaseWorkflowService {
   constructor(
