@@ -106,8 +106,7 @@ async function configureRoot(id:string){ if(!id?.trim())throw new Error("INFORME
 export function installWebBridge(){
  const bridge:any={
   ready:true,
-  // New Firebase API is exposed alongside the existing Drive API during the
-  // staged migration. It is not yet the source of operational expediente/history.
+  // Firebase is the active persistence provider for the expediente, configuration, calendar and history. Drive remains available for existing spreadsheet importers.
   firebase:{
    signIn:signInWithCorporateGoogle,
    restoreSession:restoreCorporateGoogleSession,
@@ -140,7 +139,13 @@ export function installWebBridge(){
     novaTarefa:(input:any)=>firebaseWorkflow.addTask(input),
     novoPerfil:(input:any)=>firebaseWorkflow.addProfile(input),
     novoEmail:(input:any)=>firebaseWorkflow.addEmail(input),
-    salvarDataCalendario:(input:any)=>firebaseWorkflow.saveCalendarDate(input)
+    salvarDataCalendario:(input:any)=>firebaseWorkflow.saveCalendarDate(input),
+    mes:(input:any)=>firebaseWorkflow.month(input),
+    versoes:(date:string)=>firebaseWorkflow.versions(date),
+    ler:(input:any)=>firebaseWorkflow.readVersion(input),
+    errata:(input:any)=>firebaseWorkflow.saveHistoryErrata(input.source,input.edited),
+    salvar:(config:any)=>firebaseWorkflow.saveConfiguration(config),
+    salvarTarefa:(input:any)=>firebaseWorkflow.saveTask(input)
    }
   },
   sistema:{
