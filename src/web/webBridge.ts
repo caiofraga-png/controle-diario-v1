@@ -1,4 +1,4 @@
-import type { EstadoAtual, RegistroHistorico } from "../shared/types/state";
+import type { EstadoAtual } from "../shared/types/state";
 import { signInWithCorporateGoogle, restoreCorporateGoogleSession, observeCorporateAccess, signOutCorporateGoogle } from "./firebaseAuthService";
 import { FirebasePersonalDataService } from "./firebasePersonalDataService";
 import { FirebaseOperationalService } from "./firebaseOperationalService";
