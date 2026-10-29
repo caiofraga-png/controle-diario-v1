@@ -19,6 +19,31 @@ export class FirebaseWorkflowService {
     return this.workspace.load();
   }
 
+  async month(input: { year: number; month: number }) {
+    const loaded = await this.workspace.load();
+    const history = await this.operational.listHistoryMonth(input.year, input.month);
+    const prefix = `${input.year}-${String(input.month).padStart(2, "0")}-`;
+    return {
+      special: loaded.calendario.datas.filter(item => item.data.startsWith(prefix)),
+      completedDates: [...new Set(history.map(item => item.data))],
+    };
+  }
+
+  async versions(date: string) {
+    return this.operational.listHistory(date);
+  }
+
+  async readVersion(input: { date: string; versao: number }) {
+    const versions = await this.operational.listHistory(input.date);
+    const selected = versions.find(item => item.versao === input.versao);
+    if (!selected) throw new Error("A VERSÃO DO HISTÓRICO NÃO FOI ENCONTRADA.");
+    return this.operational.readHistory(selected.nome);
+  }
+
+  async saveHistoryErrata(source: RegistroHistorico, edited: Pick<RegistroHistorico, "tarefas" | "emailsGlobais" | "observacao">) {
+    return this.operational.saveErrata(source, edited);
+  }
+
   async start(input: { data: string; perfilId: string }): Promise<EstadoAtual> {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.data)) throw new Error("A DATA DO EXPEDIENTE É INVÁLIDA.");
     const loaded = await this.workspace.load();
