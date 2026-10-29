@@ -27,21 +27,13 @@ jobs:
       - name: Instalar dependências
         run: npm install
 
-      - name: Configurar chave do Google Picker
+      - name: Compilar aplicação Web
         env:
-          GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
-        run: |
-          node <<'NODE'
-          const fs = require("node:fs");
-          const config = {
-            googleClientId: "694384996130-190cb97ksaebs11p975137j8m6m3fbpn.apps.googleusercontent.com",
-            googlePickerApiKey: process.env.GOOGLE_PICKER_API_KEY || ""
-          };
-          fs.writeFileSync(
-            "src/renderer/public/config.js",
-            "window.__CONTROLE_DIARIO_CONFIG__ = " + JSON.stringify(config, null, 2) + ";\n"
-          );
-          NODE
+          VITE_FIREBASE_API_KEY: "AIzaSyBoKGbTuUZobtC-H-PU6mFpmIpD8Z-gJG0"
+          VITE_FIREBASE_AUTH_DOMAIN: "controle-diario-510808.firebaseapp.com"
+          VITE_FIREBASE_PROJECT_ID: "controle-diario-510808"
+          VITE_FIREBASE_APP_ID: "1:694384996130:web:af87189c4b04cdd3857f7b"
+        run: npm run build
 
       - name: Compilar aplicação Web
         run: npm run build
