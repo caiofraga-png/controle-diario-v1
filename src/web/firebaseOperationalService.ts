@@ -53,6 +53,17 @@ export class FirebaseOperationalService {
     return user.uid;
   }
 
+  async allowedProfileIds(): Promise<string[]> {
+    const uid = this.uid();
+    const { db } = requireFirebase();
+    const snapshot = await getDoc(doc(db, "users", uid));
+    if (!snapshot.exists() || snapshot.data().status !== "approved") {
+      throw new Error("O CADASTRO ORGANIZACIONAL APROVADO NÃO FOI ENCONTRADO.");
+    }
+    const value = snapshot.data().allowedProfileIds;
+    return Array.isArray(value) ? value.filter((id: unknown): id is string => typeof id === "string") : [];
+  }
+
   private currentRef(uid: string) {
     const { db } = requireFirebase();
     return doc(db, "users", uid, "operational", "currentState");
