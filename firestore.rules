@@ -216,7 +216,7 @@ service cloud.firestore {
 
     match /adminAudit/{auditId} {
       allow read: if activeAdmin();
-      allow create: if activeAdmin()
+      allow create: if activeManager()
         && request.resource.data.actorUid == request.auth.uid
         && request.resource.data.createdAt == request.time;
       allow update, delete: if false;
