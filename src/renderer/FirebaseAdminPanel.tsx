@@ -18,6 +18,8 @@ import {
 } from "../web/firebaseAdminService";
 import type { OrganizationalContact, OrganizationalSector, OrganizationalUser } from "../shared/types/organization";
 import { signInWithCorporateGoogle, signOutCorporateGoogle } from "../web/firebaseAuthService";
+import { FirebasePersonalDataService } from "../web/firebasePersonalDataService";
+import { loadSharedTaskCatalog, saveSharedTaskCatalog } from "../web/firebaseSharedTaskCatalogService";
 
 type RequestItem = { id: string; uid?: string; email?: string; status?: string };
 
@@ -41,13 +43,15 @@ export default function FirebaseAdminPanel() {
   const [contactSector, setContactSector] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [catalogProfiles, setCatalogProfiles] = useState<Array<{ id: string; nome: string; ativo: boolean }>>([]);
+  const [catalogReady, setCatalogReady] = useState(false);
 
   async function refresh() {
     setBusy(true);
     setMessage("");
     try {
-      const [r, u, s, c, d, records] = await Promise.all([
-        listAccessRequests(), listOrganizationalUsers(), listSectors(), listContacts(), getAllowedDomains(), listRecentOperationalRecords(100),
+      const [r, u, s, c, d, records, catalog] = await Promise.all([
+        listAccessRequests(), listOrganizationalUsers(), listSectors(), listContacts(), getAllowedDomains(), listRecentOperationalRecords(100), loadSharedTaskCatalog(),
       ]);
       setRequests(r as RequestItem[]);
       setUsers(u);
@@ -55,6 +59,8 @@ export default function FirebaseAdminPanel() {
       setContacts(c);
       setDomains(d.join("\n"));
       setOperationalRecords(records as Record<string, unknown>[]);
+      setCatalogReady(Boolean(catalog));
+      setCatalogProfiles((catalog?.perfis.perfis ?? []).filter((profile) => profile.ativo).map((profile) => ({ id: profile.id, nome: profile.nome, ativo: profile.ativo })));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível carregar os dados administrativos.");
     } finally {
@@ -160,6 +166,18 @@ export default function FirebaseAdminPanel() {
     finally { setBusy(false); }
   }
 
+  async function initializeSharedCatalog() {
+    setBusy(true);
+    try {
+      const ownConfiguration = await new FirebasePersonalDataService().loadConfiguration();
+      if (!ownConfiguration) throw new Error("Não foi encontrada uma configuração pessoal para iniciar o catálogo.");
+      await saveSharedTaskCatalog(ownConfiguration);
+      setMessage("Catálogo compartilhado inicializado com a configuração atual desta conta. Layouts pessoais foram mantidos separados.");
+      await refresh();
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Falha ao inicializar o catálogo compartilhado."); }
+    finally { setBusy(false); }
+  }
+
   async function saveUser(user: OrganizationalUser) {
     setBusy(true);
     try {
@@ -210,6 +228,14 @@ export default function FirebaseAdminPanel() {
     </section>
 
     <section>
+      <h3>Catálogo compartilhado de perfis</h3>
+      <p>O catálogo é comum à organização. A configuração de layout continua individual. A inicialização usa a configuração atual da conta gerencial autenticada e não substitui o histórico.</p>
+      {catalogReady
+        ? <p>Catálogo compartilhado carregado: {catalogProfiles.length} perfis ativos.</p>
+        : <><p>Nenhum catálogo compartilhado foi inicializado.</p><button type="button" disabled={busy} onClick={() => void initializeSharedCatalog()}>Inicializar com a configuração desta conta</button></>}
+    </section>
+
+    <section>
       <h3>Colaboradores</h3>
       {users.map((user) => <div key={user.uid} style={{ borderTop: "1px solid #ddd", padding: 12, display: "grid", gap: 8 }}>
         <strong>{user.agent || user.email} · {user.email}</strong>
@@ -226,6 +252,15 @@ export default function FirebaseAdminPanel() {
           <input type="checkbox" checked={Boolean(user.isSupervisor)} onChange={(event) => setUsers((items) => items.map((item) => item.uid === user.uid ? { ...item, isSupervisor: event.target.checked } : item))} />
           Supervisor — gerencia colaboradores e expedientes de todos os setores
         </label>
+        <fieldset style={{ display: "grid", gap: 6 }}>
+          <legend>Perfis que este colaborador pode selecionar</legend>
+          {catalogProfiles.length === 0 ? <small>Inicialize o catálogo compartilhado para atribuir perfis.</small> : catalogProfiles.map((profile) => (
+            <label key={profile.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input type="checkbox" checked={(user.allowedProfileIds ?? []).includes(profile.id)} onChange={(event) => setUsers((items) => items.map((item) => item.uid === user.uid ? { ...item, allowedProfileIds: event.target.checked ? [...new Set([...(item.allowedProfileIds ?? []), profile.id])] : (item.allowedProfileIds ?? []).filter((id) => id !== profile.id) } : item))} />
+              {profile.nome}
+            </label>
+          ))}
+        </fieldset>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button type="button" disabled={busy} onClick={() => void saveUser(user)}>Salvar cadastro</button>
           {user.status === "blocked"
