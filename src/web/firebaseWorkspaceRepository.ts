@@ -2,7 +2,9 @@ import type { Configuracao, LoadedData } from "./dataRepository";
 import { defaultConfiguration, normalizeConfiguration } from "./dataRepository";
 import { FirebasePersonalDataService } from "./firebasePersonalDataService";
 import { FirebaseOperationalService } from "./firebaseOperationalService";
-import { loadSharedTaskCatalog } from "./firebaseSharedTaskCatalogService";
+import { loadSharedTaskCatalog, saveSharedTaskCatalog } from "./firebaseSharedTaskCatalogService";
+import { requireFirebase } from "./firebaseClient";
+import { doc, getDoc } from "firebase/firestore";
 
 /**
  * Shared task/profile/email catalog + private layout/calendar/operational state.
@@ -45,9 +47,37 @@ export class FirebaseWorkspaceRepository {
   }
 
   async saveConfiguration(configuracao: Configuracao): Promise<void> {
-    // Layout remains personal. Shared catalog edits are managed separately
-    // through the supervisor/admin catalog workflow.
-    await this.personal.saveConfiguration(normalizeConfiguration(configuracao));
+    const normalized = normalizeConfiguration(configuracao);
+    const sharedCatalog = await loadSharedTaskCatalog();
+
+    // Before the organization initializes its shared catalog, preserve the
+    // existing personal configuration as a safe fallback.
+    if (!sharedCatalog) {
+      await this.personal.saveConfiguration(normalized);
+      return;
+    }
+
+    const { auth, db } = requireFirebase();
+    const user = auth.currentUser;
+    if (!user) throw new Error("FAÇA LOGIN PARA SALVAR A CONFIGURAÇÃO.");
+    const userSnapshot = await getDoc(doc(db, "users", user.uid));
+    const userData = userSnapshot.exists() ? userSnapshot.data() : null;
+    const isManager = userData?.status === "approved" &&
+      (userData.role === "admin" || userData.isSupervisor === true);
+
+    const catalogChanged =
+      JSON.stringify(normalized.tarefas) !== JSON.stringify({ schemaVersion: 1, tarefas: sharedCatalog.tarefas.tarefas }) ||
+      JSON.stringify(normalized.perfis) !== JSON.stringify({ schemaVersion: 1, perfis: sharedCatalog.perfis.perfis }) ||
+      JSON.stringify(normalized.email) !== JSON.stringify({ schemaVersion: 1, ...sharedCatalog.email });
+
+    if (catalogChanged && !isManager) {
+      throw new Error("SOMENTE SUPERVISORES E ADMINISTRADORES PODEM ALTERAR TAREFAS, PERFIS E E-MAILS COMPARTILHADOS.");
+    }
+
+    // Managers publish catalog changes for future expedientes. Every user,
+    // including managers, keeps an independent layout.
+    if (catalogChanged) await saveSharedTaskCatalog(normalized);
+    await this.personal.saveLayout(normalized.layout);
   }
 
   async saveCalendar(calendario: LoadedData["calendario"]): Promise<void> {
