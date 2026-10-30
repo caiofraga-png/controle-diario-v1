@@ -80,7 +80,7 @@ export function validateEmails(value: unknown): Configuracao["email"] {
     assertString(email.nome, "O ARQUIVO DE E-MAIL ESTÁ INVÁLIDO.");
     assertString(email.titulo, "O ARQUIVO DE E-MAIL ESTÁ INVÁLIDO.");
     assertString(email.corpo, "O ARQUIVO DE E-MAIL ESTÁ INVÁLIDO.");
-    if (ids.has(email.id) || typeof email.ativo !== "boolean") throw new Error("HÁ IDs DE E-MAIL DUPLICADOS OU INVÁLIDOS.");
+    if (ids.has(email.id) || typeof email.ativo !== "boolean" || (email.perfisVinculados !== undefined && (!Array.isArray(email.perfisVinculados) || email.perfisVinculados.some((id: unknown) => typeof id !== "string")))) throw new Error("HÁ IDs DE E-MAIL DUPLICADOS OU INVÁLIDOS.");
     ids.add(email.id);
   }
   return value as Configuracao["email"];
@@ -130,6 +130,11 @@ function validateConfigurationConsistency(config: Configuracao) {
   for (const profile of config.perfis.perfis) {
     for (const taskId of profile.tarefas) {
       if (typeof taskId !== "string" || !taskIds.has(taskId)) throw new Error(`O PERFIL ${profile.id} POSSUI TAREFA INEXISTENTE.`);
+    }
+  }
+  for (const email of config.email.emails) {
+    for (const profileId of email.perfisVinculados ?? []) {
+      if (!profileIds.has(profileId)) throw new Error(`O E-MAIL ${email.id} POSSUI PERFIL VINCULADO INEXISTENTE.`);
     }
   }
   for (const emailId of config.email.emailsGlobais) {
