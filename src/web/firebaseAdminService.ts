@@ -170,8 +170,8 @@ export async function saveAllowedDomains(domains: string[]) {
 
 export async function listRecentOperationalRecords(maxItems = 100, sectorId?: string) {
   const { db } = requireFirebase();
-  // Reads the new top-level Expediente index. A supervisor must supply their
-  // own sectorId so the query shape is compatible with Firestore Security Rules.
+  // Supervisors and administrators can query the complete organization-wide
+  // index; employees can only retrieve records they own under Firestore Rules.
   const base = collection(db, "Expediente");
   const recordQuery = sectorId
     ? query(base, where("sectorId", "==", sectorId), orderBy("completedAt", "desc"), limit(maxItems))
