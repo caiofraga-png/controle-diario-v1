@@ -143,18 +143,9 @@ export class FirebaseWorkflowService {
     if (!task) throw new Error("TAREFA NÃO ENCONTRADA.");
     if (Object.prototype.hasOwnProperty.call(input, "criacao")) task.criacao = String(input.criacao ?? "");
     if (Object.prototype.hasOwnProperty.call(input, "roteiro")) task.roteiro = JSON.parse(JSON.stringify(input.roteiro));
+    // Configuration edits affect future expedientes only. The active state
+    // already contains its own task/email snapshots and must remain unchanged.
     await this.workspace.saveConfiguration(config);
-    const current = await this.workspace.load();
-    if (current.estado) {
-      const updated = JSON.parse(JSON.stringify(current.estado)) as EstadoAtual;
-      const activeTask = updated.tarefas.find(item => item.id === input.id);
-      if (activeTask) {
-        if (Object.prototype.hasOwnProperty.call(input, "criacao")) activeTask.criacao = task.criacao;
-        if (Object.prototype.hasOwnProperty.call(input, "roteiro")) activeTask.roteiro = JSON.parse(JSON.stringify(task.roteiro));
-        updated.ultimaAlteracao = new Date().toISOString();
-        await this.workspace.saveCurrentState(updated);
-      }
-    }
     return this.workspace.load();
   }
 
