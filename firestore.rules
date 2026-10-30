@@ -34,6 +34,12 @@ service cloud.firestore {
       return userRecord(request.auth.uid).data.sectorId;
     }
 
+    // Supervisors manage operational organization and collaborators globally,
+    // but cannot grant or modify administrator privileges.
+    function activeManager() {
+      return activeAdmin() || activeSupervisor();
+    }
+
     function allowedCorporateDomain() {
       return signedIn()
         && request.auth.token.email_verified == true
@@ -45,13 +51,14 @@ service cloud.firestore {
 
     // User identity and organizational assignment are administrator-managed.
     match /users/{uid} {
-      allow read: if ownUserDocument(uid) || activeAdmin();
-      allow create: if activeAdmin()
+      allow read: if ownUserDocument(uid) || activeManager();
+      allow create: if activeManager()
         && request.resource.data.role == "employee"
         && request.resource.data.status in ["pending", "approved", "blocked", "rejected"];
-      allow update: if activeAdmin()
+      allow update: if request.resource.data.uid == resource.data.uid
         && request.resource.data.role == resource.data.role
-        && request.resource.data.uid == resource.data.uid;
+        && (activeAdmin()
+          || (activeSupervisor() && resource.data.role == "employee"));
       allow delete: if false;
 
       // Private per-user configuration and calendar remain isolated.
@@ -176,18 +183,25 @@ service cloud.firestore {
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.email == request.auth.token.email
         && request.resource.data.status == "pending";
-      allow read: if ownUserDocument(uid) || activeAdmin();
-      allow update, delete: if activeAdmin();
+      allow read: if ownUserDocument(uid) || activeManager();
+      allow update, delete: if activeManager();
     }
 
     match /organizationSectors/{sectorId} {
       allow read: if approvedUser();
-      allow write: if activeAdmin();
+      allow write: if activeManager();
     }
 
     match /organizationContacts/{contactId} {
       allow read: if approvedUser();
-      allow write: if activeAdmin();
+      allow write: if activeManager();
+    }
+
+    // Shared task/profile catalogue; each user's allowed IDs are stored on
+    // their organizational record and enforced by the application.
+    match /sharedTaskCatalog/{document=**} {
+      allow read: if approvedUser();
+      allow write: if activeManager();
     }
 
     match /settings/allowedDomains {
