@@ -135,6 +135,13 @@ test("conta pendente não acessa dados privados", async () => {
   await assertFails(setDoc(doc(dbAs("pending"), "users/pending/configuration/layout"), { schemaVersion: 1 }));
 });
 
+test("usuário aprovado pode consultar seu estado operacional ainda não criado", async () => {
+  const alice = dbAs("alice");
+  await assertSucceeds(getDoc(doc(alice, "users/alice/operational/currentState")));
+  await assertFails(getDoc(doc(alice, "users/bob/operational/currentState")));
+  await assertFails(getDoc(doc(dbAs("pending"), "users/pending/operational/currentState")));
+});
+
 test("estado operacional permite leitura e gravação apenas pelo proprietário aprovado", async () => {
   const alice = dbAs("alice");
   const own = doc(alice, "users/alice/operational/currentState");
