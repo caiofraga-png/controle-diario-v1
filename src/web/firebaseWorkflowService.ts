@@ -28,12 +28,12 @@ export class FirebaseWorkflowService {
   ) {}
 
   async load(): Promise<LoadedData> {
-    return this.workspace.load();
+    return diagnoseFirebaseStep("carregar configuração, calendário e estado atual do expediente", () => this.workspace.load());
   }
 
   async month(input: { year: number; month: number }) {
-    const loaded = await this.workspace.load();
-    const history = await this.operational.listHistoryMonth(input.year, input.month);
+    const loaded = await diagnoseFirebaseStep("carregar calendário e configuração do usuário", () => this.workspace.load());
+    const history = await diagnoseFirebaseStep(`consultar histórico operacional de ${input.year}-${String(input.month).padStart(2, "0")}`, () => this.operational.listHistoryMonth(input.year, input.month));
     const prefix = `${input.year}-${String(input.month).padStart(2, "0")}-`;
     return {
       special: loaded.calendario.datas.filter(item => item.data.startsWith(prefix)),
