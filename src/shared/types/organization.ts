@@ -19,8 +19,10 @@ export interface OrganizationalUser {
   sectorId: string;
   /** Stable identifier of the contact/team within the sector. */
   contactId: string;
-  /** Supervisors may view operational cards for their current sector. */
+  /** Supervisors manage all collaborators and operational organization globally. */
   isSupervisor: boolean;
+  /** Profile IDs this collaborator is allowed to select; empty means none. */
+  allowedProfileIds?: string[];
   status: AccountStatus;
   role: UserRole;
   createdAt: string;
