@@ -23,6 +23,7 @@ function asUser(id: string, data: DocumentData): OrganizationalUser {
     sectorId: String(data.sectorId ?? ""),
     contactId: String(data.contactId ?? ""),
     isSupervisor: data.isSupervisor === true,
+    allowedProfileIds: Array.isArray(data.allowedProfileIds) ? data.allowedProfileIds.filter((id: unknown): id is string => typeof id === "string") : [],
     status: data.status,
     role: data.role,
     createdAt: String(data.createdAt ?? ""),
@@ -99,7 +100,7 @@ export async function rejectAccessRequest(uid: string, reason = "") {
 
 export async function updateOrganizationalUser(
   uid: string,
-  changes: Pick<OrganizationalUser, "login" | "agent" | "sectorId" | "contactId" | "isSupervisor">
+  changes: Pick<OrganizationalUser, "login" | "agent" | "sectorId" | "contactId" | "isSupervisor" | "allowedProfileIds">
 ) {
   const { db } = requireFirebase();
   await updateDoc(doc(db, "users", uid), {
@@ -108,6 +109,7 @@ export async function updateOrganizationalUser(
     sectorId: changes.sectorId,
     contactId: changes.contactId,
     isSupervisor: changes.isSupervisor,
+    allowedProfileIds: changes.allowedProfileIds ?? [],
     updatedAt: new Date().toISOString(),
   });
   await audit("ORGANIZATIONAL_PROFILE_UPDATED", uid, changes);
@@ -176,4 +178,24 @@ export async function listRecentOperationalRecords(maxItems = 100, sectorId?: st
     : query(base, orderBy("completedAt", "desc"), limit(maxItems));
   const snapshot = await getDocs(recordQuery);
   return snapshot.docs.map((item) => ({ id: item.id, path: item.ref.path, ...item.data() }));
+}
+
+export async function deleteSector(id: string) {
+  const { db } = requireFirebase();
+  const { deleteDoc } = await import("firebase/firestore");
+  const contacts = await getDocs(query(collection(db, "organizationContacts"), where("sectorId", "==", id)));
+  if (!contacts.empty) throw new Error("Não é possível excluir um setor que ainda possui contatos. Remova ou transfira os contatos primeiro.");
+  const users = await getDocs(query(collection(db, "users"), where("sectorId", "==", id)));
+  if (!users.empty) throw new Error("Não é possível excluir um setor utilizado por colaboradores. Reatribua os colaboradores primeiro.");
+  await deleteDoc(doc(db, "organizationSectors", id));
+  await audit("SECTOR_DELETED", id);
+}
+
+export async function deleteContact(id: string) {
+  const { db } = requireFirebase();
+  const { deleteDoc } = await import("firebase/firestore");
+  const users = await getDocs(query(collection(db, "users"), where("contactId", "==", id)));
+  if (!users.empty) throw new Error("Não é possível excluir um contato utilizado por colaboradores. Reatribua os colaboradores primeiro.");
+  await deleteDoc(doc(db, "organizationContacts", id));
+  await audit("CONTACT_DELETED", id);
 }
