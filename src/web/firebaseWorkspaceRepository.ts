@@ -65,10 +65,11 @@ export class FirebaseWorkspaceRepository {
     const isManager = userData?.status === "approved" &&
       (userData.role === "admin" || userData.isSupervisor === true);
 
+    // Both sides are validated into the same domain shapes before comparison.
     const catalogChanged =
-      JSON.stringify(normalized.tarefas) !== JSON.stringify({ schemaVersion: 1, tarefas: sharedCatalog.tarefas.tarefas }) ||
-      JSON.stringify(normalized.perfis) !== JSON.stringify({ schemaVersion: 1, perfis: sharedCatalog.perfis.perfis }) ||
-      JSON.stringify(normalized.email) !== JSON.stringify({ schemaVersion: 1, ...sharedCatalog.email });
+      JSON.stringify(normalized.tarefas) !== JSON.stringify(sharedCatalog.tarefas) ||
+      JSON.stringify(normalized.perfis) !== JSON.stringify(sharedCatalog.perfis) ||
+      JSON.stringify(normalized.email) !== JSON.stringify(sharedCatalog.email);
 
     if (catalogChanged && !isManager) {
       throw new Error("SOMENTE SUPERVISORES E ADMINISTRADORES PODEM ALTERAR TAREFAS, PERFIS E E-MAILS COMPARTILHADOS.");
