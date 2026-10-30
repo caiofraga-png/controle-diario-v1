@@ -11,6 +11,8 @@ import {
   saveAllowedDomains,
   saveContact,
   saveSector,
+  deleteContact,
+  deleteSector,
   setAccountStatus,
   updateOrganizationalUser,
 } from "../web/firebaseAdminService";
@@ -21,6 +23,7 @@ type RequestItem = { id: string; uid?: string; email?: string; status?: string }
 
 export default function FirebaseAdminPanel() {
   const [authorized, setAuthorized] = useState(false);
+  const [isAdministrator, setIsAdministrator] = useState(false);
   const [signedEmail, setSignedEmail] = useState("");
   const [requests, setRequests] = useState<RequestItem[]>([]);
   const [users, setUsers] = useState<OrganizationalUser[]>([]);
@@ -64,13 +67,15 @@ export default function FirebaseAdminPanel() {
     setMessage("");
     try {
       const result = await signInWithCorporateGoogle();
-      if (result.status !== "approved" || result.user.role !== "admin") {
+      if (result.status !== "approved" || (result.user.role !== "admin" && !result.user.isSupervisor)) {
         await signOutCorporateGoogle();
         setAuthorized(false);
-        setMessage("Esta conta não possui privilégios administrativos aprovados.");
+        setIsAdministrator(false);
+        setMessage("Esta conta não possui privilégios de Supervisão ou Administração aprovados.");
         return;
       }
       setAuthorized(true);
+      setIsAdministrator(result.user.role === "admin");
       setSignedEmail(result.user.email);
       await refresh();
     } catch (error) {
@@ -126,8 +131,10 @@ export default function FirebaseAdminPanel() {
     if (!sectorName.trim()) return;
     setBusy(true);
     try {
-      await saveSector({ id: "", name: sectorName.trim(), active: true });
+      const editId = selected.startsWith("sector:") ? selected.slice(7) : "";
+      await saveSector({ id: editId, name: sectorName.trim(), active: true });
       setSectorName("");
+      setSelected("");
       await refresh();
     } catch (error) { setMessage(error instanceof Error ? error.message : "Falha ao salvar setor."); }
     finally { setBusy(false); }
@@ -137,8 +144,10 @@ export default function FirebaseAdminPanel() {
     if (!contactName.trim() || !contactSector) return;
     setBusy(true);
     try {
-      await saveContact({ id: "", name: contactName.trim(), sectorId: contactSector, active: true });
+      const editId = selected.startsWith("contact:") ? selected.slice(8) : "";
+      await saveContact({ id: editId, name: contactName.trim(), sectorId: contactSector, active: true });
       setContactName("");
+      setSelected("");
       await refresh();
     } catch (error) { setMessage(error instanceof Error ? error.message : "Falha ao salvar contato."); }
     finally { setBusy(false); }
@@ -155,7 +164,8 @@ export default function FirebaseAdminPanel() {
     setBusy(true);
     try {
       await updateOrganizationalUser(user.uid, {
-        login: user.login, agent: user.agent, sectorId: user.sectorId, contactId: user.contactId, isSupervisor: user.isSupervisor,
+        login: user.login, agent: user.agent, sectorId: user.sectorId, contactId: user.contactId,
+        isSupervisor: user.isSupervisor, allowedProfileIds: user.allowedProfileIds ?? [],
       });
       setMessage("Cadastro atualizado.");
       await refresh();
@@ -165,11 +175,11 @@ export default function FirebaseAdminPanel() {
 
   return <main className="card" style={{ display: "grid", gap: 24 }}>
     <header>
-      <h2>Administração do Leste - Controle Diário</h2>
-      <p>Gerencie acessos e cadastros organizacionais. Os expedientes são somente para consulta gerencial; este painel não oferece edição nem exclusão dos registros operacionais.</p>
+      <h2>Gestão do Controle Diário</h2>
+      <p>Supervisores gerenciam colaboradores, setores, contatos e perfis. Administradores mantêm também as configurações exclusivas do sistema. Expedientes são somente para consulta gerencial.</p>
       {!authorized
         ? <button type="button" disabled={busy} onClick={() => void signInAdmin()}>Entrar com conta Google empresarial</button>
-        : <div><p>Administrador autenticado: {signedEmail}</p><button type="button" disabled={busy} onClick={() => void refresh()}>Atualizar dados</button> <button type="button" disabled={busy} onClick={() => { void signOutCorporateGoogle(); setAuthorized(false); setSignedEmail(""); }}>Sair da administração</button></div>}
+        : <div><p>{isAdministrator ? "Administrador" : "Supervisor"} autenticado: {signedEmail}</p><button type="button" disabled={busy} onClick={() => void refresh()}>Atualizar dados</button> <button type="button" disabled={busy} onClick={() => { void signOutCorporateGoogle(); setAuthorized(false); setIsAdministrator(false); setSignedEmail(""); }}>Sair da administração</button></div>}
     </header>
     {message && <p role="status" className="system-message">{message}</p>}
     {!authorized ? <p>Entre com uma conta previamente aprovada com privilégios administrativos para acessar esta área.</p> : <>
@@ -214,7 +224,7 @@ export default function FirebaseAdminPanel() {
         </select></label>
         <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <input type="checkbox" checked={Boolean(user.isSupervisor)} onChange={(event) => setUsers((items) => items.map((item) => item.uid === user.uid ? { ...item, isSupervisor: event.target.checked } : item))} />
-          Supervisor — pode consultar expedientes do próprio setor
+          Supervisor — gerencia colaboradores e expedientes de todos os setores
         </label>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button type="button" disabled={busy} onClick={() => void saveUser(user)}>Salvar cadastro</button>
@@ -244,7 +254,7 @@ export default function FirebaseAdminPanel() {
         <input aria-label="Novo setor" placeholder="Nome do setor" value={sectorName} onChange={(event) => setSectorName(event.target.value)} />
         <button type="button" disabled={busy} onClick={() => void addSector()}>Adicionar setor</button>
       </div>
-      <ul>{sectors.map((sector) => <li key={sector.id}>{sector.name} {sector.active ? "" : "(inativo)"}</li>)}</ul>
+      <ul>{sectors.map((sector) => <li key={sector.id}>{sector.name} {sector.active ? "" : "(inativo)"} <button type="button" disabled={busy} onClick={() => { setSectorName(sector.name); setSelected("sector:"+sector.id); }}>Editar</button> <button type="button" disabled={busy} onClick={() => { if (window.confirm("Excluir este setor?")) void deleteSector(sector.id).then(refresh).catch(e => setMessage(e instanceof Error ? e.message : "Falha ao excluir setor.")); }}>Excluir</button></li>)}</ul>
     </section>
 
     <section>
@@ -256,14 +266,14 @@ export default function FirebaseAdminPanel() {
         <input aria-label="Novo contato" placeholder="Nome do contato" value={contactName} onChange={(event) => setContactName(event.target.value)} />
         <button type="button" disabled={busy} onClick={() => void addContact()}>Adicionar contato</button>
       </div>
-      <ul>{contacts.map((contact) => <li key={contact.id}>{contact.name} — {sectors.find((sector) => sector.id === contact.sectorId)?.name ?? "Setor não encontrado"}</li>)}</ul>
+      <ul>{contacts.map((contact) => <li key={contact.id}>{contact.name} — {sectors.find((sector) => sector.id === contact.sectorId)?.name ?? "Setor não encontrado"} <button type="button" disabled={busy} onClick={() => { setContactName(contact.name); setContactSector(contact.sectorId); setSelected("contact:"+contact.id); }}>Editar</button> <button type="button" disabled={busy} onClick={() => { if (window.confirm("Excluir este contato?")) void deleteContact(contact.id).then(refresh).catch(e => setMessage(e instanceof Error ? e.message : "Falha ao excluir contato.")); }}>Excluir</button></li>)}</ul>
     </section>
 
     <section>
-      <h3>Domínios empresariais permitidos</h3>
+      {isAdministrator && <><h3>Domínios empresariais permitidos</h3>
       <p>Um domínio permitido não aprova automaticamente uma conta; toda solicitação ainda depende de aprovação.</p>
       <textarea rows={4} value={domains} onChange={(event) => setDomains(event.target.value)} />
-      <button type="button" disabled={busy} onClick={() => void saveDomains()}>Salvar domínios</button>
+      <button type="button" disabled={busy} onClick={() => void saveDomains()}>Salvar domínios</button></>}
     </section>
     </>}
   </main>;
