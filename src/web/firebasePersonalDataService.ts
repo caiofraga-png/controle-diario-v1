@@ -82,6 +82,16 @@ export class FirebasePersonalDataService {
     await batch.commit();
   }
 
+  async saveLayout(layout: Configuracao["layout"]): Promise<void> {
+    const uid = this.currentUserId();
+    const validated = validateLayout(layout);
+    const { db } = requireFirebase();
+    await setDoc(
+      doc(db, "users", uid, "configuration", "layout"),
+      { ...validated, updatedAt: serverTimestamp() },
+    );
+  }
+
   async loadCalendar(): Promise<LoadedData["calendario"] | null> {
     const uid = this.currentUserId();
     const { db } = requireFirebase();
