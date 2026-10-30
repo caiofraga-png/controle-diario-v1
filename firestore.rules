@@ -71,7 +71,8 @@ service cloud.firestore {
       // The envelope and owner UID cannot be changed by a client update.
       match /operational/currentState {
         allow read: if approvedUser() && request.auth.uid == uid
-          && resource.data.ownerUid == uid;
+          && (!exists(/databases/$(database)/documents/users/$(uid)/operational/currentState)
+            || resource.data.ownerUid == uid);
         allow create: if approvedUser() && request.auth.uid == uid
           && request.resource.data.ownerUid == uid
           && request.resource.data.schemaVersion == 1
