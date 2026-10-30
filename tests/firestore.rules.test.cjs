@@ -104,6 +104,12 @@ beforeEach(async () => {
     await setDoc(doc(db, "settings", "allowedDomains"), {
       domains: ["lestetelecom.net.br", "lestetelecom.com.br", "lestetelecom.com"],
     });
+    await setDoc(doc(db, "accessRequests", "pending"), {
+      uid: "pending",
+      email: "pending@lestetelecom.net.br",
+      status: "pending",
+      requestedAt: "2026-10-28T12:00:00.000Z",
+    });
     await setDoc(doc(db, "Expediente", "alice_2026-10-28"), expediente("alice"));
     await setDoc(doc(db, "Expediente", "bob_2026-10-28"), expediente("bob"));
   });
