@@ -547,9 +547,10 @@ export function defaultConfiguration(): Configuracao {
       nome: "COMPILAÇÃO DE DADOS",
       titulo: "MID{HOJE_YYYYMMDD} - COMPILAÇÃO DE DADOS - {ONTEM_DDMMYYYY}",
       corpo: "Prezados,\\n\\nSeguem em anexo os arquivos utilizados na análise de dados de hoje.",
-      ativo: true
+      ativo: true,
+      perfisVinculados: ["P001"]
     }],
-    emailsGlobais: ["M001"]
+    emailsGlobais: []
   };
   return {
     tarefas: { schemaVersion: 1, tarefas },
