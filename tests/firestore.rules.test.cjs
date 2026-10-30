@@ -227,11 +227,35 @@ test("administrador lê índice de outra pessoa, mas não o altera", async () =>
   await assertFails(updateDoc(ref, { status: "alterado pelo admin" }));
 });
 
-test("supervisor lê registro do próprio setor, mas não de outro setor", async () => {
+test("supervisor lê expedientes de todos os setores, mas não os altera", async () => {
   const db = dbAs("supervisor");
   await assertSucceeds(getDoc(doc(db, "Expediente/alice_2026-10-28")));
-  await assertFails(getDoc(doc(db, "Expediente/bob_2026-10-28")));
+  await assertSucceeds(getDoc(doc(db, "Expediente/bob_2026-10-28")));
   await assertFails(updateDoc(doc(db, "Expediente/alice_2026-10-28"), { status: "alterado" }));
+});
+
+test("supervisor pode gerenciar colaboradores comuns e catálogos globais", async () => {
+  const db = dbAs("supervisor");
+  await assertSucceeds(updateDoc(doc(db, "users/alice"), { login: "alice-novo" }));
+  await assertSucceeds(setDoc(doc(db, "organizationSectors/novo"), { id: "novo", name: "Novo", active: true }));
+  await assertSucceeds(setDoc(doc(db, "organizationContacts/novo"), { id: "novo", name: "Novo", sectorId: "suporte", active: true }));
+  await assertSucceeds(setDoc(doc(db, "sharedTaskCatalog/current"), { schemaVersion: 1, perfis: [] }));
+});
+
+test("supervisor não pode alterar nem criar administrador", async () => {
+  const db = dbAs("supervisor");
+  await assertFails(updateDoc(doc(db, "users/admin"), { agent: "Alterado" }));
+  await assertFails(setDoc(doc(db, "users/new-admin"), {
+    uid: "new-admin", role: "admin", status: "approved",
+  }));
+});
+
+test("supervisor pode aprovar solicitação, mas só como colaborador", async () => {
+  const db = dbAs("supervisor");
+  await assertSucceeds(setDoc(doc(db, "users/pending"), {
+    ...profiles.pending, status: "approved",
+  }));
+  await assertSucceeds(updateDoc(doc(db, "accessRequests/pending"), { status: "approved" }));
 });
 
 test("domínio corporativo não verificado não pode abrir solicitação de acesso", async () => {
