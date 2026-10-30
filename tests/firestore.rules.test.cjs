@@ -21,6 +21,7 @@ const profiles = {
     uid: "alice", email: "alice@lestetelecom.net.br", login: "alice",
     agent: "Alice", sectorId: "suporte", contactId: "equipe-a",
     role: "employee", status: "approved", isSupervisor: false,
+    allowedProfileIds: ["P001"],
   },
   bob: {
     uid: "bob", email: "bob@lestetelecom.net.br", login: "bob",
@@ -146,6 +147,29 @@ test("usuário aprovado pode consultar seu estado operacional ainda não criado"
   await assertSucceeds(getDoc(doc(alice, "users/alice/operational/currentState")));
   await assertFails(getDoc(doc(alice, "users/bob/operational/currentState")));
   await assertFails(getDoc(doc(dbAs("pending"), "users/pending/operational/currentState")));
+});
+
+test("estado operacional só aceita perfil atribuído ao colaborador", async () => {
+  const db = dbAs("alice");
+  const ref = doc(db, "users/alice/operational/currentState");
+  await assertSucceeds(setDoc(ref, {
+    schemaVersion: 1,
+    ownerUid: "alice",
+    estado: { id: "state-1", perfil: { id: "P001" } },
+    updatedAt: "2026-10-28T12:00:00Z",
+  }));
+  await assertFails(setDoc(ref, {
+    schemaVersion: 1,
+    ownerUid: "alice",
+    estado: { id: "state-2", perfil: { id: "P002" } },
+    updatedAt: "2026-10-28T12:00:00Z",
+  }));
+  await assertSucceeds(setDoc(ref, {
+    schemaVersion: 1,
+    ownerUid: "alice",
+    estado: null,
+    updatedAt: "2026-10-28T12:00:00Z",
+  }));
 });
 
 test("estado operacional permite leitura e gravação apenas pelo proprietário aprovado", async () => {
