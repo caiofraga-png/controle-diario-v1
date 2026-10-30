@@ -156,11 +156,12 @@ service cloud.firestore {
     }
 
     match /Expediente/{expedienteId} {
+      // Supervisors and administrators can consult every sector. Employees
+      // remain restricted to their own expediente.
       allow read: if approvedUser()
         && (resource.data.ownerUid == request.auth.uid
           || activeAdmin()
-          || (activeSupervisor()
-            && resource.data.sectorId == currentSectorId()));
+          || activeSupervisor());
 
       allow create: if approvedUser() && validExpedienteSnapshot();
 
