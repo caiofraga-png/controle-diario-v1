@@ -5,6 +5,18 @@ import { FirebaseWorkspaceRepository } from "./firebaseWorkspaceRepository";
 import { FirebaseOperationalService } from "./firebaseOperationalService";
 import type { Configuracao, LoadedData } from "./dataRepository";
 
+async function diagnoseFirebaseStep<T>(step: string, operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    const code = typeof error === "object" && error !== null && "code" in error
+      ? String((error as { code?: unknown }).code ?? "")
+      : "";
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`Falha no Firebase durante: ${step}${code ? ` (${code})` : ""}. Detalhe: ${detail}`);
+  }
+}
+
 /**
  * Firebase-backed implementation of the expediente domain workflow.
  * This is the primary persistence path for the Firebase migration.
