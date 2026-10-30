@@ -59,6 +59,10 @@ export class FirebaseWorkflowService {
   async start(input: { data: string; perfilId: string }): Promise<EstadoAtual> {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.data)) throw new Error("A DATA DO EXPEDIENTE É INVÁLIDA.");
     const loaded = await this.workspace.load();
+    const allowedProfiles = await this.operational.allowedProfileIds();
+    if (!allowedProfiles.includes(input.perfilId)) {
+      throw new Error("ESTE PERFIL NÃO FOI ATRIBUÍDO À SUA CONTA. SOLICITE A LIBERAÇÃO À SUPERVISÃO.");
+    }
     if (loaded.estado) throw new Error("JÁ EXISTE UM EXPEDIENTE EM PRODUÇÃO.");
     const special = loaded.calendario.datas.find(item => item.data === input.data);
     if (special?.folga) throw new Error("ESTA DATA ESTÁ MARCADA COMO FOLGA.");
@@ -72,6 +76,10 @@ export class FirebaseWorkflowService {
 
   async switchProfile(profileId: string): Promise<EstadoAtual> {
     const loaded = await this.workspace.load();
+    const allowedProfiles = await this.operational.allowedProfileIds();
+    if (!allowedProfiles.includes(profileId)) {
+      throw new Error("ESTE PERFIL NÃO FOI ATRIBUÍDO À SUA CONTA. SOLICITE A LIBERAÇÃO À SUPERVISÃO.");
+    }
     if (!loaded.estado) throw new Error("NÃO HÁ EXPEDIENTE EM PRODUÇÃO.");
     const next = buildState(loaded, loaded.estado.data, profileId);
     if (!next.tarefas.length && !next.emailsGlobais.length) throw new Error("ESTE PERFIL NÃO POSSUI OBRIGAÇÕES.");
