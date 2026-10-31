@@ -105,8 +105,9 @@ function App() {
   useEffect(() => () => { if (observationTimer.current) clearTimeout(observationTimer.current); }, []);
 
   const config = data?.configuracao, state = data?.estado;
-  const profiles = useMemo(() => { if (!config) return []; const frozen=state?.catalogSnapshot; const sourceProfiles=frozen?.perfis?.perfis ?? config.perfis.perfis; const order=frozen?.layout?.ordemPerfis ?? config.layout?.ordemPerfis ?? []; return order.map((id:string)=>sourceProfiles.find((p:any)=>p.id===id)).filter((p:any)=>p?.ativo); }, [config,state]);
-  const geralHasTasks = Boolean(config?.tarefas?.tarefas?.some((t:any)=>t.ativo) || config?.email?.emailsGlobais?.length);
+  const allowedProfileIds: string[] = firebaseAccess?.status === "approved" ? (firebaseAccess.user.allowedProfileIds ?? []) : [];
+  const profiles = useMemo(() => { if (!config) return []; const frozen=state?.catalogSnapshot; const sourceProfiles=frozen?.perfis?.perfis ?? config.perfis.perfis; const order=frozen?.layout?.ordemPerfis ?? config.layout?.ordemPerfis ?? []; const allowed=new Set(allowedProfileIds); return order.map((id:string)=>sourceProfiles.find((p:any)=>p.id===id)).filter((p:any)=>p?.ativo && allowed.has(p.id)); }, [config,state,firebaseAccess]);
+  const geralHasTasks = Boolean(config && profiles.some((p:any)=>p.tarefas?.some((id:string)=>config.tarefas.tarefas.some((t:any)=>t.id===id && t.ativo))) || (config && profiles.length>0 && config.email.emailsGlobais.some((id:string)=>config.email.emails.some((e:any)=>e.id===id && e.ativo)));
   const expansionMode = config?.layout?.criacaoRoteiro?.modo ?? "POPUP";
   const expansionPosition = config?.layout?.expansaoLateral?.posicao ?? "direita";
   function progress(s:any) { if (!s) return {done:0,total:0,percentage:0}; const ids=new Set<string>(); for(const e of s.emailsGlobais??[])ids.add(e.id); for(const t of s.tarefas??[])for(const e of t.emailsVinculados??[])ids.add(e.id); let done=(s.tarefas??[]).filter((t:any)=>t.concluida).length; for(const id of ids){const e=(s.emailsGlobais??[]).find((x:any)=>x.id===id)??(s.tarefas??[]).flatMap((t:any)=>t.emailsVinculados??[]).find((x:any)=>x.id===id);if(e?.concluido)done++;} const total=(s.tarefas??[]).length+ids.size; return {done,total,percentage:total?Math.round(done/total*100):0}; }
