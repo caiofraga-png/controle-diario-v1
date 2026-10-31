@@ -1594,3 +1594,30 @@ html[data-theme="midnight-violet"] :is(input:not([type="checkbox"]):not([type="r
 html[data-theme="midnight-violet"] :is(.system-workspace-card,.import-placeholder,.import-summary > div,.import-integrity,.drag-row) { background:#332d43; border-color:#554a6b; color:#e8e1f2; }
 html[data-theme="midnight-violet"] .theme-control select { background:#211d2e; color:#eeeaf5; border-color:#5a506e; }
 html[data-theme="midnight-violet"] .progress > div { background:#a995d6; }
+
+
+/* CABEÇALHO E ABAS DE CONFIGURAÇÃO — CORES COERENTES COM CADA TEMA ESCURO */
+html[data-theme="corporate-dark"] .config-embedded .config-head,
+html[data-theme="corporate-dark"] .config-embedded .config-tabs {
+  background:#17271f;
+  border-color:#365b48;
+}
+html[data-theme="midnight-blue"] .config-embedded .config-head,
+html[data-theme="midnight-blue"] .config-embedded .config-tabs {
+  background:#142638;
+  border-color:#3b5268;
+}
+html[data-theme="midnight-violet"] .config-embedded .config-head,
+html[data-theme="midnight-violet"] .config-embedded .config-tabs {
+  background:#241f32;
+  border-color:#4a415e;
+}
+html[data-theme="corporate-dark"] .config-embedded .config-head span { color:#a9bdb0; }
+html[data-theme="midnight-blue"] .config-embedded .config-head span { color:#aebfd0; }
+html[data-theme="midnight-violet"] .config-embedded .config-head span { color:#c0b6d4; }
+html[data-theme="midnight-blue"] .config-embedded .config-head h2 { color:#e7edf5; }
+html[data-theme="midnight-violet"] .config-embedded .config-head h2 { color:#eeeaf5; }
+html[data-theme="midnight-blue"] .config-embedded .config-tabs button { color:#d2e2ee; }
+html[data-theme="midnight-violet"] .config-embedded .config-tabs button { color:#e3dced; }
+html[data-theme="midnight-blue"] .config-embedded .config-tabs button.active { color:#83c5df; border-bottom-color:#62a9c8; }
+html[data-theme="midnight-violet"] .config-embedded .config-tabs button.active { color:#c2afe9; border-bottom-color:#a995d6; }
