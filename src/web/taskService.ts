@@ -64,7 +64,8 @@ export function buildState(data: LoadedData, date: string, profileId: string): E
     tasks.push({ ...clone(task), concluida: false, emailsVinculados: emails });
   }
 
-  const globalIds = [...new Set(data.configuracao.email.emailsGlobais)].filter(id => {
+  const profileEmailIds = profile ? data.configuracao.email.emails.filter(email => (email.perfisVinculados ?? []).includes(profile.id)).map(email => email.id) : [];
+  const globalIds = [...new Set([...data.configuracao.email.emailsGlobais, ...profileEmailIds])].filter(id => {
     const email = emailById.get(id);
     return Boolean(email?.ativo);
   });

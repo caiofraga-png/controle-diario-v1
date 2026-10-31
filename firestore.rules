@@ -1,0 +1,245 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function ownUserDocument(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function userRecord(uid) {
+      return get(/databases/$(database)/documents/users/$(uid));
+    }
+
+    function approvedUser() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && userRecord(request.auth.uid).data.status == "approved";
+    }
+
+    function activeAdmin() {
+      return approvedUser()
+        && userRecord(request.auth.uid).data.role == "admin";
+    }
+
+    function activeSupervisor() {
+      return approvedUser()
+        && userRecord(request.auth.uid).data.isSupervisor == true;
+    }
+
+    function currentSectorId() {
+      return userRecord(request.auth.uid).data.sectorId;
+    }
+
+    function canSelectProfile(uid, profileId) {
+      return userRecord(uid).data.allowedProfileIds is list
+        && userRecord(uid).data.allowedProfileIds.hasAny([profileId]);
+    }
+
+    function validCurrentOperationalProfile(uid) {
+      return request.resource.data.estado == null
+        || (request.resource.data.estado is map
+          && request.resource.data.estado.perfil is map
+          && request.resource.data.estado.perfil.id is string
+          && canSelectProfile(uid, request.resource.data.estado.perfil.id));
+    }
+
+    // Supervisors manage operational organization and collaborators globally,
+    // but cannot grant or modify administrator privileges.
+    function activeManager() {
+      return activeAdmin() || activeSupervisor();
+    }
+
+    function allowedCorporateDomain() {
+      return signedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email is string
+        && exists(/databases/$(database)/documents/settings/allowedDomains)
+        && get(/databases/$(database)/documents/settings/allowedDomains).data.domains
+          .hasAny([request.auth.token.email.split("@")[1].lower()]);
+    }
+
+    // User identity and organizational assignment are administrator-managed.
+    match /users/{uid} {
+      allow read: if ownUserDocument(uid) || activeManager();
+      allow create: if activeManager()
+        && request.resource.data.role == "employee"
+        && request.resource.data.status in ["pending", "approved", "blocked", "rejected"];
+      allow update: if request.resource.data.uid == resource.data.uid
+        && request.resource.data.role == resource.data.role
+        && (activeAdmin()
+          || (activeSupervisor() && request.auth.uid != uid && resource.data.role == "employee"));
+      allow delete: if false;
+
+      // Private per-user configuration and calendar remain isolated.
+      match /configuration/{document=**} {
+        allow read, write: if approvedUser() && request.auth.uid == uid;
+      }
+
+      match /calendar/{document=**} {
+        allow read, write: if approvedUser() && request.auth.uid == uid;
+      }
+
+      match /usefulLinks/{document=**} {
+        allow read, write: if approvedUser() && request.auth.uid == uid;
+      }
+
+      // Mutable current state belongs only to the approved owner.
+      // The envelope and owner UID cannot be changed by a client update.
+      match /operational/currentState {
+        allow read: if approvedUser() && request.auth.uid == uid
+          && (!exists(/databases/$(database)/documents/users/$(uid)/operational/currentState)
+            || resource.data.ownerUid == uid);
+        allow create: if approvedUser() && request.auth.uid == uid
+          && request.resource.data.ownerUid == uid
+          && request.resource.data.schemaVersion == 1
+          && request.resource.data.keys().hasOnly(["schemaVersion", "ownerUid", "estado", "updatedAt"])
+          && validCurrentOperationalProfile(uid);
+        allow update: if approvedUser() && request.auth.uid == uid
+          && resource.data.ownerUid == uid
+          && request.resource.data.ownerUid == resource.data.ownerUid
+          && request.resource.data.schemaVersion == 1
+          && request.resource.data.keys().hasOnly(["schemaVersion", "ownerUid", "estado", "updatedAt"])
+          && validCurrentOperationalProfile(uid);
+        allow delete: if false;
+      }
+
+      // Completed records and errata are append-only: creation is allowed for
+      // the approved owner, but clients cannot update or delete a saved version.
+      match /operational/history/entries/{historyId} {
+        allow read: if approvedUser() && request.auth.uid == uid
+          && resource.data.ownerUid == uid;
+        allow create: if approvedUser() && request.auth.uid == uid
+          && request.resource.data.ownerUid == uid
+          && request.resource.data.schemaVersion == 1
+          && request.resource.data.status == "CONCLUIDO"
+          && request.resource.data.data is string
+          && request.resource.data.versao is int
+          && request.resource.data.versao > 0
+          && request.resource.data.keys().hasAll([
+            "schemaVersion", "ownerUid", "id", "versao", "data", "perfil",
+            "tarefas", "emailsGlobais", "observacao", "status", "criadoEm",
+            "concluidoEm", "ultimaAlteracao", "origemVersao"
+          ]);
+        allow update, delete: if false;
+      }
+
+      // Any operational document not explicitly modeled above remains denied.
+      match /operational/{document=**} {
+        allow read, write: if false;
+      }
+    }
+
+    function sectorRecord(sectorId) {
+      return get(/databases/$(database)/documents/organizationSectors/$(sectorId));
+    }
+
+    function contactRecord(contactId) {
+      return get(/databases/$(database)/documents/organizationContacts/$(contactId));
+    }
+
+    // Shared operational index. Its owner and organizational snapshot are
+    // checked at creation and cannot be changed by a later client update.
+    function validExpedienteSnapshot() {
+      return request.resource.data.keys().hasAll([
+          "ownerUid", "date", "status", "sectorId", "sectorName",
+          "contactId", "contactName", "login", "agent", "assignment"
+        ])
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.assignment is map
+        && request.resource.data.assignment.uid == request.auth.uid
+        && request.resource.data.assignment.sectorId == userRecord(request.auth.uid).data.sectorId
+        && request.resource.data.sectorId == request.resource.data.assignment.sectorId
+        && request.resource.data.contactId == request.resource.data.assignment.contactId
+        && request.resource.data.sectorName == request.resource.data.assignment.sectorName
+        && request.resource.data.contactName == request.resource.data.assignment.contactName
+        && request.resource.data.login == request.resource.data.assignment.login
+        && request.resource.data.agent == request.resource.data.assignment.agent
+        && request.resource.data.assignment.login == userRecord(request.auth.uid).data.login
+        && request.resource.data.assignment.agent == userRecord(request.auth.uid).data.agent
+        && request.resource.data.assignment.contactId == userRecord(request.auth.uid).data.contactId
+        && exists(/databases/$(database)/documents/organizationSectors/$(request.resource.data.assignment.sectorId))
+        && sectorRecord(request.resource.data.assignment.sectorId).data.active == true
+        && sectorRecord(request.resource.data.assignment.sectorId).data.name == request.resource.data.assignment.sectorName
+        && exists(/databases/$(database)/documents/organizationContacts/$(request.resource.data.assignment.contactId))
+        && contactRecord(request.resource.data.assignment.contactId).data.active == true
+        && contactRecord(request.resource.data.assignment.contactId).data.sectorId == request.resource.data.assignment.sectorId
+        && contactRecord(request.resource.data.assignment.contactId).data.name == request.resource.data.assignment.contactName;
+    }
+
+    match /Expediente/{expedienteId} {
+      // Supervisors and administrators can consult every sector. Employees
+      // remain restricted to their own expediente.
+      allow read: if approvedUser()
+        && (resource.data.ownerUid == request.auth.uid
+          || activeAdmin()
+          || activeSupervisor());
+
+      allow create: if approvedUser() && validExpedienteSnapshot();
+
+      // The index can update only its operational status/timestamp. Ownership,
+      // date, identity and historical assignment snapshot are immutable.
+      allow update: if approvedUser()
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["status", "completedAt"]);
+
+      // Operational history/index records are not deleted by the client.
+      allow delete: if false;
+    }
+
+    match /accessRequests/{uid} {
+      allow create: if ownUserDocument(uid)
+        && allowedCorporateDomain()
+        && request.resource.data.keys().hasOnly(["uid", "email", "status", "requestedAt"])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.status == "pending";
+      allow read: if ownUserDocument(uid) || activeManager();
+      allow update, delete: if activeManager();
+    }
+
+    match /organizationSectors/{sectorId} {
+      allow read: if approvedUser();
+      allow write: if activeManager();
+    }
+
+    match /organizationContacts/{contactId} {
+      allow read: if approvedUser();
+      allow write: if activeManager();
+    }
+
+    // Shared task/profile catalogue; each user's allowed IDs are stored on
+    // their organizational record and enforced by the application.
+    match /sharedTaskCatalog/{document=**} {
+      allow read: if approvedUser();
+      allow write: if activeManager();
+    }
+
+    match /settings/allowedDomains {
+      allow read: if signedIn();
+      allow write: if activeAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if approvedUser();
+      allow write: if activeAdmin();
+    }
+
+    match /adminAudit/{auditId} {
+      allow read: if activeAdmin();
+      allow create: if activeManager()
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

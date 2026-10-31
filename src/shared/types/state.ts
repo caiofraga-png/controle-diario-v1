@@ -9,6 +9,13 @@ export interface TarefaSnapshot extends Omit<Tarefa, "emailsVinculados"> {
   emailsVinculados: EmailSnapshot[];
 }
 
+export interface ExpedienteCatalogSnapshot {
+  tarefas: { schemaVersion: 1; tarefas: Tarefa[] };
+  perfis: { schemaVersion: 1; perfis: Perfil[] };
+  email: { schemaVersion: 1; emails: Email[]; emailsGlobais: string[] };
+  layout: { ordemPerfis: string[]; ordemTarefas: Record<string, string[]> };
+}
+
 export interface EstadoAtual {
   id: string;
   data: string;
@@ -18,6 +25,8 @@ export interface EstadoAtual {
   observacao: string;
   criadoEm: string;
   ultimaAlteracao: string;
+  /** Immutable catalog/layout version captured when this expediente starts. */
+  catalogSnapshot?: ExpedienteCatalogSnapshot;
 }
 
 export interface RegistroHistorico {

@@ -3,19 +3,13 @@ import { createRoot } from "react-dom/client";
 import "./styles.css";
 import ConfigurationPanel from "./ConfigurationPanel";
 import RoteiroEditor from "./RoteiroEditor";
-import ImporterPanel from "./ImporterPanel";
-import MaintenanceImporterPanel from "./MaintenanceImporterPanel";
+import FirebaseAdminPanel from "./FirebaseAdminPanel";
 import { installWebBridge } from "../web/webBridge";
 
 installWebBridge();
 
 interface Bridge {
-  sistema: { status: () => Promise<any>; autorizarGoogle: () => Promise<any>; definirPastaRaiz: (id: string) => Promise<any>; selecionarPasta: () => Promise<any>; testarConexao: () => Promise<boolean>; testarSheets: (spreadsheetId:string) => Promise<{spreadsheetId:string;title:string;sheets:{sheetId:number;title:string;hidden:boolean}[]}>; inspecionarDestino: (spreadsheetId:string,sheetTitle:string) => Promise<{spreadsheetId:string;sheetTitle:string;headers:string[];lastTicketRow:number;headerRow:number;firstDataRow:number;ticketColumn:string}> };
-  tarefas: { iniciar: (p: { data: string; perfilId: string }) => Promise<any>; trocarPerfil: (perfilId:string) => Promise<any>; marcar: (p: { tipo: "tarefa" | "email"; id: string; concluido: boolean }) => Promise<any>; observacao: (v: string) => Promise<any>; concluir: () => Promise<any>; abandonar: () => Promise<any> };
-  dados: { carregar: () => Promise<any>; salvarCalendario: (calendario: unknown) => Promise<any> };
-  calendario: { mes: (p: { year: number; month: number }) => Promise<any>; salvarData: (p: { data: string; folga: boolean; feriado: boolean }) => Promise<any> };
-  config: { salvar: (config: unknown) => Promise<any>; novaTarefa: (input:{nome:string;link:string;criacao:string})=>Promise<any>; novoPerfil:(input:{nome:string;tarefas:string[]})=>Promise<any>; novoEmail:(input:{nome:string;titulo:string;corpo:string;global?:boolean})=>Promise<any>; salvarTarefa:(p:{id:string;criacao?:string;roteiro?:any})=>Promise<any> };
-  historico: { versoes: (date: string) => Promise<any>; ler: (p: { date: string; versao: number }) => Promise<any>; errata: (p: { source: unknown; edited: unknown }) => Promise<any> };
+  firebase: { signIn: () => Promise<any>; restoreSession: () => Promise<any>; observeAccess: (callback:(result:any)=>void, onError?:(error:Error)=>void)=>()=>void; signOut: () => Promise<void>; workflow: any };
 }
 declare global { interface Window { controleDiario: Bridge } }
 
@@ -36,10 +30,9 @@ function resolveEmailVariables(value:string){
   return value.replaceAll("\\n", "\n").replaceAll("{HOJE_YYYYMMDD}",hoje).replaceAll("{ONTEM_DDMMYYYY}",ontem);
 }
 function App() {
-  const [tab, setTab] = useState<"tarefas" | "calendario" | "configuracao" | "importacao" | "sistema">("tarefas");
-  const [status, setStatus] = useState<any>(null);
-  const [folderId, setFolderId] = useState("");
-  const [sheetTestId, setSheetTestId] = useState("1608bZtMCXHSbXDzYVIq-X454ZDDOpCUa4TdkHWZT5wM");
+  const [tab, setTab] = useState<"tarefas" | "calendario" | "configuracao" | "sistema" | "administracao">("tarefas");
+  const [firebaseAccess, setFirebaseAccess] = useState<any>({ status: "checking" });
+  const [firebaseBusy, setFirebaseBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [successPopup, setSuccessPopup] = useState(false);
@@ -49,45 +42,6 @@ function App() {
   const [emailPanel, setEmailPanel] = useState<any>(null);
   const [taskPanel, setTaskPanel] = useState<any>(null);
   const [roteiroPanel, setRoteiroPanel] = useState<any>(null);
-  const [importerTaskPanel, setImporterTaskPanel] = useState<any>(null); // popup do importador por tarefa
-  const [maintenanceView, setMaintenanceView] = useState<"menu"|"midias"|"ligacao"|"import"|"update"|"existing">("menu");
-  function taskLabel(task: any): string {
-    return `${task?.nome ?? ""} ${task?.id ?? ""}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-  }
-  function isVolumetriaMidiasTask(task: any): boolean {
-    const label = taskLabel(task);
-    return label.includes("VOLUMETRIA") && label.includes("MIDIAS");
-  }
-  function importerForTask(task: any): "estatisticas" | "callback" | "prodsac" | "chatmidias" | "chatfinanceiro" | "chatcomercial" | "volsup" | "manutencao" {
-    // VOLUMETRIA - MÍDIAS é um conjunto de três importadores CHAT MÍDIAS, não VOLUMETRIA SUPORTE.
-    if (isVolumetriaMidiasTask(task)) return "chatmidias";
-    const configured = task?.importador ?? config?.tarefas?.tarefas?.find((t:any)=>t.id===task?.id)?.importador;
-    if (["estatisticas", "callback", "prodsac", "chatmidias", "chatfinanceiro", "chatcomercial", "volsup", "manutencao"].includes(configured)) return configured;
-    const label = taskLabel(task);
-    if (label.includes("ESTATISTICA") && label.includes("MANUTENCAO")) return "manutencao";
-    if (label.includes("CALLBACK")) return "callback";
-    if (label.includes("PRODUTIVIDADE SAC") || label.includes("PRODSAC")) return "prodsac";
-    if (label.includes("CHAT") && label.includes("FINANCEIRO")) return "chatfinanceiro";
-    if (label.includes("CHAT") && label.includes("COMERCIAL")) return "chatcomercial";
-    if (label.includes("CHAT") && label.includes("SUPORTE")) return "chatmidias";
-    if (label.includes("VOLUMETRIA SUPORTE") || label.includes("VOLUMETRIA")) return "volsup";
-    return "estatisticas";
-  }
-  function importerTitleForTask(task: any): string {
-    if (isVolumetriaMidiasTask(task)) return "VOLUMETRIA — MÍDIAS";
-    const importer = importerForTask(task);
-    const titles: Record<string, string> = {
-      estatisticas: "DADOS ESTATÍSTICOS",
-      callback: "CALLBACK",
-      prodsac: "PRODUTIVIDADE SAC",
-      chatmidias: "CHAT MÍDIAS — SUPORTE",
-      chatfinanceiro: "CHAT MÍDIAS — FINANCEIRO",
-      chatcomercial: "CHAT MÍDIAS — COMERCIAL",
-      volsup: "VOLUMETRIA SUPORTE",
-      manutencao: "MANUTENÇÕES — SUPORTE"
-    };
-    return titles[importer] ?? "IMPORTADOR";
-  }
   const [profileSwitch, setProfileSwitch] = useState(false);
   const observationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [calendarCursor, setCalendarCursor] = useState(() => { const { year, month } = brazilTodayParts(); return { year, month }; });
@@ -98,47 +52,89 @@ function App() {
   const [historySource, setHistorySource] = useState<any>(null);
   const [historyMode, setHistoryMode] = useState<"view"|"edit"|null>(null);
 
-  async function refresh() { const result = await window.controleDiario.sistema.status(); setStatus(result); setFolderId(result.bootstrap?.drive?.pastaRaizId ?? ""); }
-  async function loadData() { try { const result = await window.controleDiario.dados.carregar(); setData(result); if (result.estado) { setObservation(result.estado.observacao ?? ""); setSelectedDate(result.estado.data); } else { setSelectedDate(today()); } } catch (e) { setData({ erro: e instanceof Error ? e.message : "NÃO FOI POSSÍVEL CARREGAR OS DADOS." }); } }
-  async function loadMonth() { if (!status?.auth?.authenticated || !status?.bootstrap?.drive?.pastaRaizId) return; try { setCalendarData(await window.controleDiario.calendario.mes(calendarCursor)); } catch (e) { setMessage(e instanceof Error ? e.message : "NÃO FOI POSSÍVEL CARREGAR O CALENDÁRIO."); } }
-  useEffect(() => { void refresh(); }, []);
-  useEffect(() => { if (status?.auth?.authenticated && status?.bootstrap?.drive?.pastaRaizId) void loadData(); else setData(null); }, [status?.auth?.authenticated, status?.bootstrap?.drive?.pastaRaizId]);
-  useEffect(() => { if (status?.auth?.authenticated && status?.bootstrap?.drive?.pastaRaizId) void loadMonth(); }, [calendarCursor.year, calendarCursor.month, status?.auth?.authenticated, status?.bootstrap?.drive?.pastaRaizId]);
+  async function loadData() { try { const result = await window.controleDiario.firebase.workflow.load(); setData(result); if (result.estado) { setObservation(result.estado.observacao ?? ""); setSelectedDate(result.estado.data); } else { setSelectedDate(today()); } } catch (e) { setData({ erro: e instanceof Error ? e.message : "NÃO FOI POSSÍVEL CARREGAR OS DADOS." }); } }
+  async function loadMonth() { if (firebaseAccess?.status !== "approved") return; try { setCalendarData(await window.controleDiario.firebase.workflow.mes(calendarCursor)); } catch (e) { setMessage(e instanceof Error ? e.message : "NÃO FOI POSSÍVEL CARREGAR O CALENDÁRIO."); } }
+  useEffect(() => {
+    let stop: (() => void) | undefined;
+    let active = true;
+    try {
+      stop = window.controleDiario.firebase.observeAccess(
+        (result:any) => {
+          if (!active) return;
+          setFirebaseAccess((previous:any) => {
+            // Login requests are intentionally signed out after being queued or
+            // denied. Preserve that outcome instead of replacing it with the
+            // observer's follow-up signed-out event.
+            if (result.status === "signed-out" &&
+                ["pending", "blocked", "rejected", "not-allowed"].includes(previous?.status)) {
+              return previous;
+            }
+            return result;
+          });
+        },
+        (error:Error) => { if (active) setFirebaseAccess({ status:"error", message:error.message }); },
+      );
+    } catch (error) {
+      setFirebaseAccess({ status:"unconfigured", message:error instanceof Error ? error.message : String(error) });
+    }
+    return () => { active = false; stop?.(); };
+  }, []);
+  async function signInFirebase() {
+    setFirebaseBusy(true);
+    setMessage("");
+    try {
+      const result = await window.controleDiario.firebase.signIn();
+      setFirebaseAccess(result);
+      if (result.status === "approved") setMessage("LOGIN FIREBASE APROVADO.");
+      else if (result.status === "pending") setMessage("SOLICITAÇÃO REGISTRADA OU JÁ PENDENTE. AGUARDE A APROVAÇÃO ADMINISTRATIVA.");
+      else if (result.status === "not-allowed") setMessage("DOMÍNIO NÃO AUTORIZADO PARA ACESSO AO CONTROLE DIÁRIO.");
+      else if (result.status === "blocked" || result.status === "rejected") setMessage("ACESSO BLOQUEADO OU RECUSADO. CONTATE O ADMINISTRADOR.");
+    } catch (error) {
+      setFirebaseAccess({ status:"error", message:error instanceof Error ? error.message : String(error) });
+      setMessage(error instanceof Error ? error.message : "NÃO FOI POSSÍVEL AUTENTICAR NO FIREBASE.");
+    } finally { setFirebaseBusy(false); }
+  }
+  async function signOutFirebase() {
+    setFirebaseBusy(true);
+    try { await window.controleDiario.firebase.signOut(); setFirebaseAccess({status:"signed-out"}); }
+    catch (error) { setMessage(error instanceof Error ? error.message : "NÃO FOI POSSÍVEL ENCERRAR A SESSÃO FIREBASE."); }
+    finally { setFirebaseBusy(false); }
+  }
+  useEffect(() => { if (firebaseAccess?.status === "approved") void loadData(); else { setData(null); setCalendarData(null); } }, [firebaseAccess?.status]);
+  useEffect(() => { if (firebaseAccess?.status === "approved") void loadMonth(); }, [calendarCursor.year, calendarCursor.month, firebaseAccess?.status]);
   useEffect(() => () => { if (observationTimer.current) clearTimeout(observationTimer.current); }, []);
 
   const config = data?.configuracao, state = data?.estado;
-  const profiles = useMemo(() => config ? (config.layout?.ordemPerfis ?? []).map((id:string)=>config.perfis.perfis.find((p:any)=>p.id===id)).filter((p:any)=>p?.ativo) : [], [config]);
+  const profiles = useMemo(() => { if (!config) return []; const frozen=state?.catalogSnapshot; const sourceProfiles=frozen?.perfis?.perfis ?? config.perfis.perfis; const order=frozen?.layout?.ordemPerfis ?? config.layout?.ordemPerfis ?? []; return order.map((id:string)=>sourceProfiles.find((p:any)=>p.id===id)).filter((p:any)=>p?.ativo); }, [config,state]);
   const geralHasTasks = Boolean(config?.tarefas?.tarefas?.some((t:any)=>t.ativo) || config?.email?.emailsGlobais?.length);
   const expansionMode = config?.layout?.criacaoRoteiro?.modo ?? "POPUP";
   const expansionPosition = config?.layout?.expansaoLateral?.posicao ?? "direita";
   function progress(s:any) { if (!s) return {done:0,total:0,percentage:0}; const ids=new Set<string>(); for(const e of s.emailsGlobais??[])ids.add(e.id); for(const t of s.tarefas??[])for(const e of t.emailsVinculados??[])ids.add(e.id); let done=(s.tarefas??[]).filter((t:any)=>t.concluida).length; for(const id of ids){const e=(s.emailsGlobais??[]).find((x:any)=>x.id===id)??(s.tarefas??[]).flatMap((t:any)=>t.emailsVinculados??[]).find((x:any)=>x.id===id);if(e?.concluido)done++;} const total=(s.tarefas??[]).length+ids.size; return {done,total,percentage:total?Math.round(done/total*100):0}; }
   const prog = progress(state);
-  async function start(profileId:string){setBusy(true);setMessage("");try{await window.controleDiario.tarefas.iniciar({data:selectedDate,perfilId:profileId});await loadData();}catch(e){setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL INICIAR O EXPEDIENTE.");}finally{setBusy(false);}}
-  async function mark(tipo:"tarefa"|"email",id:string,concluido:boolean){setBusy(true);try{const r=await window.controleDiario.tarefas.marcar({tipo,id,concluido});setData((o:any)=>o?({...o,estado:r.state}):o);}catch(e){setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR A MARCAÇÃO.");}finally{setBusy(false);}}
-  function changeObservation(value:string){setObservation(value);if(observationTimer.current)clearTimeout(observationTimer.current);observationTimer.current=setTimeout(async()=>{try{const r=await window.controleDiario.tarefas.observacao(value);setData((o:any)=>o?({...o,estado:r}):o);}catch(e){setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR A OBSERVAÇÃO.");}},600);}
-  async function conclude(){if(prog.percentage!==100)return;setBusy(true);setMessage("");try{await window.controleDiario.tarefas.concluir();await loadData();await loadMonth();setSuccessPopup(true);}catch(e){setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL CONCLUIR O EXPEDIENTE.");}finally{setBusy(false);}}
+  async function start(profileId:string){setBusy(true);setMessage("");try{await window.controleDiario.firebase.workflow.iniciar({data:selectedDate,perfilId:profileId});await loadData();}catch(e){setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL INICIAR O EXPEDIENTE.");}finally{setBusy(false);}}
+  async function mark(tipo:"tarefa"|"email",id:string,concluido:boolean){setBusy(true);try{const r=await window.controleDiario.firebase.workflow.marcar({tipo,id,concluido});setData((o:any)=>o?({...o,estado:r.state}):o);}catch(e){setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR A MARCAÇÃO.");}finally{setBusy(false);}}
+  function changeObservation(value:string){setObservation(value);if(observationTimer.current)clearTimeout(observationTimer.current);observationTimer.current=setTimeout(async()=>{try{const r=await window.controleDiario.firebase.workflow.observacao(value);setData((o:any)=>o?({...o,estado:r}):o);}catch(e){setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR A OBSERVAÇÃO.");}},600);}
+  async function conclude(){if(prog.percentage!==100)return;setBusy(true);setMessage("");try{await window.controleDiario.firebase.workflow.concluir();await loadData();await loadMonth();setSuccessPopup(true);}catch(e){setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL CONCLUIR O EXPEDIENTE.");}finally{setBusy(false);}}
   async function switchProfile(profileId:string){
     if (!state || profileId===state.perfil.id) { setProfileSwitch(false); return; }
     const pName = profileId === "GERAL" ? "GERAL" : profiles.find((p:any)=>p.id===profileId)?.nome ?? profileId;
     if (!window.confirm(`TROCAR PARA O PERFIL ${pName}? As marcações das tarefas/e-mails que também existirem no novo perfil serão preservadas.`)) return;
     setBusy(true); setMessage("");
-    try { await window.controleDiario.tarefas.trocarPerfil(profileId); await loadData(); setProfileSwitch(false); }
+    try { await window.controleDiario.firebase.workflow.trocarPerfil(profileId); await loadData(); setProfileSwitch(false); }
     catch(e){ setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL TROCAR O PERFIL."); }
     finally { setBusy(false); }
   }
 
   async function saveTaskCreation(task:any, value:string){
-    if(!config) return; const next=JSON.parse(JSON.stringify(config)); const t=next.tarefas.tarefas.find((x:any)=>x.id===task.id); if(!t)return; t.criacao=value; setBusy(true); try { const saved=await window.controleDiario.config.salvarTarefa({id:task.id,criacao:value}); setData(saved); setTaskPanel(null); } catch(e){ setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR A CRIAÇÃO."); } finally { setBusy(false); }
+    if(!config) return; const next=JSON.parse(JSON.stringify(config)); const t=next.tarefas.tarefas.find((x:any)=>x.id===task.id); if(!t)return; t.criacao=value; setBusy(true); try { const saved=await window.controleDiario.firebase.workflow.salvarTarefa({id:task.id,criacao:value}); setData(saved); setTaskPanel(null); } catch(e){ setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR A CRIAÇÃO."); } finally { setBusy(false); }
   }
 
   async function saveTaskRoteiro(task:any, value:any){
-    if(!config) return; const next=JSON.parse(JSON.stringify(config)); const t=next.tarefas.tarefas.find((x:any)=>x.id===task.id); if(!t)return; t.roteiro=JSON.parse(JSON.stringify(value)); setBusy(true); try { const saved=await window.controleDiario.config.salvarTarefa({id:task.id,roteiro:value}); setData(saved); setRoteiroPanel(null); } catch(e){ setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR O ROTEIRO."); } finally { setBusy(false); }
+    if(!config) return; const next=JSON.parse(JSON.stringify(config)); const t=next.tarefas.tarefas.find((x:any)=>x.id===task.id); if(!t)return; t.roteiro=JSON.parse(JSON.stringify(value)); setBusy(true); try { const saved=await window.controleDiario.firebase.workflow.salvarTarefa({id:task.id,roteiro:value}); setData(saved); setRoteiroPanel(null); } catch(e){ setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR O ROTEIRO."); } finally { setBusy(false); }
   }
 
-  async function abandon(){if(!window.confirm(`ABANDONAR EXPEDIENTE? O registro em produção de ${brDate(state.data)} será descartado. Nenhum histórico será criado.`))return;setBusy(true);try{await window.controleDiario.tarefas.abandonar();await loadData();setObservation("");}catch(e){setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL ABANDONAR O EXPEDIENTE.");}finally{setBusy(false);}}
-  async function saveConfig(nextConfig:any){ setBusy(true); setMessage(""); try { const result=await window.controleDiario.config.salvar(nextConfig); setData(result); setMessage("CONFIGURAÇÃO SALVA."); } catch(e){ setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR A CONFIGURAÇÃO."); throw e; } finally { setBusy(false); } }
-  async function systemAction(action:()=>Promise<any>,success?:string){setBusy(true);setMessage("");try{await action();await refresh();if(success)setMessage(success);}catch(e){setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL CONCLUIR A OPERAÇÃO.");}finally{setBusy(false);}}
-  async function testSheetsApi(){setBusy(true);setMessage("");try{const result=await window.controleDiario.sistema.testarSheets(sheetTestId);setMessage(`SHEETS API CONFIRMADA: ${result.title}. ABAS: ${result.sheets.map((s:any)=>s.title).join(", ")||"NENHUMA ABA ENCONTRADA"}.`);}catch(e){setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL CONSULTAR A PLANILHA PELA SHEETS API.");}finally{setBusy(false);}}
+  async function abandon(){if(!window.confirm(`ABANDONAR EXPEDIENTE? O registro em produção de ${brDate(state.data)} será descartado. Nenhum histórico será criado.`))return;setBusy(true);try{await window.controleDiario.firebase.workflow.abandonar();await loadData();setObservation("");}catch(e){setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL ABANDONAR O EXPEDIENTE.");}finally{setBusy(false);}}
+  async function saveConfig(nextConfig:any){ setBusy(true); setMessage(""); try { const result=await window.controleDiario.firebase.workflow.salvarConfiguracao(nextConfig); setData(result); setMessage("CONFIGURAÇÃO SALVA."); } catch(e){ setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR A CONFIGURAÇÃO."); throw e; } finally { setBusy(false); } }
 
   type CalendarSpecial = { data: string; folga?: boolean; feriado?: boolean };
   const specialByDate = useMemo<Map<string, CalendarSpecial>>(()=>new Map(((calendarData?.special??[]) as CalendarSpecial[]).map(x=>[x.data,x])),[calendarData]);
@@ -154,18 +150,18 @@ function App() {
 
   async function openDay(date:string){
     setDayPanel(date); setHistoryRecord(null); setHistoryMode(null);
-    const vs = await window.controleDiario.historico.versoes(date); setVersions(vs);
+    const vs = await window.controleDiario.firebase.workflow.versoes(date); setVersions(vs);
   }
-  async function openVersion(v:number){ const rec=await window.controleDiario.historico.ler({date:dayPanel!,versao:v});setHistoryRecord(rec);setHistorySource(rec);setHistoryMode("view"); }
+  async function openVersion(v:number){ const rec=await window.controleDiario.firebase.workflow.ler({date:dayPanel!,versao:v});setHistoryRecord(rec);setHistorySource(rec);setHistoryMode("view"); }
   async function saveCalendarMark(date:string, field:"folga"|"feriado"){
     if(state?.data===date){setMessage("A DATA DO EXPEDIENTE EM PRODUÇÃO DEVE SER ALTERADA EM TAREFAS.");return;}
     const current=specialByDate.get(date)??{data:date,folga:false,feriado:false};
     const payload={data:date,folga:field==="folga"?!current.folga:Boolean(current.folga),feriado:field==="feriado"?!current.feriado:Boolean(current.feriado)};
-    setBusy(true);try{await window.controleDiario.calendario.salvarData(payload);await loadMonth();}catch(e){setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR O CALENDÁRIO.");}finally{setBusy(false);}
+    setBusy(true);try{await window.controleDiario.firebase.workflow.salvarDataCalendario(payload);await loadMonth();}catch(e){setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR O CALENDÁRIO.");}finally{setBusy(false);}
   }
   function editHistoryTask(taskId:string,checked:boolean){setHistoryRecord((r:any)=>({...r,tarefas:r.tarefas.map((t:any)=>t.id===taskId?{...t,concluida:checked,emailsVinculados:t.emailsVinculados.map((e:any)=>({...e,concluido:checked}))}:t),emailsGlobais:r.emailsGlobais.map((e:any)=>{const t=r.tarefas.find((x:any)=>x.id===taskId);return t?.emailsVinculados?.some((x:any)=>x.id===e.id)?{...e,concluido:checked}:e})}));}
   function editHistoryEmail(emailId:string,checked:boolean){setHistoryRecord((r:any)=>({...r,emailsGlobais:r.emailsGlobais.map((e:any)=>e.id===emailId?{...e,concluido:checked}:e),tarefas:r.tarefas.map((t:any)=>({...t,emailsVinculados:t.emailsVinculados.map((e:any)=>e.id===emailId?{...e,concluido:checked}:e)}))}));}
-  async function saveErrata(){if(!historySource||!historyRecord)return;setBusy(true);try{const saved=await window.controleDiario.historico.errata({source:historySource,edited:{tarefas:historyRecord.tarefas,emailsGlobais:historyRecord.emailsGlobais,observacao:historyRecord.observacao}});setHistoryRecord(saved);setHistorySource(saved);setHistoryMode("view");setVersions(await window.controleDiario.historico.versoes(dayPanel!));await loadMonth();}catch(e){setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR A ERRATA.");}finally{setBusy(false);}}
+  async function saveErrata(){if(!historySource||!historyRecord)return;setBusy(true);try{const saved=await window.controleDiario.firebase.workflow.errata({source:historySource,edited:{tarefas:historyRecord.tarefas,emailsGlobais:historyRecord.emailsGlobais,observacao:historyRecord.observacao}});setHistoryRecord(saved);setHistorySource(saved);setHistoryMode("view");setVersions(await window.controleDiario.firebase.workflow.versoes(dayPanel!));await loadMonth();}catch(e){setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR A ERRATA.");}finally{setBusy(false);}}
 
   return <div className="app app-shell">
     <img className="company-watermark" src="./leste-logo.svg" alt="" aria-hidden="true" />
@@ -176,20 +172,21 @@ function App() {
       <button className={`sidebar-item ${tab==="tarefas"?"active":""}`} onClick={()=>setTab("tarefas")}><span className="sidebar-icon">✓</span><span>Tarefas</span></button>
       <button className={`sidebar-item ${tab==="calendario"?"active":""}`} onClick={()=>setTab("calendario")}><span className="sidebar-icon">▦</span><span>Calendário</span></button>
       <div className="sidebar-section-label">GERENCIAMENTO</div>
-      <button className={`sidebar-item ${tab==="importacao"?"active":""}`} onClick={()=>setTab("importacao")}><span className="sidebar-icon">⇧</span><span>Importação</span></button>
       <button className={`sidebar-item ${tab==="configuracao"?"active":""}`} onClick={()=>setTab("configuracao")}><span className="sidebar-icon">⚙</span><span>Configuração</span></button>
       <button className={`sidebar-item ${tab==="sistema"?"active":""}`} onClick={()=>setTab("sistema")}><span className="sidebar-icon">◈</span><span>Sistema</span></button>
+      <button className={`sidebar-item ${tab==="administracao"?"active":""}`} onClick={()=>setTab("administracao")}><span className="sidebar-icon">♙</span><span>Administração</span></button>
       <div className="sidebar-company-footer"><img src="./leste-logo.svg" alt="Leste Telecom" /></div>
-      <div className="sidebar-footer"><span className={status?.auth?.authenticated?"connection-dot connected":"connection-dot"}></span><span>{status?.auth?.authenticated?"Google conectado":"Google não conectado"}</span></div>
+      <div className="sidebar-footer"><span className={firebaseAccess?.status==="approved"?"connection-dot connected":"connection-dot"}></span><span>{firebaseAccess?.status==="approved"?"Firebase conectado":"Firebase não conectado"}</span></div>
     </aside>
     <div className="app-main">
-    <header className="header"><div className="header-page-title"><div className="page-eyebrow">CONTROLE DIÁRIO</div><strong>{{tarefas:"Tarefas do expediente",calendario:"Calendário de trabalho",configuracao:"Configuração",importacao:"Importação",sistema:"Sistema"}[tab]}</strong></div><div className="upcoming-dates" aria-live="polite"><span>Próximas datas:</span> {upcomingDates.length ? upcomingDates.join(" - ") : "Nenhuma data especial próxima"}</div><div className="header-status">{busy?"Salvando alterações…":"Organização do expediente"}</div></header>
+    <header className="header"><div className="header-page-title"><div className="page-eyebrow">CONTROLE DIÁRIO</div><strong>{{tarefas:"Tarefas do expediente",calendario:"Calendário de trabalho",configuracao:"Configuração",sistema:"Sistema",administracao:"Administração"}[tab]}</strong></div><div className="upcoming-dates" aria-live="polite"><span>Próximas datas:</span> {upcomingDates.length ? upcomingDates.join(" - ") : "Nenhuma data especial próxima"}</div><div className="header-status">{busy?"Salvando alterações…":"Organização do expediente"}</div></header>
     <main className="content">
-      {tab==="configuracao" ? (data?.configuracao ? <ConfigurationPanel initial={data.configuracao} onSave={saveConfig} onClose={()=>setTab("tarefas")} busy={busy} embedded/> : <section className="card"><div className="profile">CARREGANDO CONFIGURAÇÃO…</div></section>)
-      : tab==="sistema" ? <section className="system-workspace"><div className="workspace-intro"><h2>Conexão e armazenamento</h2><p>Gerencie a conta Google e a pasta usada pelo CONTROLE DIÁRIO.</p></div><div className="system-workspace-grid"><div className="system-workspace-card"><span className="system-workspace-label">CONTA GOOGLE</span><strong>{status?.auth?.email??"NÃO AUTORIZADA"}</strong><p>{status?.auth?.authenticated?"Conta autorizada para acessar o serviço.":"Autorize sua conta Google para iniciar o acesso ao Drive."}</p><button disabled={busy} onClick={()=>void systemAction(()=>window.controleDiario.sistema.autorizarGoogle(),"CONTA GOOGLE AUTORIZADA.")}>AUTORIZAR GOOGLE</button></div><div className="system-workspace-card"><span className="system-workspace-label">PASTA RAIZ</span><strong className="folder-id">{folderId||"NÃO CONFIGURADA"}</strong><p>Selecione a pasta raiz do CONTROLE DIÁRIO ou informe o ID manualmente.</p><div className="system-actions"><button disabled={busy||!status?.auth?.authenticated} onClick={()=>void systemAction(()=>window.controleDiario.sistema.selecionarPasta(),"PASTA RAIZ CONFIGURADA.")}>SELECIONAR PASTA</button></div><div className="manual-folder"><input value={folderId} onChange={e=>setFolderId(e.target.value)} placeholder="ID da pasta do Google Drive"/><button disabled={busy||!status?.auth?.authenticated} onClick={()=>void systemAction(()=>window.controleDiario.sistema.definirPastaRaiz(folderId),"PASTA RAIZ CONFIGURADA.")}>USAR ID</button></div><button className="test-button" disabled={busy||!folderId} onClick={()=>void systemAction(()=>window.controleDiario.sistema.testarConexao(),"CONEXÃO CONFIRMADA.")}>TESTAR CONEXÃO</button><div className="manual-folder"><input value={sheetTestId} onChange={e=>setSheetTestId(e.target.value)} placeholder="ID da planilha empresarial"/><button disabled={busy||!status?.auth?.authenticated} onClick={()=>void testSheetsApi()}>TESTAR SHEETS API</button></div></div></div>{message&&<p className="system-message">{message}</p>}</section>
-      : tab==="importacao" ? (maintenanceView==="import" ? <><button className="test-button" onClick={()=>setMaintenanceView("ligacao")}>← VOLTAR A LIGAÇÃO</button><MaintenanceImporterPanel operation="import"/></> : maintenanceView==="update" ? <><button className="test-button" onClick={()=>setMaintenanceView("ligacao")}>← VOLTAR A LIGAÇÃO</button><MaintenanceImporterPanel operation="update"/></> : maintenanceView==="existing" ? <><button className="test-button" onClick={()=>setMaintenanceView("midias")}>← VOLTAR A MÍDIAS</button><ImporterPanel/></> : maintenanceView==="ligacao" ? <><button className="test-button" onClick={()=>setMaintenanceView("menu")}>← VOLTAR À IMPORTAÇÃO</button><section className="system-workspace"><div className="workspace-intro"><h2>LIGAÇÃO</h2><p>Importadores da tarefa ESTATÍSTICA - MANUTENÇÃO.</p></div><div className="system-workspace-grid"><div className="system-workspace-card"><span className="system-workspace-label">IMPORTADOR</span><strong>MANUTENÇÕES - SUPORTE</strong><p>Importa MANUT FEITAS e depois MANUT PRAZO.</p><button onClick={()=>setMaintenanceView("import")}>ABRIR IMPORTAÇÃO</button></div><div className="system-workspace-card"><span className="system-workspace-label">ATUALIZADOR</span><strong>MANUTENÇÃO - TODAS ABERTAS</strong><p>Atualiza registros existentes elegíveis. Não importa novas linhas.</p><button onClick={()=>setMaintenanceView("update")}>ABRIR ATUALIZADOR</button></div></div></section></> : maintenanceView==="midias" ? <><button className="test-button" onClick={()=>setMaintenanceView("menu")}>← VOLTAR À IMPORTAÇÃO</button><ImporterPanel/></> : <><section className="system-workspace"><div className="workspace-intro"><h2>Importação</h2><p>Selecione a área que deseja acessar.</p></div><div className="system-workspace-grid"><div className="system-workspace-card"><span className="system-workspace-label">MÍDIAS</span><strong>MÍDIAS</strong><p>Dados Estatísticos, Callback e os demais importadores já configurados.</p><button onClick={()=>setMaintenanceView("midias")}>ABRIR MÍDIAS</button></div><div className="system-workspace-card"><span className="system-workspace-label">LIGAÇÃO</span><strong>LIGAÇÃO</strong><p>Importadores da tarefa ESTATÍSTICA - MANUTENÇÃO.</p><button onClick={()=>setMaintenanceView("ligacao")}>ABRIR LIGAÇÃO</button></div></div></section></>)
-      : tab==="calendario"&&!status?.auth?.authenticated?<section className="card"><div className="profile">CONFIGURE O GOOGLE DRIVE PARA INICIAR.</div></section>:tab==="calendario"?<section className="calendar-card"><div className="calendar-head"><button onClick={()=>setCalendarCursor(c=>c.month===1?{year:c.year-1,month:12}:{year:c.year,month:c.month-1})}>‹</button><strong>{monthLabel(calendarCursor.year,calendarCursor.month)}</strong><div><button onClick={()=>{const d=brazilTodayParts();setCalendarCursor({year:d.year,month:d.month})}}>HOJE</button><button onClick={()=>setCalendarCursor(c=>c.month===12?{year:c.year+1,month:1}:{year:c.year,month:c.month+1})}>›</button></div></div><div className="legend"><span>⚪ SEM REGISTRO</span><span>🟢 CONCLUÍDO</span><span>🔵 FOLGA</span><span>🟡 FERIADO</span></div><div className="weekdays">{["DOM","SEG","TER","QUA","QUI","SEX","SÁB"].map(x=><span key={x}>{x}</span>)}</div><div className="calendar-grid">{cells.map((d,i)=>{if(!d)return <div className="day empty" key={`e${i}`}/>;const date=dateFromParts(calendarCursor.year,calendarCursor.month,d),sp=specialByDate.get(date),done=completed.has(date), isProd=state?.data===date;let symbol=done?"🟢":"⚪";if(sp?.folga)symbol="🔵";if(sp?.feriado)symbol=`🟡${sp.folga?"🔵":done?"🟢":"⚪"}`;return <button className={`day ${isProd?"production-day":""}`} key={date} onClick={()=>void openDay(date)}><strong>{d}</strong><span>{symbol}</span></button>})}</div></section>:<>
-        {!status?.auth?.authenticated||!status?.bootstrap?.drive?.pastaRaizId?<section className="card"><div className="profile">CONFIGURE O GOOGLE DRIVE PARA INICIAR.</div><p>Abra <strong>SISTEMA</strong>, autorize a conta Google e selecione a pasta raiz do CONTROLE DIÁRIO.</p></section>:data?.erro?<section className="card"><div className="system-message">{data.erro}</div></section>:state?<section className="work-card"><div className="work-top"><div><div className="date">{brDate(state.data)}</div><div className="profile">{state.perfil.nome}</div></div><div className="work-actions"><button className="profile-switch" disabled={busy} onClick={()=>setProfileSwitch(true)}>TROCAR PERFIL</button><button className="abandon" disabled={busy} onClick={()=>void abandon()}>✕</button></div></div><div className="obligations">{state.tarefas.map((task:any)=><div className="task-row" key={task.id}><label className="check-row"><input type="checkbox" checked={task.concluida} disabled={busy} onChange={e=>void mark("tarefa",task.id,e.target.checked)}/>{task.link?<button className={`task-name-link ${task.concluida?"done":""}`} onMouseDown={e=>e.preventDefault()} onClick={e=>{e.preventDefault();e.stopPropagation();window.open(task.link,"_blank")}}>{task.nome}</button>:<span className={task.concluida?"done":""}>{task.nome}</span>}<span className="task-tools"><button onClick={()=>setTaskPanel(task)}>CRIAÇÃO</button><button onClick={()=>setRoteiroPanel(task)}>ROTEIRO</button><button onClick={()=>{const configured=task?.importador??config?.tarefas?.tarefas?.find((t:any)=>t.id===task.id)?.importador;if(configured==="nenhum"){setMessage("NENHUM IMPORTADOR CONFIGURADO PARA ESTA TAREFA.");return;}setImporterTaskPanel(task);}}>IMPORTADOR</button></span></label>{task.emailsVinculados?.map((email:any)=><label className="email-row" key={`${task.id}-${email.id}`}><input type="checkbox" checked={Boolean(email.concluido)} disabled={busy} onChange={e=>void mark("email",email.id,e.target.checked)}/>{email.titulo || email.corpo ? <button className="email-name" onClick={()=>setEmailPanel(email)}>{email.nome}</button> : <span className="email-name">{email.nome}</span>}</label>)}</div>)}{state.emailsGlobais?.map((email:any)=><label className="email-row global-email" key={`global-${email.id}`}><input type="checkbox" checked={Boolean(email.concluido)} disabled={busy} onChange={e=>void mark("email",email.id,e.target.checked)}/><button className="email-name" onClick={()=>setEmailPanel(email)}>{email.nome}</button></label>)}</div><label className="observation"><span>OBSERVAÇÃO</span><textarea value={observation} onChange={e=>changeObservation(e.target.value)} placeholder="Opcional"/></label>{prog.percentage===100&&<button className="conclude" disabled={busy} onClick={()=>void conclude()}>✓ CONCLUÍDO</button>}<div className="progress-head"><span>PROGRESSO</span><strong>{prog.done}/{prog.total} — {prog.percentage}%</strong></div><div className="progress"><div style={{width:`${prog.percentage}%`}}/></div>{message&&<p className="system-message">{message}</p>}</section>:<section className="card start-card"><label className="date-select"><span>DATA</span><input type="date" value={selectedDate} onChange={e=>setSelectedDate(e.target.value)}/></label><div className="profile">SELECIONE O PERFIL</div><div className="profile-list">{profiles.map((p:any)=><button disabled={busy} key={p.id} onClick={()=>void start(p.id)}>{p.nome}</button>)}{geralHasTasks&&<button disabled={busy} onClick={()=>void start("GERAL")}>GERAL</button>}</div><button className="day-off" disabled={busy} onClick={()=>{setTab("calendario");setDayPanel(selectedDate);void openDay(selectedDate);}}>FOLGA / FERIADO</button>{message&&<p className="system-message">{message}</p>}</section>}
+      {tab==="configuracao" ? (data?.configuracao ? <ConfigurationPanel initial={data.configuracao} onSave={saveConfig} onClose={()=>setTab("tarefas")} busy={busy} embedded canManageCatalog={firebaseAccess?.user?.role==="admin" || firebaseAccess?.user?.isSupervisor===true}/> : <section className="card"><div className="profile">CARREGANDO CONFIGURAÇÃO…</div></section>)
+      : tab==="administracao" ? <FirebaseAdminPanel />
+      : tab==="sistema" ? <section className="system-workspace"><div className="workspace-intro"><h2>Conta e acesso</h2><p>Gerencie sua sessão e consulte o estado de autorização do Firebase.</p></div><div className="system-workspace-grid"><div className="system-workspace-card"><span className="system-workspace-label">IDENTIDADE FIREBASE</span><strong>{firebaseAccess.status==="approved" ? (firebaseAccess.user?.email || "ACESSO APROVADO") : firebaseAccess.status==="pending" ? "AGUARDANDO APROVAÇÃO" : firebaseAccess.status==="blocked" || firebaseAccess.status==="rejected" ? "ACESSO BLOQUEADO/RECUSADO" : firebaseAccess.status==="not-allowed" ? "DOMÍNIO NÃO AUTORIZADO" : firebaseAccess.status==="signed-out" ? "NÃO CONECTADO" : firebaseAccess.status==="unconfigured" ? "FIREBASE NÃO CONFIGURADO" : firebaseAccess.status==="error" ? "ERRO NA AUTENTICAÇÃO" : "VERIFICANDO SESSÃO…"}</strong><p>{firebaseAccess.status==="approved" ? "Conta empresarial autenticada e perfil aprovado." : firebaseAccess.status==="pending" ? "Sua solicitação precisa ser aprovada por um administrador." : firebaseAccess.status==="unconfigured" ? (firebaseAccess.message || "Configure as variáveis VITE_FIREBASE_* no ambiente de compilação.") : firebaseAccess.status==="error" ? (firebaseAccess.message || "Não foi possível verificar o acesso.") : "A autenticação e a autorização do sistema são gerenciadas pelo Firebase."}</p>{firebaseAccess.status==="approved" ? <button disabled={firebaseBusy} onClick={()=>void signOutFirebase()}>SAIR DO FIREBASE</button> : <button disabled={firebaseBusy || firebaseAccess.status==="checking"} onClick={()=>void signInFirebase()}>{firebaseBusy?"AGUARDE…":"ENTRAR COM GOOGLE"}</button>}</div></div>{message&&<p className="system-message">{message}</p>}</section>
+
+      : tab==="calendario"&&firebaseAccess?.status!=="approved"?<section className="card"><div className="profile">ENTRE COM SUA CONTA FIREBASE APROVADA PARA INICIAR.</div></section>:tab==="calendario"?<section className="calendar-card"><div className="calendar-head"><button onClick={()=>setCalendarCursor(c=>c.month===1?{year:c.year-1,month:12}:{year:c.year,month:c.month-1})}>‹</button><strong>{monthLabel(calendarCursor.year,calendarCursor.month)}</strong><div><button onClick={()=>{const d=brazilTodayParts();setCalendarCursor({year:d.year,month:d.month})}}>HOJE</button><button onClick={()=>setCalendarCursor(c=>c.month===12?{year:c.year+1,month:1}:{year:c.year,month:c.month+1})}>›</button></div></div><div className="legend"><span>⚪ SEM REGISTRO</span><span>🟢 CONCLUÍDO</span><span>🔵 FOLGA</span><span>🟡 FERIADO</span></div><div className="weekdays">{["DOM","SEG","TER","QUA","QUI","SEX","SÁB"].map(x=><span key={x}>{x}</span>)}</div><div className="calendar-grid">{cells.map((d,i)=>{if(!d)return <div className="day empty" key={`e${i}`}/>;const date=dateFromParts(calendarCursor.year,calendarCursor.month,d),sp=specialByDate.get(date),done=completed.has(date), isProd=state?.data===date;let symbol=done?"🟢":"⚪";if(sp?.folga)symbol="🔵";if(sp?.feriado)symbol=`🟡${sp.folga?"🔵":done?"🟢":"⚪"}`;return <button className={`day ${isProd?"production-day":""}`} key={date} onClick={()=>void openDay(date)}><strong>{d}</strong><span>{symbol}</span></button>})}</div></section>:<>
+        {firebaseAccess?.status!=="approved"?<section className="card"><div className="profile">ENTRE COM SUA CONTA FIREBASE APROVADA PARA INICIAR.</div><p>Abra <strong>SISTEMA</strong> e entre com sua conta empresarial autorizada no Firebase.</p></section>:data?.erro?<section className="card"><div className="system-message">{data.erro}</div></section>:state?<section className="work-card"><div className="work-top"><div><div className="date">{brDate(state.data)}</div><div className="profile">{state.perfil.nome}</div></div><div className="work-actions"><button className="profile-switch" disabled={busy} onClick={()=>setProfileSwitch(true)}>TROCAR PERFIL</button><button className="abandon" disabled={busy} onClick={()=>void abandon()}>✕</button></div></div><div className="obligations">{state.tarefas.map((task:any)=><div className="task-row" key={task.id}><label className="check-row"><input type="checkbox" checked={task.concluida} disabled={busy} onChange={e=>void mark("tarefa",task.id,e.target.checked)}/>{task.link?<button className={`task-name-link ${task.concluida?"done":""}`} onMouseDown={e=>e.preventDefault()} onClick={e=>{e.preventDefault();e.stopPropagation();window.open(task.link,"_blank")}}>{task.nome}</button>:<span className={task.concluida?"done":""}>{task.nome}</span>}<span className="task-tools"><button onClick={()=>setTaskPanel(task)}>CRIAÇÃO</button><button onClick={()=>setRoteiroPanel(task)}>ROTEIRO</button></span></label>{task.emailsVinculados?.map((email:any)=><label className="email-row" key={`${task.id}-${email.id}`}><input type="checkbox" checked={Boolean(email.concluido)} disabled={busy} onChange={e=>void mark("email",email.id,e.target.checked)}/>{email.titulo || email.corpo ? <button className="email-name" onClick={()=>setEmailPanel(email)}>{email.nome}</button> : <span className="email-name">{email.nome}</span>}</label>)}</div>)}{state.emailsGlobais?.map((email:any)=><label className="email-row global-email" key={`global-${email.id}`}><input type="checkbox" checked={Boolean(email.concluido)} disabled={busy} onChange={e=>void mark("email",email.id,e.target.checked)}/><button className="email-name" onClick={()=>setEmailPanel(email)}>{email.nome}</button></label>)}</div><label className="observation"><span>OBSERVAÇÃO</span><textarea value={observation} onChange={e=>changeObservation(e.target.value)} placeholder="Opcional"/></label>{prog.percentage===100&&<button className="conclude" disabled={busy} onClick={()=>void conclude()}>✓ CONCLUÍDO</button>}<div className="progress-head"><span>PROGRESSO</span><strong>{prog.done}/{prog.total} — {prog.percentage}%</strong></div><div className="progress"><div style={{width:`${prog.percentage}%`}}/></div>{message&&<p className="system-message">{message}</p>}</section>:<section className="card start-card"><label className="date-select"><span>DATA</span><input type="date" value={selectedDate} onChange={e=>setSelectedDate(e.target.value)}/></label><div className="profile">SELECIONE O PERFIL</div><div className="profile-list">{profiles.map((p:any)=><button disabled={busy} key={p.id} onClick={()=>void start(p.id)}>{p.nome}</button>)}{geralHasTasks&&<button disabled={busy} onClick={()=>void start("GERAL")}>GERAL</button>}</div><button className="day-off" disabled={busy} onClick={()=>{setTab("calendario");setDayPanel(selectedDate);void openDay(selectedDate);}}>FOLGA / FERIADO</button>{message&&<p className="system-message">{message}</p>}</section>}
       </>}
     </main>
     </div>
@@ -198,7 +195,7 @@ function App() {
     {profileSwitch&&<div className="modal-backdrop" onClick={()=>setProfileSwitch(false)}><div className="day-modal profile-switch-modal" onClick={e=>e.stopPropagation()}><div className="modal-head"><strong>TROCAR PERFIL</strong><button onClick={()=>setProfileSwitch(false)}>✕</button></div><p>O expediente continua na mesma data. Marcações comuns serão preservadas.</p><div className="profile-list">{profiles.map((p:any)=><button disabled={busy||state?.perfil.id===p.id} key={p.id} onClick={()=>void switchProfile(p.id)}>{p.nome}</button>)}{geralHasTasks&&<button disabled={busy||state?.perfil.id==="GERAL"} onClick={()=>void switchProfile("GERAL")}>GERAL</button>}</div></div></div>}
     {taskPanel&&(expansionMode==="EXPANSÃO"?<div className={`side-panel ${expansionPosition}`}><button className="close-panel" onClick={()=>setTaskPanel(null)}>✕</button><h2>CRIAÇÃO — {taskPanel.nome}</h2><p>Consultas, filtros, datas e arquivos a baixar.</p><textarea className="creation-editor" value={taskPanel.criacao??""} disabled={busy} onChange={e=>setTaskPanel({...taskPanel,criacao:e.target.value})}/><div className="panel-actions"><button disabled={busy} onClick={()=>void saveTaskCreation(taskPanel,taskPanel.criacao??"")}>SALVAR</button><button onClick={()=>setTaskPanel(null)}>FECHAR</button></div></div>:<div className="modal-backdrop" onClick={()=>setTaskPanel(null)}><div className="day-modal creation-popup" onClick={e=>e.stopPropagation()}><div className="modal-head"><h2>CRIAÇÃO — {taskPanel.nome}</h2><button onClick={()=>setTaskPanel(null)}>✕</button></div><p>Consultas, filtros, datas e arquivos a baixar.</p><textarea className="creation-editor" value={taskPanel.criacao??""} disabled={busy} onChange={e=>setTaskPanel({...taskPanel,criacao:e.target.value})}/><div className="panel-actions"><button disabled={busy} onClick={()=>void saveTaskCreation(taskPanel,taskPanel.criacao??"")}>SALVAR</button><button onClick={()=>setTaskPanel(null)}>FECHAR</button></div></div></div>)}
     {roteiroPanel&&<RoteiroEditor initial={roteiroPanel.roteiro} presentation={expansionMode==="EXPANSÃO"?"side":"popup"} sidePosition={expansionPosition} onCancel={()=>setRoteiroPanel(null)} onSave={(v:any)=>void saveTaskRoteiro(roteiroPanel,v)}/>}
-    {importerTaskPanel&&<div className="modal-backdrop task-importer-backdrop" onClick={()=>setImporterTaskPanel(null)}><div className="day-modal task-importer-popup" role="dialog" aria-modal="true" aria-label={`IMPORTADOR — ${importerTaskPanel.nome}`} onClick={e=>e.stopPropagation()}><div className="modal-head"><h2>{importerTitleForTask(importerTaskPanel)}</h2><button onClick={()=>setImporterTaskPanel(null)} aria-label="Fechar importador">✕</button></div><ImporterPanel initialImporter={importerForTask(importerTaskPanel)} showSelector={isVolumetriaMidiasTask(importerTaskPanel)} tabGroup={isVolumetriaMidiasTask(importerTaskPanel) ? "chatmidias" : "all"} onClose={() => setImporterTaskPanel(null)}/></div></div>}
+
     {dayPanel&&<div className="modal-backdrop" onClick={()=>setDayPanel(null)}><div className="day-modal" onClick={e=>e.stopPropagation()}><div className="modal-head"><div><div className="date">{brDate(dayPanel)}</div><div className="profile">{state?.data===dayPanel?"EXPEDIENTE EM PRODUÇÃO":"DATA"}</div></div><button onClick={()=>setDayPanel(null)}>✕</button></div>{state?.data===dayPanel&&<button className="primary-wide" onClick={()=>{setDayPanel(null);setTab("tarefas");}}>IR PARA TAREFAS</button>}<div className="calendar-actions"><button disabled={busy||state?.data===dayPanel} onClick={()=>void saveCalendarMark(dayPanel,"folga")}>🔵 FOLGA</button><button disabled={busy||state?.data===dayPanel} onClick={()=>void saveCalendarMark(dayPanel,"feriado")}>🟡 FERIADO</button></div><h3>HISTÓRICO</h3>{versions.length===0?<p>SEM REGISTRO HISTÓRICO.</p>:<div className="version-list">{versions.map(v=><button key={v.versao} onClick={()=>void openVersion(v.versao)}>R{String(v.versao).padStart(3,"0")}</button>)}</div>}{historyRecord&&<div className="history-view"><div className="history-head"><strong>REGISTRO HISTÓRICO — R{String(historyRecord.versao).padStart(3,"0")}</strong>{historyMode==="view"&&<button onClick={()=>setHistoryMode("edit")}>EDITAR</button>}</div><div className="profile">{historyRecord.perfil.nome}</div>{historyRecord.tarefas.map((t:any)=><div className="history-task" key={t.id}><label><input type="checkbox" disabled={historyMode!=="edit"||busy} checked={t.concluida} onChange={e=>editHistoryTask(t.id,e.target.checked)}/><span className={t.concluida?"done":""}>{t.nome}</span></label>{t.emailsVinculados.map((e:any)=><label className="email-row" key={e.id}><input type="checkbox" disabled={historyMode!=="edit"||busy} checked={e.concluido} onChange={ev=>editHistoryEmail(e.id,ev.target.checked)}/><span>{e.nome}</span></label>)}</div>)}{historyRecord.emailsGlobais.map((e:any)=><label className="email-row" key={`g-${e.id}`}><input type="checkbox" disabled={historyMode!=="edit"||busy} checked={e.concluido} onChange={ev=>editHistoryEmail(e.id,ev.target.checked)}/><span>{e.nome}</span></label>)}<label className="observation"><span>OBSERVAÇÃO</span><textarea disabled={historyMode!=="edit"||busy} value={historyRecord.observacao} onChange={e=>setHistoryRecord((r:any)=>({...r,observacao:e.target.value}))}/></label>{historyMode==="edit"&&<div className="modal-actions"><button onClick={()=>{setHistoryRecord(historySource);setHistoryMode("view")}}>CANCELAR</button><button className="conclude" disabled={busy} onClick={()=>void saveErrata()}>SALVAR ERRATA</button></div>}</div>}</div></div>}
   </div>;
 }

@@ -35,6 +35,7 @@ export interface Email {
   titulo: string;
   corpo: string;
   ativo: boolean;
+  perfisVinculados?: string[];
 }
 
 export interface CalendarioData {
