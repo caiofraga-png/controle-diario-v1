@@ -60,13 +60,13 @@ export class FirebaseWorkflowService {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.data)) throw new Error("A DATA DO EXPEDIENTE É INVÁLIDA.");
     const loaded = await this.workspace.load();
     const allowedProfiles = await this.operational.allowedProfileIds();
-    if (!allowedProfiles.includes(input.perfilId)) {
+    if (input.perfilId === "GERAL" ? allowedProfiles.length === 0 : !allowedProfiles.includes(input.perfilId)) {
       throw new Error("ESTE PERFIL NÃO FOI ATRIBUÍDO À SUA CONTA. SOLICITE A LIBERAÇÃO À SUPERVISÃO.");
     }
     if (loaded.estado) throw new Error("JÁ EXISTE UM EXPEDIENTE EM PRODUÇÃO.");
     const special = loaded.calendario.datas.find(item => item.data === input.data);
     if (special?.folga) throw new Error("ESTA DATA ESTÁ MARCADA COMO FOLGA.");
-    const state = buildState(loaded, input.data, input.perfilId);
+    const state = buildState(loaded, input.data, input.perfilId, allowedProfiles);
     state.catalogSnapshot = {
       tarefas: JSON.parse(JSON.stringify(loaded.configuracao.tarefas)),
       perfis: JSON.parse(JSON.stringify(loaded.configuracao.perfis)),
@@ -86,7 +86,7 @@ export class FirebaseWorkflowService {
   async switchProfile(profileId: string): Promise<EstadoAtual> {
     const loaded = await this.workspace.load();
     const allowedProfiles = await this.operational.allowedProfileIds();
-    if (!allowedProfiles.includes(profileId)) {
+    if (profileId === "GERAL" ? allowedProfiles.length === 0 : !allowedProfiles.includes(profileId)) {
       throw new Error("ESTE PERFIL NÃO FOI ATRIBUÍDO À SUA CONTA. SOLICITE A LIBERAÇÃO À SUPERVISÃO.");
     }
     if (!loaded.estado) throw new Error("NÃO HÁ EXPEDIENTE EM PRODUÇÃO.");
@@ -108,7 +108,7 @@ export class FirebaseWorkflowService {
         },
       },
     };
-    const next = buildState(snapshotLoaded, loaded.estado.data, profileId);
+    const next = buildState(snapshotLoaded, loaded.estado.data, profileId, allowedProfiles);
     next.catalogSnapshot = JSON.parse(JSON.stringify(frozen));
     if (!next.tarefas.length && !next.emailsGlobais.length) throw new Error("ESTE PERFIL NÃO POSSUI OBRIGAÇÕES.");
     const doneTasks = new Map(loaded.estado.tarefas.map(task => [task.id, task.concluida]));
