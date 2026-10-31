@@ -29,6 +29,8 @@ export function installWebBridge(){
    saveConfiguration:(config:any)=>firebaseWorkspace.saveConfiguration(config),
    loadCalendar:()=>firebasePersonalData.loadCalendar(),
    saveCalendar:(calendar:any)=>firebasePersonalData.saveCalendar(calendar),
+   loadThemePreference:()=>firebasePersonalData.loadThemePreference(),
+   saveThemePreference:(theme:"light"|"dark"|"system")=>firebasePersonalData.saveThemePreference(theme),
    loadCurrentState:()=>firebaseOperational.loadCurrentState(),
    saveCurrentState:(state:any)=>firebaseOperational.saveCurrentState(state),
    completeState:(state:any,completedAt?:string)=>firebaseOperational.completeState(state,completedAt),
