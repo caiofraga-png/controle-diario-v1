@@ -105,7 +105,7 @@ function App() {
   useEffect(() => () => { if (observationTimer.current) clearTimeout(observationTimer.current); }, []);
 
   const config = data?.configuracao, state = data?.estado;
-  const profiles = useMemo(() => config ? (config.layout?.ordemPerfis ?? []).map((id:string)=>config.perfis.perfis.find((p:any)=>p.id===id)).filter((p:any)=>p?.ativo) : [], [config]);
+  const profiles = useMemo(() => { if (!config) return []; const frozen=state?.catalogSnapshot; const sourceProfiles=frozen?.perfis?.perfis ?? config.perfis.perfis; const order=frozen?.layout?.ordemPerfis ?? config.layout?.ordemPerfis ?? []; return order.map((id:string)=>sourceProfiles.find((p:any)=>p.id===id)).filter((p:any)=>p?.ativo); }, [config,state]);
   const geralHasTasks = Boolean(config?.tarefas?.tarefas?.some((t:any)=>t.ativo) || config?.email?.emailsGlobais?.length);
   const expansionMode = config?.layout?.criacaoRoteiro?.modo ?? "POPUP";
   const expansionPosition = config?.layout?.expansaoLateral?.posicao ?? "direita";
