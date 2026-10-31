@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import RoteiroEditor from "./RoteiroEditor";
 
 type Config = any;
@@ -20,6 +20,7 @@ export default function ConfigurationPanel({ initial, onSave, onClose, busy, emb
   const [roteiro,setRoteiro]=useState<any>(null);
   const [promotionItems,setPromotionItems]=useState<any[]>(()=>clone(promotions));
   const [promotionForm,setPromotionForm]=useState<any>({});
+  useEffect(() => setPromotionItems(promotions), [promotions]);
 
   const activeTasks = useMemo(()=>draft.tarefas.tarefas.filter((t:any)=>t.ativo),[draft]);
   const selectedProfile = draft.perfis.perfis.find((p:any)=>p.id===selectedId);
