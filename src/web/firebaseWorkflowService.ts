@@ -165,15 +165,12 @@ export class FirebaseWorkflowService {
   }
 
   async saveTask(input: { id: string; criacao?: string; roteiro?: unknown }): Promise<LoadedData> {
-    const loaded = await this.workspace.load();
-    const config = JSON.parse(JSON.stringify(loaded.configuracao)) as Configuracao;
-    const task = config.tarefas.tarefas.find(item => item.id === input.id);
-    if (!task) throw new Error("TAREFA NÃO ENCONTRADA.");
-    if (Object.prototype.hasOwnProperty.call(input, "criacao")) task.criacao = String(input.criacao ?? "");
-    if (Object.prototype.hasOwnProperty.call(input, "roteiro")) task.roteiro = JSON.parse(JSON.stringify(input.roteiro));
-    // Configuration edits affect future expedientes only. The active state
-    // already contains its own task/email snapshots and must remain unchanged.
-    await this.workspace.saveConfiguration(config);
+    await this.workspace.saveTaskContent(input);
+    return this.workspace.load();
+  }
+
+  async resetTaskContent(input: { id: string; field: "criacao" | "roteiro" }): Promise<LoadedData> {
+    await this.workspace.resetTaskContent(input);
     return this.workspace.load();
   }
 
