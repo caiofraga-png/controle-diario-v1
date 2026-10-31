@@ -518,8 +518,31 @@ export function normalizeConfiguration(config: Configuracao): Configuracao {
   const linked = hydrateKnownTaskLinks(validated);
   const creation = hydrateKnownTaskCreation(linked.config);
   const roteiro = hydrateKnownTaskRoteiro(creation.config);
-  validateConfigurationConsistency(roteiro.config);
-  return roteiro.config;
+
+  // Keep each user's layout compatible with the current shared catalog.
+  // Catalog removals/renames must not leave orphan profile or task IDs behind.
+  const reconciled = JSON.parse(JSON.stringify(roteiro.config)) as Configuracao;
+  const profileIds = new Set(reconciled.perfis.perfis.map(profile => profile.id));
+  const taskIds = new Set(reconciled.tarefas.tarefas.map(task => task.id));
+  reconciled.layout.ordemPerfis = [
+    ...reconciled.layout.ordemPerfis.filter(id => profileIds.has(id)),
+    ...reconciled.perfis.perfis
+      .map(profile => profile.id)
+      .filter(id => !reconciled.layout.ordemPerfis.includes(id)),
+  ];
+  const taskOrders: Record<string, string[]> = {};
+  for (const [profileId, order] of Object.entries(reconciled.layout.ordemTarefas)) {
+    if (profileId !== "GERAL" && !profileIds.has(profileId)) continue;
+    taskOrders[profileId] = order.filter(id => taskIds.has(id));
+  }
+  for (const profile of reconciled.perfis.perfis) {
+    taskOrders[profile.id] ??= profile.tarefas.filter(id => taskIds.has(id));
+  }
+  taskOrders.GERAL ??= [];
+  reconciled.layout.ordemTarefas = taskOrders;
+
+  validateConfigurationConsistency(reconciled);
+  return reconciled;
 }
 
 export function defaultConfiguration(): Configuracao {
