@@ -109,7 +109,15 @@ export class FirebaseWorkspaceRepository {
 
     if (isManager) {
       const loaded = await this.load();
-      const config = JSON.parse(JSON.stringify(loaded.configuracao)) as Configuracao;
+      const sharedCatalog = await loadSharedTaskCatalog();
+      if (!sharedCatalog) throw new Error("O CATÁLOGO INSTITUCIONAL AINDA NÃO FOI INICIALIZADO.");
+      // Start from the institutional source, never from the merged personal view.
+      const config = normalizeConfiguration({
+        tarefas: JSON.parse(JSON.stringify(sharedCatalog.tarefas)),
+        perfis: JSON.parse(JSON.stringify(sharedCatalog.perfis)),
+        email: JSON.parse(JSON.stringify(sharedCatalog.email)),
+        layout: loaded.configuracao.layout,
+      });
       const task = config.tarefas.tarefas.find(item => item.id === input.id);
       if (!task) throw new Error("TAREFA NÃO ENCONTRADA.");
       if (Object.prototype.hasOwnProperty.call(input, "criacao")) task.criacao = String(input.criacao ?? "");
