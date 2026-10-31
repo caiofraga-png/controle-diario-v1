@@ -4,6 +4,7 @@ import { buildState, obligationProgress, setObservation, toggleEmail, toggleTask
 import { FirebaseWorkspaceRepository } from "./firebaseWorkspaceRepository";
 import { FirebaseOperationalService } from "./firebaseOperationalService";
 import type { Configuracao, LoadedData } from "./dataRepository";
+import { loadPromotions, savePromotions, type Promotion } from "./firebasePromotionsService";
 
 async function diagnoseFirebaseStep<T>(step: string, operation: () => Promise<T>): Promise<T> {
   try {
@@ -203,6 +204,10 @@ export class FirebaseWorkflowService {
     await this.workspace.saveConfiguration(config);
     return email;
   }
+
+  async promotions() { return loadPromotions(); }
+
+  async savePromotions(items: Promotion[]) { await savePromotions(items); return loadPromotions(); }
 
   async saveCalendarDate(input: { data: string; folga: boolean; feriado: boolean }) {
     const loaded = await this.workspace.load();
