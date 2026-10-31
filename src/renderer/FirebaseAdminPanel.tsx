@@ -167,20 +167,25 @@ export default function FirebaseAdminPanel() {
       let sectorsCreated = 0;
       let contactsCreated = 0;
       for (const item of source) {
-        let sector = existingSectors.find((candidate) => normalize(candidate.name) === normalize(item.name));
-        if (!sector) {
+        const foundSector = existingSectors.find((candidate) => normalize(candidate.name) === normalize(item.name));
+        let sector: OrganizationalSector;
+        if (foundSector) {
+          sector = foundSector;
+        } else {
           const id = await saveSector({ id: "", name: item.name, active: true });
-          sector = { id, name: item.name, active: true };
+          const now = new Date().toISOString();
+          sector = { id, name: item.name, active: true, createdAt: now, updatedAt: now };
           existingSectors.push(sector);
           sectorsCreated += 1;
         }
         for (const contactName of item.contacts) {
           const exists = existingContacts.some((candidate) =>
-            candidate.sectorId === sector!.id && normalize(candidate.name) === normalize(contactName)
+            candidate.sectorId === sector.id && normalize(candidate.name) === normalize(contactName)
           );
           if (!exists) {
             const id = await saveContact({ id: "", sectorId: sector.id, name: contactName, active: true });
-            existingContacts.push({ id, sectorId: sector.id, name: contactName, active: true });
+            const now = new Date().toISOString();
+            existingContacts.push({ id, sectorId: sector.id, name: contactName, active: true, createdAt: now, updatedAt: now });
             contactsCreated += 1;
           }
         }
