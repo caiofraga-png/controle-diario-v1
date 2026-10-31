@@ -2,13 +2,13 @@ import { useMemo, useState } from "react";
 import RoteiroEditor from "./RoteiroEditor";
 
 type Config = any;
-type Tab = "aparencia" | "perfis" | "tarefas" | "email" | "layout";
+type Tab = "aparencia" | "perfis" | "tarefas" | "email" | "promocoes" | "layout";
 type ThemePreference = "corporate-light" | "corporate-dark" | "elegant-light" | "midnight-blue" | "midnight-violet" | "blue-light" | "system";
 
 function clone<T>(v:T):T { return JSON.parse(JSON.stringify(v)); }
 function move<T>(arr:T[], from:number, to:number){ const a=[...arr]; const [x]=a.splice(from,1); a.splice(to,0,x); return a; }
 
-export default function ConfigurationPanel({ initial, onSave, onClose, busy, embedded = false, canManageCatalog = false, themePreference = "system", onThemeChange, themeSaving = false }: { initial: Config; onSave: (config:Config)=>Promise<void>; onClose:()=>void; busy:boolean; embedded?:boolean; canManageCatalog?:boolean; themePreference?:ThemePreference; onThemeChange?:(theme:ThemePreference)=>Promise<void>; themeSaving?:boolean }) {
+export default function ConfigurationPanel({ initial, onSave, onClose, busy, embedded = false, canManageCatalog = false, themePreference = "system", onThemeChange, themeSaving = false, promotions = [], onSavePromotions }: { initial: Config; onSave: (config:Config)=>Promise<void>; onClose:()=>void; busy:boolean; embedded?:boolean; canManageCatalog?:boolean; themePreference?:ThemePreference; onThemeChange?:(theme:ThemePreference)=>Promise<void>; themeSaving?:boolean; promotions?:any[]; onSavePromotions?:(items:any[])=>Promise<void> }) {
   const [tab,setTab]=useState<Tab>("aparencia");
   const [draft,setDraft]=useState<Config>(()=>clone(initial));
   const [selectedId,setSelectedId]=useState<string|null>(null);
@@ -18,6 +18,8 @@ export default function ConfigurationPanel({ initial, onSave, onClose, busy, emb
   const [localMessage,setLocalMessage]=useState("");
   const [roteiroOpen,setRoteiroOpen]=useState(false);
   const [roteiro,setRoteiro]=useState<any>(null);
+  const [promotionItems,setPromotionItems]=useState<any[]>(()=>clone(promotions));
+  const [promotionForm,setPromotionForm]=useState<any>({});
 
   const activeTasks = useMemo(()=>draft.tarefas.tarefas.filter((t:any)=>t.ativo),[draft]);
   const selectedProfile = draft.perfis.perfis.find((p:any)=>p.id===selectedId);
@@ -26,7 +28,7 @@ export default function ConfigurationPanel({ initial, onSave, onClose, busy, emb
 
   function startNew(){ setCreating(true); setSelectedId(null); setRoute("editar"); setForm(tab==="perfis"?{nome:"",tarefas:[]}:tab==="tarefas"?{nome:"",link:"",criacao:"",ativo:false,emailsVinculados:[]}: {nome:"",titulo:"",corpo:"",ativo:false,global:false}); }
   function edit(id:string){ setCreating(false); setSelectedId(id); setRoute("editar"); const obj=tab==="perfis"?draft.perfis.perfis.find((x:any)=>x.id===id):tab==="tarefas"?draft.tarefas.tarefas.find((x:any)=>x.id===id):draft.email.emails.find((x:any)=>x.id===id); setForm(clone(obj)); if(tab==="email") setForm((f:any)=>({...clone(obj),global:draft.email.emailsGlobais.includes(id),perfisVinculados:[...(obj.perfisVinculados??[])]})); }
-  function switchTab(t:Tab){if(["perfis","tarefas","email"].includes(t) && !canManageCatalog) return;setTab(t);setRoute("lista");setSelectedId(null);setLocalMessage("");}
+  function switchTab(t:Tab){if(["perfis","tarefas","email","promocoes"].includes(t) && !canManageCatalog) return;setTab(t);setRoute("lista");setSelectedId(null);setLocalMessage("");}
   function renderAppearance(){ return <section className="config-form"><h3>APARÊNCIA DO SISTEMA</h3><p>Esta preferência é salva individualmente na sua conta.</p><label>TEMA VISUAL<select aria-label="Aparência do site" value={themePreference} disabled={themeSaving} onChange={e=>void onThemeChange?.(e.target.value as ThemePreference)}><option value="system">Automático</option><option value="corporate-light">Claro corporativo</option><option value="corporate-dark">Escuro corporativo</option><option value="elegant-light">Claro elegante</option><option value="midnight-blue">Noturno azulado</option><option value="midnight-violet">Noturno sofisticado</option><option value="blue-light">Claro azulado</option></select></label>{themeSaving&&<p>Salvando preferência…</p>}</section>; }
 
   async function saveItem(){
@@ -57,6 +59,38 @@ export default function ConfigurationPanel({ initial, onSave, onClose, busy, emb
     } catch(e){ setLocalMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR."); }
   }
 
+  function newPromotion(){ setPromotionForm({id:`PROMO-${Date.now()}`,name:"",category:"",benefit:"",eligible:"",conditions:"",startDate:"",endDate:"",status:"active"}); setCreating(true); setRoute("editar"); }
+  function editPromotion(item:any){ setPromotionForm(clone(item)); setCreating(false); setRoute("editar"); }
+  async function persistPromotion(){
+    if(!canManageCatalog || !onSavePromotions) return;
+    if(!promotionForm.name?.trim()) { setLocalMessage("INFORME O NOME DA PROMOÇÃO."); return; }
+    if(!promotionForm.benefit?.trim()) { setLocalMessage("INFORME O BENEFÍCIO DA PROMOÇÃO."); return; }
+    const next=creating ? [...promotionItems,promotionForm] : promotionItems.map((p:any)=>p.id===promotionForm.id?promotionForm:p);
+    try { await onSavePromotions(next); setPromotionItems(next); setRoute("lista"); setCreating(false); setLocalMessage("PROMOÇÃO SALVA."); }
+    catch(e){ setLocalMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR A PROMOÇÃO."); }
+  }
+  async function changePromotionStatus(item:any,status:"active"|"suspended"|"closed"){
+    const next=promotionItems.map((p:any)=>p.id===item.id?{...p,status}:p);
+    try { await onSavePromotions?.(next); setPromotionItems(next); setLocalMessage("STATUS DA PROMOÇÃO ATUALIZADO."); }
+    catch(e){ setLocalMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL ATUALIZAR A PROMOÇÃO."); }
+  }
+  function renderPromotions(){
+    if(route==="editar") return <div className="config-form"><h3>{creating?"NOVA PROMOÇÃO":"EDITAR PROMOÇÃO"}</h3>
+      <label>NOME DA PROMOÇÃO<input value={promotionForm.name??""} onChange={e=>setPromotionForm({...promotionForm,name:e.target.value})}/></label>
+      <label>CATEGORIA<input value={promotionForm.category??""} onChange={e=>setPromotionForm({...promotionForm,category:e.target.value})}/></label>
+      <label>BENEFÍCIO<textarea rows={3} value={promotionForm.benefit??""} onChange={e=>setPromotionForm({...promotionForm,benefit:e.target.value})}/></label>
+      <label>PRODUTOS / PLANOS ELEGÍVEIS<textarea rows={2} value={promotionForm.eligible??""} onChange={e=>setPromotionForm({...promotionForm,eligible:e.target.value})}/></label>
+      <label>CONDIÇÕES<textarea rows={4} value={promotionForm.conditions??""} onChange={e=>setPromotionForm({...promotionForm,conditions:e.target.value})}/></label>
+      <label>DATA INICIAL (OPCIONAL)<input type="date" value={promotionForm.startDate??""} onChange={e=>setPromotionForm({...promotionForm,startDate:e.target.value})}/></label>
+      <label>DATA FINAL (OPCIONAL)<input type="date" value={promotionForm.endDate??""} onChange={e=>setPromotionForm({...promotionForm,endDate:e.target.value})}/></label>
+      <label>STATUS<select value={promotionForm.status??"active"} onChange={e=>setPromotionForm({...promotionForm,status:e.target.value})}><option value="active">ATIVA</option><option value="suspended">SUSPENSA</option><option value="closed">ENCERRADA</option></select></label>
+      <p className="id-note">Sem data final, a promoção não expira automaticamente.</p>
+      <div className="config-actions"><button onClick={()=>setRoute("lista")}>CANCELAR</button><button className="primary" disabled={busy} onClick={()=>void persistPromotion()}>SALVAR PROMOÇÃO</button></div>
+    </div>;
+    const statusLabel=(s:string)=>s==="suspended"?"SUSPENSA":s==="closed"?"ENCERRADA":"ATIVA";
+    return <><div className="config-toolbar"><button onClick={newPromotion}>NOVA PROMOÇÃO</button></div><div className="promotion-admin-list">{promotionItems.map((p:any)=><article className="promotion-admin-card" key={p.id}><div className="promotion-admin-top"><strong>{p.name}</strong><span className={`promotion-status ${p.status}`}>{statusLabel(p.status)}</span></div><p>{p.benefit}</p><small>{p.endDate? `Validade: ${p.endDate.split("-").reverse().join("/")}`:"Sem data final — não expira automaticamente"}</small><div className="promotion-admin-actions"><button onClick={()=>editPromotion(p)}>EDITAR</button><button onClick={()=>void changePromotionStatus(p,p.status==="active"?"suspended":"active")}>{p.status==="active"?"SUSPENDER":"REATIVAR"}</button>{p.status!=="closed"&&<button onClick={()=>void changePromotionStatus(p,"closed")}>ENCERRAR</button>}</div></article>)}</div></>;
+  }
+
   async function saveLayout(){ try{await onSave(draft);setLocalMessage("LAYOUT SALVO.");}catch(e){setLocalMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR O LAYOUT.");} }
 
   function toggleTaskEmail(id:string){ setForm((f:any)=>({...f,emailsVinculados:(f.emailsVinculados??[]).includes(id)?(f.emailsVinculados??[]).filter((x:string)=>x!==id):[...(f.emailsVinculados??[]),id]})); }
@@ -81,5 +115,5 @@ export default function ConfigurationPanel({ initial, onSave, onClose, busy, emb
 
   function saveRoteiroValue(value:any){ if(!selectedId) return; const next=clone(draft); const t=next.tarefas.tarefas.find((x:any)=>x.id===selectedId); if(!t) return; t.roteiro=clone(value); setDraft(next); setForm((f:any)=>({...f,roteiro:clone(value)})); setRoteiroOpen(false); }
   const roteiroInitial = roteiro ?? {linhas:50,colunas:5,largurasColunas:[120,120,120,120,120],celulas:{},mesclas:[],filtro:null};
-  return <div className={embedded?"config-embedded":"config-overlay"}><div className="config-window"><header className="config-head"><div><h2>CONFIGURAÇÃO</h2><span>Administração do CONTROLE DIÁRIO</span></div><button onClick={onClose} aria-label="Voltar para tarefas">✕</button></header><nav className="config-tabs"><button className={tab==="aparencia"?"active":""} onClick={()=>switchTab("aparencia")}>🎨 APARÊNCIA</button>{canManageCatalog&&<><button className={tab==="perfis"?"active":""} onClick={()=>switchTab("perfis")}>👤 PERFIS</button><button className={tab==="tarefas"?"active":""} onClick={()=>switchTab("tarefas")}>✅ TAREFAS</button><button className={tab==="email"?"active":""} onClick={()=>switchTab("email")}>✉️ E-MAIL</button></>}<button className={tab==="layout"?"active":""} onClick={()=>switchTab("layout")}>📐 LAYOUT</button></nav>{localMessage&&<div className="system-message">{localMessage}</div>}{tab==="aparencia"?renderAppearance():route==="lista"&&tab!=="layout"?renderList():route==="editar"&&tab!=="layout"?renderEdit():renderList()}</div>{roteiroOpen&&<RoteiroEditor initial={roteiroInitial} onCancel={()=>setRoteiroOpen(false)} onSave={saveRoteiroValue}/>}</div>;
+  return <div className={embedded?"config-embedded":"config-overlay"}><div className="config-window"><header className="config-head"><div><h2>CONFIGURAÇÃO</h2><span>Administração do CONTROLE DIÁRIO</span></div><button onClick={onClose} aria-label="Voltar para tarefas">✕</button></header><nav className="config-tabs"><button className={tab==="aparencia"?"active":""} onClick={()=>switchTab("aparencia")}>🎨 APARÊNCIA</button>{canManageCatalog&&<><button className={tab==="perfis"?"active":""} onClick={()=>switchTab("perfis")}>👤 PERFIS</button><button className={tab==="tarefas"?"active":""} onClick={()=>switchTab("tarefas")}>✅ TAREFAS</button><button className={tab==="email"?"active":""} onClick={()=>switchTab("email")}>✉️ E-MAIL</button><button className={tab==="promocoes"?"active":""} onClick={()=>switchTab("promocoes")}>🏷 PROMOÇÕES</button></>}<button className={tab==="layout"?"active":""} onClick={()=>switchTab("layout")}>📐 LAYOUT</button></nav>{localMessage&&<div className="system-message">{localMessage}</div>}{tab==="aparencia"?renderAppearance():tab==="promocoes"?renderPromotions():route==="lista"&&tab!=="layout"?renderList():route==="editar"&&tab!=="layout"?renderEdit():renderList()}</div>{roteiroOpen&&<RoteiroEditor initial={roteiroInitial} onCancel={()=>setRoteiroOpen(false)} onSave={saveRoteiroValue}/>}</div>;
 }
