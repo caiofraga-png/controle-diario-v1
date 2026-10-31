@@ -1,6 +1,20 @@
-name: Publicar homologação Firebase Hosting
+name: Validar e publicar homologação Firebase Hosting
 
 on:
+  push:
+    branches:
+      - feature/leste-firebase-multusuario
+    paths:
+      - "src/**"
+      - "public/**"
+      - "tests/**"
+      - "firestore.rules"
+      - "firebase.json"
+      - "package.json"
+      - "package-lock.json"
+      - "vite.config.ts"
+      - "tsconfig*.json"
+      - ".github/workflows/firebase-hosting-preview.yml"
   workflow_dispatch:
 
 permissions:
@@ -8,32 +22,40 @@ permissions:
   checks: write
   pull-requests: write
 
+concurrency:
+  group: firebase-hosting-homologacao
+  cancel-in-progress: false
+
 jobs:
-  deploy-preview:
+  validate-and-deploy:
     if: github.ref == 'refs/heads/feature/leste-firebase-multusuario'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     environment: homologacao
     steps:
       - name: Obter código
         uses: actions/checkout@v5
-
       - name: Configurar Node.js
         uses: actions/setup-node@v5
         with:
           node-version: 22
-
+      - name: Configurar Java para o emulador Firestore
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
       - name: Instalar dependências
         run: npm install --no-audit --no-fund
-
-      - name: Compilar aplicação para Firebase Hosting
+      - name: Compilar aplicação Web
         env:
           VITE_FIREBASE_API_KEY: "AIzaSyBoKGbTuUZobtC-H-PU6mFpmIpD8Z-gJG0"
           VITE_FIREBASE_AUTH_DOMAIN: "controle-diario-510808.firebaseapp.com"
           VITE_FIREBASE_PROJECT_ID: "controle-diario-510808"
           VITE_FIREBASE_APP_ID: "1:694384996130:web:af87189c4b04cdd3857f7b"
         run: npm run build
-
-      - name: Publicar canal temporário de homologação
+      - name: Testar regras do Firestore no emulador
+        run: npx firebase emulators:exec --only firestore --project leste-controle-diario-rules-test "npm run test:rules"
+      - name: Publicar canal de homologação
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
