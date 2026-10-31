@@ -1513,3 +1513,34 @@ html[data-theme="dark"] .tab.active { color:#7ed49d; border-bottom-color:#4da978
 html[data-theme="dark"] .close-panel,
 html[data-theme="dark"] .config-head button { color:#d8eee1; }
 
+/* Ajuste do cabeçalho com o novo seletor de aparência */
+@media (min-width:851px) {
+  .app-main > .header {
+    grid-template-columns:minmax(180px,1fr) minmax(220px,1.2fr) auto auto;
+  }
+}
+@media (max-width:850px) {
+  .app-main > .header {
+    grid-template-columns:minmax(0,1fr) auto;
+  }
+  .app-main > .header .upcoming-dates {
+    grid-column:1 / -1;
+    grid-row:2;
+    justify-self:start;
+    text-align:left;
+  }
+  .app-main > .header .theme-control {
+    grid-column:2;
+    grid-row:1;
+  }
+}
+@media (max-width:620px) {
+  .app-main > .header {
+    grid-template-columns:minmax(0,1fr) auto;
+  }
+  .app-main > .header .upcoming-dates {
+    grid-column:1 / -1;
+    grid-row:2;
+  }
+}
+
