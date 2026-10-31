@@ -19,7 +19,7 @@ import {
 import type { OrganizationalContact, OrganizationalSector, OrganizationalUser } from "../shared/types/organization";
 import { signInWithCorporateGoogle, signOutCorporateGoogle } from "../web/firebaseAuthService";
 import { FirebasePersonalDataService } from "../web/firebasePersonalDataService";
-import { loadSharedTaskCatalog } from "../web/firebaseSharedTaskCatalogService";
+import { loadSharedTaskCatalog, saveSharedTaskCatalog } from "../web/firebaseSharedTaskCatalogService";
 
 type RequestItem = { id: string; uid?: string; email?: string; status?: string };
 
@@ -233,6 +233,27 @@ export default function FirebaseAdminPanel() {
     finally { setBusy(false); }
   }
 
+  async function initializeSharedCatalog() {
+    if (!catalogPreflight.includes("PONTOS PARA REVISÃO: nenhum")) {
+      setMessage("Gere uma nova conferência sem pontos de revisão antes de inicializar o catálogo.");
+      return;
+    }
+    setBusy(true);
+    setMessage("");
+    try {
+      const config = await new FirebasePersonalDataService().loadConfiguration();
+      if (!config) throw new Error("Não foi encontrada a configuração pessoal aprovada para inicialização.");
+      await saveSharedTaskCatalog(config);
+      setCatalogPreflight("");
+      setMessage("Catálogo compartilhado inicializado com sucesso. O layout pessoal não foi copiado.");
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Falha ao inicializar o catálogo compartilhado.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function saveUser(user: OrganizationalUser) {
     setBusy(true);
     try {
@@ -289,6 +310,7 @@ export default function FirebaseAdminPanel() {
         ? <p>Catálogo compartilhado carregado: {catalogProfiles.length} perfis ativos.</p>
         : <><p>Nenhum catálogo compartilhado foi inicializado. Antes de qualquer gravação, gere e revise o relatório da configuração desta conta.</p><button type="button" disabled={busy} onClick={() => void inspectSharedCatalogSource()}>Conferir configuração (somente leitura)</button></>}
       {catalogPreflight && <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", padding: 12, border: "1px solid #ccc", borderRadius: 8 }}>{catalogPreflight}</pre>}
+      {!catalogReady && catalogPreflight.includes("PONTOS PARA REVISÃO: nenhum") && <button type="button" disabled={busy} onClick={() => void initializeSharedCatalog()}>Inicializar catálogo compartilhado</button>}
     </section>
 
     <section>
