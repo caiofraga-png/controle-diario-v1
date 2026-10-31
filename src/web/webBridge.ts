@@ -1,6 +1,6 @@
 import type { EstadoAtual } from "../shared/types/state";
 import { signInWithCorporateGoogle, restoreCorporateGoogleSession, observeCorporateAccess, signOutCorporateGoogle } from "./firebaseAuthService";
-import { FirebasePersonalDataService } from "./firebasePersonalDataService";
+import { FirebasePersonalDataService, type ThemePreference } from "./firebasePersonalDataService";
 import { FirebaseOperationalService } from "./firebaseOperationalService";
 import { FirebaseWorkspaceRepository } from "./firebaseWorkspaceRepository";
 import { normalizeConfiguration as normalizeFirebaseConfiguration } from "./dataRepository";
@@ -30,7 +30,7 @@ export function installWebBridge(){
    loadCalendar:()=>firebasePersonalData.loadCalendar(),
    saveCalendar:(calendar:any)=>firebasePersonalData.saveCalendar(calendar),
    loadThemePreference:()=>firebasePersonalData.loadThemePreference(),
-   saveThemePreference:(theme:"corporate-light"|"corporate-dark"|"elegant-light"|"midnight-blue"|"midnight-violet"|"blue-light"|"system")=>firebasePersonalData.saveThemePreference(theme),
+   saveThemePreference:(theme:ThemePreference)=>firebasePersonalData.saveThemePreference(theme),
    loadCurrentState:()=>firebaseOperational.loadCurrentState(),
    saveCurrentState:(state:any)=>firebaseOperational.saveCurrentState(state),
    completeState:(state:any,completedAt?:string)=>firebaseOperational.completeState(state,completedAt),
