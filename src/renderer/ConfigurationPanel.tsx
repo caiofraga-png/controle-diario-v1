@@ -2,13 +2,14 @@ import { useMemo, useState } from "react";
 import RoteiroEditor from "./RoteiroEditor";
 
 type Config = any;
-type Tab = "perfis" | "tarefas" | "email" | "layout";
+type Tab = "aparencia" | "perfis" | "tarefas" | "email" | "layout";
+type ThemePreference = "corporate-light" | "corporate-dark" | "elegant-light" | "midnight-blue" | "midnight-violet" | "blue-light" | "system";
 
 function clone<T>(v:T):T { return JSON.parse(JSON.stringify(v)); }
 function move<T>(arr:T[], from:number, to:number){ const a=[...arr]; const [x]=a.splice(from,1); a.splice(to,0,x); return a; }
 
-export default function ConfigurationPanel({ initial, onSave, onClose, busy, embedded = false, canManageCatalog = false }: { initial: Config; onSave: (config:Config)=>Promise<void>; onClose:()=>void; busy:boolean; embedded?:boolean; canManageCatalog?:boolean }) {
-  const [tab,setTab]=useState<Tab>("perfis");
+export default function ConfigurationPanel({ initial, onSave, onClose, busy, embedded = false, canManageCatalog = false, themePreference = "system", onThemeChange, themeSaving = false }: { initial: Config; onSave: (config:Config)=>Promise<void>; onClose:()=>void; busy:boolean; embedded?:boolean; canManageCatalog?:boolean; themePreference?:ThemePreference; onThemeChange?:(theme:ThemePreference)=>Promise<void>; themeSaving?:boolean }) {
+  const [tab,setTab]=useState<Tab>("aparencia");
   const [draft,setDraft]=useState<Config>(()=>clone(initial));
   const [selectedId,setSelectedId]=useState<string|null>(null);
   const [creating,setCreating]=useState(false);
@@ -25,9 +26,11 @@ export default function ConfigurationPanel({ initial, onSave, onClose, busy, emb
 
   function startNew(){ setCreating(true); setSelectedId(null); setRoute("editar"); setForm(tab==="perfis"?{nome:"",tarefas:[]}:tab==="tarefas"?{nome:"",link:"",criacao:"",ativo:false,emailsVinculados:[]}: {nome:"",titulo:"",corpo:"",ativo:false,global:false}); }
   function edit(id:string){ setCreating(false); setSelectedId(id); setRoute("editar"); const obj=tab==="perfis"?draft.perfis.perfis.find((x:any)=>x.id===id):tab==="tarefas"?draft.tarefas.tarefas.find((x:any)=>x.id===id):draft.email.emails.find((x:any)=>x.id===id); setForm(clone(obj)); if(tab==="email") setForm((f:any)=>({...clone(obj),global:draft.email.emailsGlobais.includes(id),perfisVinculados:[...(obj.perfisVinculados??[])]})); }
-  function switchTab(t:Tab){if(!canManageCatalog && t!=="layout") return;setTab(t);setRoute("lista");setSelectedId(null);setLocalMessage("");}
+  function switchTab(t:Tab){if(["perfis","tarefas","email"].includes(t) && !canManageCatalog) return;setTab(t);setRoute("lista");setSelectedId(null);setLocalMessage("");}
+  function renderAppearance(){ return <section className="config-form"><h3>APARÊNCIA DO SISTEMA</h3><p>Esta preferência é salva individualmente na sua conta.</p><label>TEMA VISUAL<select aria-label="Aparência do site" value={themePreference} disabled={themeSaving} onChange={e=>void onThemeChange?.(e.target.value as ThemePreference)}><option value="system">Automático</option><option value="corporate-light">Claro corporativo</option><option value="corporate-dark">Escuro corporativo</option><option value="elegant-light">Claro elegante</option><option value="midnight-blue">Noturno azulado</option><option value="midnight-violet">Noturno sofisticado</option><option value="blue-light">Claro azulado</option></select></label>{themeSaving&&<p>Salvando preferência…</p>}</section>; }
 
   async function saveItem(){
+    if(["perfis","tarefas","email"].includes(tab) && !canManageCatalog){setLocalMessage("VOCÊ NÃO TEM PERMISSÃO PARA EDITAR ESTE CATÁLOGO.");return;}
     setLocalMessage("");
     try {
       const next=clone(draft);
@@ -78,5 +81,5 @@ export default function ConfigurationPanel({ initial, onSave, onClose, busy, emb
 
   function saveRoteiroValue(value:any){ if(!selectedId) return; const next=clone(draft); const t=next.tarefas.tarefas.find((x:any)=>x.id===selectedId); if(!t) return; t.roteiro=clone(value); setDraft(next); setForm((f:any)=>({...f,roteiro:clone(value)})); setRoteiroOpen(false); }
   const roteiroInitial = roteiro ?? {linhas:50,colunas:5,largurasColunas:[120,120,120,120,120],celulas:{},mesclas:[],filtro:null};
-  return <div className={embedded?"config-embedded":"config-overlay"}><div className="config-window"><header className="config-head"><div><h2>CONFIGURAÇÃO</h2><span>Administração do CONTROLE DIÁRIO</span></div><button onClick={onClose} aria-label="Voltar para tarefas">✕</button></header><nav className="config-tabs">{([['perfis','👤 PERFIS'],['tarefas','✅ TAREFAS'],['email','✉️ E-MAIL'],['layout','📐 LAYOUT']] as const).map(([id,label])=><button key={id} className={tab===id?"active":""} onClick={()=>switchTab(id)}>{label}</button>)}</nav>{localMessage&&<div className="system-message">{localMessage}</div>}{route==="lista"&&tab!=="layout"?renderList():route==="editar"&&tab!=="layout"?renderEdit():renderList()}</div>{roteiroOpen&&<RoteiroEditor initial={roteiroInitial} onCancel={()=>setRoteiroOpen(false)} onSave={saveRoteiroValue}/>}</div>;
+  return <div className={embedded?"config-embedded":"config-overlay"}><div className="config-window"><header className="config-head"><div><h2>CONFIGURAÇÃO</h2><span>Administração do CONTROLE DIÁRIO</span></div><button onClick={onClose} aria-label="Voltar para tarefas">✕</button></header><nav className="config-tabs"><button className={tab==="aparencia"?"active":""} onClick={()=>switchTab("aparencia")}>🎨 APARÊNCIA</button>{canManageCatalog&&<><button className={tab==="perfis"?"active":""} onClick={()=>switchTab("perfis")}>👤 PERFIS</button><button className={tab==="tarefas"?"active":""} onClick={()=>switchTab("tarefas")}>✅ TAREFAS</button><button className={tab==="email"?"active":""} onClick={()=>switchTab("email")}>✉️ E-MAIL</button></>}<button className={tab==="layout"?"active":""} onClick={()=>switchTab("layout")}>📐 LAYOUT</button></nav>{localMessage&&<div className="system-message">{localMessage}</div>}{tab==="aparencia"?renderAppearance():route==="lista"&&tab!=="layout"?renderList():route==="editar"&&tab!=="layout"?renderEdit():renderList()}</div>{roteiroOpen&&<RoteiroEditor initial={roteiroInitial} onCancel={()=>setRoteiroOpen(false)} onSave={saveRoteiroValue}/>}</div>;
 }
