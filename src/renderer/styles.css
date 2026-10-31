@@ -1229,3 +1229,287 @@ button:disabled {
 .day.production-day { outline-color: var(--cd-green-primary); }
 .advanced-sheet td.selected-cell { box-shadow: inset 0 0 0 2px var(--cd-green-primary); }
 
+/* MODO ESCURO — paleta institucional verde, aplicada a toda a aplicação */
+.theme-control {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  justify-self:end;
+  color:var(--texto-suave);
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.55px;
+  white-space:nowrap;
+}
+.theme-control select {
+  min-height:36px;
+  padding:7px 30px 7px 10px;
+  border:1px solid var(--verde-borda);
+  border-radius:9px;
+  background:#fff;
+  color:var(--texto);
+  font:inherit;
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+}
+@media (max-width:850px) {
+  .app-main > .header { grid-template-columns:minmax(0,1fr) auto; }
+  .theme-control { grid-column:2; grid-row:1; }
+}
+@media (max-width:620px) {
+  .app-main > .header { grid-template-columns:1fr auto; }
+  .theme-control { grid-column:2; grid-row:1; }
+}
+
+html[data-theme="dark"] {
+  color-scheme:dark;
+  --verde-escuro:#d8eee1;
+  --verde:#4da978;
+  --verde-claro:#193b2c;
+  --verde-borda:#365b48;
+  --branco:#17221c;
+  --texto:#e5eee8;
+  --texto-suave:#a9bdb0;
+  --cd-green-primary:#278455;
+  --cd-green-hover:#369968;
+  --cd-green-soft:#203d2e;
+  --cd-green-border:#426a52;
+  --cd-green-text:#d8eee1;
+  --cd-button-shadow:0 2px 6px rgba(0,0,0,.24);
+  background:#111a15;
+}
+html[data-theme="dark"] body {
+  background:#111a15;
+  color:#e5eee8;
+}
+html[data-theme="dark"] .app-main,
+html[data-theme="dark"] .content {
+  color:#e5eee8;
+}
+html[data-theme="dark"] .header,
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .work-card,
+html[data-theme="dark"] .calendar-card,
+html[data-theme="dark"] .day-modal,
+html[data-theme="dark"] .config-window,
+html[data-theme="dark"] .side-panel,
+html[data-theme="dark"] .system-panel,
+html[data-theme="dark"] .success-popup,
+html[data-theme="dark"] .links-form,
+html[data-theme="dark"] .useful-link-card,
+html[data-theme="dark"] .links-empty,
+html[data-theme="dark"] .import-destination-result,
+html[data-theme="dark"] .task-importer-popup,
+html[data-theme="dark"] .creation-popup,
+html[data-theme="dark"] .roteiro-window {
+  background:#1b2921;
+  color:#e5eee8;
+  border-color:#344b3b;
+}
+html[data-theme="dark"] .header {
+  border-bottom-color:#344b3b;
+}
+html[data-theme="dark"] .header-page-title strong,
+html[data-theme="dark"] .profile,
+html[data-theme="dark"] .calendar-head strong,
+html[data-theme="dark"] .config-head h2,
+html[data-theme="dark"] .workspace-intro h2,
+html[data-theme="dark"] .system-workspace-card > strong,
+html[data-theme="dark"] .success-popup h2,
+html[data-theme="dark"] .success-popup p {
+  color:#e5eee8;
+}
+html[data-theme="dark"] .upcoming-dates,
+html[data-theme="dark"] .upcoming-dates > span,
+html[data-theme="dark"] .date,
+html[data-theme="dark"] .page-eyebrow,
+html[data-theme="dark"] .header-status,
+html[data-theme="dark"] .system-workspace-label,
+html[data-theme="dark"] .system-workspace-card p,
+html[data-theme="dark"] .links-list-head > span,
+html[data-theme="dark"] .links-empty,
+html[data-theme="dark"] .links-empty p,
+html[data-theme="dark"] .links-storage-note,
+html[data-theme="dark"] .import-note,
+html[data-theme="dark"] .import-summary span,
+html[data-theme="dark"] .import-integrity > span {
+  color:#a9bdb0;
+}
+html[data-theme="dark"] .system-workspace-card,
+html[data-theme="dark"] .import-placeholder,
+html[data-theme="dark"] .import-summary > div,
+html[data-theme="dark"] .import-integrity,
+html[data-theme="dark"] .drag-row,
+html[data-theme="dark"] .loaded-summary span {
+  background:#22342a;
+  border-color:#3a5744;
+  color:#dce9df;
+}
+html[data-theme="dark"] .config-head,
+html[data-theme="dark"] .config-tabs,
+html[data-theme="dark"] .config-toolbar,
+html[data-theme="dark"] .config-table th,
+html[data-theme="dark"] .config-table td,
+html[data-theme="dark"] .history-view,
+html[data-theme="dark"] .history-task,
+html[data-theme="dark"] .task-row,
+html[data-theme="dark"] .roteiro-window > header,
+html[data-theme="dark"] .roteiro-toolbar,
+html[data-theme="dark"] .roteiro-filter,
+html[data-theme="dark"] .roteiro-window .config-actions {
+  border-color:#344b3b;
+}
+html[data-theme="dark"] .config-table th,
+html[data-theme="dark"] .config-form label,
+html[data-theme="dark"] .layout-editor h3,
+html[data-theme="dark"] .config-head span,
+html[data-theme="dark"] .side-panel h3,
+html[data-theme="dark"] .import-file-label,
+html[data-theme="dark"] .links-form > label > span,
+html[data-theme="dark"] .import-source-details summary {
+  color:#b9cbbf;
+}
+html[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] select,
+html[data-theme="dark"] .creation-editor,
+html[data-theme="dark"] .roteiro-text-editor,
+html[data-theme="dark"] .manual-folder input {
+  background:#142019;
+  color:#e5eee8;
+  border-color:#45624e;
+}
+html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder {
+  color:#82998a;
+}
+html[data-theme="dark"] input[type="checkbox"],
+html[data-theme="dark"] input[type="radio"] {
+  accent-color:#4da978;
+}
+html[data-theme="dark"] button:not(.sidebar-item):not(.conclude):not(.success-continue):not(.import-action-button):not(.importer-execute-button):not(.links-primary):not(.primary-wide) {
+  color:#d8eee1;
+}
+html[data-theme="dark"] .actions button,
+html[data-theme="dark"] .profile-list button,
+html[data-theme="dark"] .day-off,
+html[data-theme="dark"] .profile-switch,
+html[data-theme="dark"] .panel-actions button,
+html[data-theme="dark"] .calendar-actions button,
+html[data-theme="dark"] .modal-actions button,
+html[data-theme="dark"] .config-actions button,
+html[data-theme="dark"] .config-toolbar button,
+html[data-theme="dark"] .config-tabs button,
+html[data-theme="dark"] .calendar-head button,
+html[data-theme="dark"] .version-list button,
+html[data-theme="dark"] .history-head button,
+html[data-theme="dark"] .task-tools button,
+html[data-theme="dark"] .drag-row button,
+html[data-theme="dark"] .links-form-actions button,
+html[data-theme="dark"] .useful-link-actions button,
+html[data-theme="dark"] .importer-secondary-button,
+html[data-theme="dark"] .importer-switch button,
+html[data-theme="dark"] .roteiro-window header button,
+html[data-theme="dark"] .roteiro-tools button,
+html[data-theme="dark"] .tool-group button {
+  background:#24382b;
+  color:#d8eee1;
+  border-color:#45624e;
+}
+html[data-theme="dark"] .actions button:hover:not(:disabled),
+html[data-theme="dark"] .profile-list button:hover:not(:disabled),
+html[data-theme="dark"] .day-off:hover:not(:disabled),
+html[data-theme="dark"] .profile-switch:hover:not(:disabled),
+html[data-theme="dark"] .panel-actions button:hover:not(:disabled),
+html[data-theme="dark"] .calendar-actions button:hover:not(:disabled),
+html[data-theme="dark"] .modal-actions button:hover:not(:disabled),
+html[data-theme="dark"] .config-actions button:hover:not(:disabled),
+html[data-theme="dark"] .config-toolbar button:hover:not(:disabled),
+html[data-theme="dark"] .calendar-head button:hover:not(:disabled),
+html[data-theme="dark"] .version-list button:hover:not(:disabled),
+html[data-theme="dark"] .history-head button:hover:not(:disabled),
+html[data-theme="dark"] .task-tools button:hover:not(:disabled),
+html[data-theme="dark"] .drag-row button:hover:not(:disabled),
+html[data-theme="dark"] .links-form-actions button:hover:not(:disabled),
+html[data-theme="dark"] .useful-link-actions button:hover:not(:disabled),
+html[data-theme="dark"] .importer-secondary-button:hover:not(:disabled),
+html[data-theme="dark"] .importer-switch button:hover:not(:disabled),
+html[data-theme="dark"] .roteiro-window header button:hover:not(:disabled),
+html[data-theme="dark"] .roteiro-tools button:hover:not(:disabled),
+html[data-theme="dark"] .tool-group button:hover:not(:disabled) {
+  background:#2c4935;
+  border-color:#5b8a68;
+  color:#f0fff4;
+}
+html[data-theme="dark"] .day,
+html[data-theme="dark"] .advanced-sheet th,
+html[data-theme="dark"] .advanced-sheet td,
+html[data-theme="dark"] .advanced-sheet td input {
+  background:#1b2921;
+  color:#e5eee8;
+  border-color:#3a5140;
+}
+html[data-theme="dark"] .day:hover { background:#263b2e; }
+html[data-theme="dark"] .advanced-sheet td.selected-cell {
+  box-shadow:inset 0 0 0 2px #58b77f;
+}
+html[data-theme="dark"] .progress { background:#34483a; }
+html[data-theme="dark"] .progress > div { background:#4da978; }
+html[data-theme="dark"] .success-popup {
+  background:linear-gradient(180deg,#1b2921 0%,#20382a 100%);
+  border-color:#426a52;
+}
+html[data-theme="dark"] .success-popup > span { color:#b5c8bb; }
+html[data-theme="dark"] .success-check {
+  background:#203d2e;
+  border-color:#4b8b62;
+  color:#82d6a2;
+}
+html[data-theme="dark"] .task-importer-popup > .modal-head {
+  background:#1b2921;
+}
+html[data-theme="dark"] .import-map-table,
+html[data-theme="dark"] .import-map-row {
+  border-color:#3a5140;
+}
+html[data-theme="dark"] .import-map-head {
+  background:#24382b;
+  color:#d8eee1;
+}
+html[data-theme="dark"] .import-source-details summary { color:#c4ddcc; }
+html[data-theme="dark"] .import-destination-result {
+  background:#203128;
+  border-color:#3a5744;
+}
+html[data-theme="dark"] .import-warning {
+  background:#49351f;
+  color:#ffdbad;
+}
+html[data-theme="dark"] .importer-switch button.active {
+  background:#176b45;
+  border-color:#176b45;
+  color:#fff;
+}
+html[data-theme="dark"] .theme-control { color:#a9bdb0; }
+html[data-theme="dark"] .theme-control select {
+  background:#142019;
+  color:#e5eee8;
+  border-color:#45624e;
+}
+html[data-theme="dark"] .company-watermark {
+  opacity:.07;
+  filter:brightness(0) saturate(100%) invert(83%) sepia(11%) saturate(470%) hue-rotate(86deg) brightness(96%) contrast(88%);
+}
+html[data-theme="dark"] .modal-backdrop {
+  background:rgba(0,0,0,.66);
+}
+html[data-theme="dark"] .config-tabs button.active,
+html[data-theme="dark"] .config-embedded .config-tabs button.active {
+  color:#7ed49d;
+  border-bottom-color:#4da978;
+}
+html[data-theme="dark"] .tab.active { color:#7ed49d; border-bottom-color:#4da978; }
+html[data-theme="dark"] .close-panel,
+html[data-theme="dark"] .config-head button { color:#d8eee1; }
+
