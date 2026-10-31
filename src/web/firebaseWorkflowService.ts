@@ -67,6 +67,15 @@ export class FirebaseWorkflowService {
     const special = loaded.calendario.datas.find(item => item.data === input.data);
     if (special?.folga) throw new Error("ESTA DATA ESTÁ MARCADA COMO FOLGA.");
     const state = buildState(loaded, input.data, input.perfilId);
+    state.catalogSnapshot = {
+      tarefas: JSON.parse(JSON.stringify(loaded.configuracao.tarefas)),
+      perfis: JSON.parse(JSON.stringify(loaded.configuracao.perfis)),
+      email: JSON.parse(JSON.stringify(loaded.configuracao.email)),
+      layout: {
+        ordemPerfis: [...loaded.configuracao.layout.ordemPerfis],
+        ordemTarefas: JSON.parse(JSON.stringify(loaded.configuracao.layout.ordemTarefas)),
+      },
+    };
     if (!state.tarefas.length && !state.emailsGlobais.length) {
       throw new Error("ESTE PERFIL NÃO POSSUI OBRIGAÇÕES.\nAdicione tarefas ou utilize outro perfil.");
     }
@@ -81,7 +90,26 @@ export class FirebaseWorkflowService {
       throw new Error("ESTE PERFIL NÃO FOI ATRIBUÍDO À SUA CONTA. SOLICITE A LIBERAÇÃO À SUPERVISÃO.");
     }
     if (!loaded.estado) throw new Error("NÃO HÁ EXPEDIENTE EM PRODUÇÃO.");
-    const next = buildState(loaded, loaded.estado.data, profileId);
+    const frozen = loaded.estado.catalogSnapshot;
+    if (!frozen) {
+      throw new Error("ESTE EXPEDIENTE FOI INICIADO ANTES DA PROTEÇÃO DE VERSÃO DO CATÁLOGO. Para evitar alterações retroativas, conclua ou abandone este expediente antes de iniciar outro e trocar de perfil.");
+    }
+    const snapshotLoaded: LoadedData = {
+      ...loaded,
+      configuracao: {
+        ...loaded.configuracao,
+        tarefas: JSON.parse(JSON.stringify(frozen.tarefas)),
+        perfis: JSON.parse(JSON.stringify(frozen.perfis)),
+        email: JSON.parse(JSON.stringify(frozen.email)),
+        layout: {
+          ...loaded.configuracao.layout,
+          ordemPerfis: [...frozen.layout.ordemPerfis],
+          ordemTarefas: JSON.parse(JSON.stringify(frozen.layout.ordemTarefas)),
+        },
+      },
+    };
+    const next = buildState(snapshotLoaded, loaded.estado.data, profileId);
+    next.catalogSnapshot = JSON.parse(JSON.stringify(frozen));
     if (!next.tarefas.length && !next.emailsGlobais.length) throw new Error("ESTE PERFIL NÃO POSSUI OBRIGAÇÕES.");
     const doneTasks = new Map(loaded.estado.tarefas.map(task => [task.id, task.concluida]));
     const doneEmails = new Map<string, boolean>();
