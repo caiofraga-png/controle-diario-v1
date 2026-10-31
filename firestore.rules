@@ -44,7 +44,10 @@ service cloud.firestore {
         || (request.resource.data.estado is map
           && request.resource.data.estado.perfil is map
           && request.resource.data.estado.perfil.id is string
-          && canSelectProfile(uid, request.resource.data.estado.perfil.id));
+          && (request.resource.data.estado.perfil.id == "GERAL"
+            ? userRecord(uid).data.allowedProfileIds is list
+              && userRecord(uid).data.allowedProfileIds.size() > 0
+            : canSelectProfile(uid, request.resource.data.estado.perfil.id)));
     }
 
     // Supervisors manage operational organization and collaborators globally,
