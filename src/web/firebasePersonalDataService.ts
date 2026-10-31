@@ -20,7 +20,7 @@ type ConfigurationKind = keyof Pick<Configuracao, "tarefas" | "perfis" | "email"
 
 const CONFIG_KINDS: ConfigurationKind[] = ["tarefas", "perfis", "email", "layout"];
 const CALENDAR_DOCUMENT = "dados";
-export type ThemePreference = "light" | "dark" | "system";
+export type ThemePreference = "corporate-light" | "corporate-dark" | "elegant-light" | "midnight-blue" | "midnight-violet" | "blue-light" | "system";
 const THEME_DOCUMENT = "appearance";
 
 /**
@@ -99,11 +99,13 @@ export class FirebasePersonalDataService {
     const { db } = requireFirebase();
     const snapshot = await getDoc(doc(db, "users", uid, "preferences", THEME_DOCUMENT));
     const theme = snapshot.exists() ? snapshot.data().theme : null;
-    return theme === "light" || theme === "dark" || theme === "system" ? theme : "system";
+    if (theme === "light") return "corporate-light";
+    if (theme === "dark") return "corporate-dark";
+    return theme === "corporate-light" || theme === "corporate-dark" || theme === "elegant-light" || theme === "midnight-blue" || theme === "midnight-violet" || theme === "blue-light" || theme === "system" ? theme : "system";
   }
 
   async saveThemePreference(theme: ThemePreference): Promise<void> {
-    if (theme !== "light" && theme !== "dark" && theme !== "system") {
+    if (theme !== "corporate-light" && theme !== "corporate-dark" && theme !== "elegant-light" && theme !== "midnight-blue" && theme !== "midnight-violet" && theme !== "blue-light" && theme !== "system") {
       throw new Error("PREFERÊNCIA DE APARÊNCIA INVÁLIDA.");
     }
     const uid = this.currentUserId();
