@@ -52,6 +52,7 @@ function asOrganizationalUser(uid: string, data: DocumentData): OrganizationalUs
     sectorId: String(data.sectorId ?? ""),
     contactId: String(data.contactId ?? ""),
     isSupervisor: data.isSupervisor === true,
+    allowedProfileIds: Array.isArray(data.allowedProfileIds) ? data.allowedProfileIds.filter((id: unknown): id is string => typeof id === "string") : [],
     status: data.status as AccountStatus,
     role: data.role as UserRole,
     createdAt: String(data.createdAt ?? ""),
