@@ -149,6 +149,23 @@ test("usuário aprovado pode consultar seu estado operacional ainda não criado"
   await assertFails(getDoc(doc(dbAs("pending"), "users/pending/operational/currentState")));
 });
 
+test("estado operacional permite GERAL somente quando há ao menos um perfil autorizado", async () => {
+  const aliceRef = doc(dbAs("alice"), "users/alice/operational/currentState");
+  await assertSucceeds(setDoc(aliceRef, {
+    schemaVersion: 1,
+    ownerUid: "alice",
+    estado: { id: "state-geral", perfil: { id: "GERAL", nome: "GERAL" } },
+    updatedAt: "2026-10-28T12:00:00Z",
+  }));
+  const bobRef = doc(dbAs("bob"), "users/bob/operational/currentState");
+  await assertFails(setDoc(bobRef, {
+    schemaVersion: 1,
+    ownerUid: "bob",
+    estado: { id: "state-geral", perfil: { id: "GERAL", nome: "GERAL" } },
+    updatedAt: "2026-10-28T12:00:00Z",
+  }));
+});
+
 test("estado operacional só aceita perfil atribuído ao colaborador", async () => {
   const db = dbAs("alice");
   const ref = doc(db, "users/alice/operational/currentState");
