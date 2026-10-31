@@ -1,4 +1,4 @@
-import { doc, getDoc, runTransaction, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, runTransaction, serverTimestamp, updateDoc } from "firebase/firestore";
 import { requireFirebase } from "./firebaseClient";
 import {
   validateEmails,
@@ -55,5 +55,25 @@ export async function saveSharedTaskCatalog(config: Configuracao): Promise<void>
       throw new Error("O CATÁLOGO COMPARTILHADO JÁ FOI INICIALIZADO. NENHUM DADO FOI ALTERADO.");
     }
     transaction.set(reference, catalog);
+  });
+}
+
+/** Updates an existing institutional catalog without treating the operation as initialization. */
+export async function updateSharedTaskCatalog(config: Configuracao): Promise<void> {
+  const { auth } = requireFirebase();
+  const user = auth.currentUser;
+  if (!user) throw new Error("É necessário autenticar-se para editar o catálogo.");
+  const reference = catalogRef();
+  const existing = await getDoc(reference);
+  if (!existing.exists()) {
+    throw new Error("O CATÁLOGO COMPARTILHADO AINDA NÃO FOI INICIALIZADO.");
+  }
+  await updateDoc(reference, {
+    schemaVersion: 1,
+    tarefas: validateTarefas(config.tarefas),
+    perfis: validatePerfis(config.perfis),
+    email: validateEmails(config.email),
+    updatedAt: serverTimestamp(),
+    updatedByUid: user.uid,
   });
 }
