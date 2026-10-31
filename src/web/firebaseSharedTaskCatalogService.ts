@@ -1,4 +1,4 @@
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc, runTransaction, serverTimestamp } from "firebase/firestore";
 import { requireFirebase } from "./firebaseClient";
 import {
   validateEmails,
@@ -35,7 +35,7 @@ export async function loadSharedTaskCatalog(): Promise<SharedTaskCatalog | null>
   };
 }
 
-/** Initializes or replaces the shared catalog. Caller must be a manager. */
+/** Creates the shared catalog exactly once. Existing catalogs are never overwritten. */
 export async function saveSharedTaskCatalog(config: Configuracao): Promise<void> {
   const { auth, db } = requireFirebase();
   const user = auth.currentUser;
@@ -48,5 +48,12 @@ export async function saveSharedTaskCatalog(config: Configuracao): Promise<void>
     updatedAt: serverTimestamp(),
     updatedByUid: user.uid,
   };
-  await setDoc(doc(db, "sharedTaskCatalog", "current"), catalog);
+  const reference = doc(db, "sharedTaskCatalog", "current");
+  await runTransaction(db, async (transaction) => {
+    const existing = await transaction.get(reference);
+    if (existing.exists()) {
+      throw new Error("O CATÁLOGO COMPARTILHADO JÁ FOI INICIALIZADO. NENHUM DADO FOI ALTERADO.");
+    }
+    transaction.set(reference, catalog);
+  });
 }
