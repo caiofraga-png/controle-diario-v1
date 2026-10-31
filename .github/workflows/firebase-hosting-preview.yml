@@ -55,6 +55,15 @@ jobs:
         run: npm run build
       - name: Testar regras do Firestore no emulador
         run: npx firebase emulators:exec --only firestore --project leste-controle-diario-rules-test "npm run test:rules"
+
+      - name: Autenticar para publicar regras do Firestore
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CONTROLE_DIARIO_510808 }}
+
+      - name: Publicar regras do Firestore na homologação
+        run: npx firebase deploy --only firestore:rules --project controle-diario-510808 --non-interactive
+
       - name: Publicar canal de homologação
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
