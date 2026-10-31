@@ -45,6 +45,7 @@ export default function FirebaseAdminPanel() {
   const [busy, setBusy] = useState(false);
   const [catalogProfiles, setCatalogProfiles] = useState<Array<{ id: string; nome: string; ativo: boolean }>>([]);
   const [catalogReady, setCatalogReady] = useState(false);
+  const [catalogPreflight, setCatalogPreflight] = useState<string>("");
 
   async function refresh() {
     setBusy(true);
@@ -166,15 +167,69 @@ export default function FirebaseAdminPanel() {
     finally { setBusy(false); }
   }
 
-  async function initializeSharedCatalog() {
+  async function inspectSharedCatalogSource() {
     setBusy(true);
+    setMessage("");
+    setCatalogPreflight("");
     try {
-      const ownConfiguration = await new FirebasePersonalDataService().loadConfiguration();
-      if (!ownConfiguration) throw new Error("Não foi encontrada uma configuração pessoal para iniciar o catálogo.");
-      await saveSharedTaskCatalog(ownConfiguration);
-      setMessage("Catálogo compartilhado inicializado com a configuração atual desta conta. Layouts pessoais foram mantidos separados.");
-      await refresh();
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Falha ao inicializar o catálogo compartilhado."); }
+      const config = await new FirebasePersonalDataService().loadConfiguration();
+      if (!config) throw new Error("Não foi encontrada uma configuração pessoal para conferir.");
+      const tasks = config.tarefas.tarefas;
+      const profiles = config.perfis.perfis;
+      const emails = config.email.emails;
+      const taskIds = new Set(tasks.map((item) => item.id));
+      const profileIds = new Set(profiles.map((item) => item.id));
+      const emailIds = new Set(emails.map((item) => item.id));
+      const issues: string[] = [];
+      const duplicateNames = (items: Array<{id:string;nome:string}>, label:string) => {
+        const seen = new Map<string,string>();
+        for (const item of items) {
+          const key = item.nome.trim().toLocaleLowerCase();
+          const previous = seen.get(key);
+          if (previous) issues.push(`${label}: nome repetido "${item.nome}" (IDs ${previous} e ${item.id}).`);
+          else seen.set(key,item.id);
+        }
+      };
+      duplicateNames(tasks,"Tarefa");
+      duplicateNames(profiles,"Perfil");
+      duplicateNames(emails,"E-mail");
+      for (const task of tasks) for (const id of task.emailsVinculados ?? []) {
+        if (!emailIds.has(id) && id !== `${task.id}_EMAIL`) issues.push(`Tarefa ${task.id}: e-mail vinculado inexistente (${id}).`);
+      }
+      for (const profile of profiles) for (const id of profile.tarefas ?? []) {
+        if (!taskIds.has(id)) issues.push(`Perfil ${profile.id}: tarefa inexistente (${id}).`);
+      }
+      for (const email of emails) for (const id of email.perfisVinculados ?? []) {
+        if (!profileIds.has(id)) issues.push(`E-mail ${email.id}: perfil vinculado inexistente (${id}).`);
+      }
+      for (const id of config.email.emailsGlobais ?? []) if (!emailIds.has(id)) issues.push(`Compilação global: e-mail inexistente (${id}).`);
+      for (const id of config.layout.ordemPerfis ?? []) if (!profileIds.has(id)) issues.push(`Layout: perfil inexistente na ordem (${id}).`);
+      for (const [profileId, order] of Object.entries(config.layout.ordemTarefas ?? {})) {
+        if (profileId !== "GERAL" && !profileIds.has(profileId)) issues.push(`Layout: perfil inexistente na ordem de tarefas (${profileId}).`);
+        for (const id of order) if (!taskIds.has(id)) issues.push(`Layout: tarefa inexistente na ordem (${profileId}: ${id}).`);
+      }
+      const count = (items: Array<{ativo:boolean}>) => ({ total:items.length, active:items.filter(x=>x.ativo).length, inactive:items.filter(x=>!x.ativo).length });
+      const t=count(tasks), p=count(profiles), e=count(emails);
+      const report = [
+        "RELATÓRIO DE CONFERÊNCIA — FONTE PROPOSTA PARA O CATÁLOGO COMPARTILHADO",
+        "MODO SOMENTE LEITURA: nenhum dado foi gravado, alterado ou inicializado.",
+        "",
+        `TAREFAS: ${t.total} total | ${t.active} ativas | ${t.inactive} inativas`,
+        `PERFIS: ${p.total} total | ${p.active} ativos | ${p.inactive} inativos`,
+        `E-MAILS: ${e.total} total | ${e.active} ativos | ${e.inactive} inativos`,
+        `E-MAILS NA COMPILAÇÃO GLOBAL: ${config.email.emailsGlobais.length}`,
+        `ORDEM DE PERFIS CONFIGURADA: ${config.layout.ordemPerfis.length} itens`,
+        `GRUPOS DE ORDEM DE TAREFAS: ${Object.keys(config.layout.ordemTarefas).length}`,
+        "",
+        issues.length ? `PONTOS PARA REVISÃO (${issues.length}):` : "PONTOS PARA REVISÃO: nenhum vínculo ou nome duplicado foi identificado pelas verificações automáticas.",
+        ...issues.map((item,index)=>`${index+1}. ${item}`),
+        "",
+        "O layout listado pertence à conta consultada e NÃO será copiado para o catálogo compartilhado; cada colaborador manterá seu próprio layout.",
+        "A inicialização permanece bloqueada até a revisão e autorização expressa."
+      ].join("\\n");
+      setCatalogPreflight(report);
+      setMessage("Conferência concluída. Nenhum dado foi alterado.");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Falha ao conferir a configuração."); }
     finally { setBusy(false); }
   }
 
@@ -232,7 +287,8 @@ export default function FirebaseAdminPanel() {
       <p>O catálogo é comum à organização. A configuração de layout continua individual. A inicialização usa a configuração atual da conta gerencial autenticada e não substitui o histórico.</p>
       {catalogReady
         ? <p>Catálogo compartilhado carregado: {catalogProfiles.length} perfis ativos.</p>
-        : <><p>Nenhum catálogo compartilhado foi inicializado.</p><button type="button" disabled={busy} onClick={() => void initializeSharedCatalog()}>Inicializar com a configuração desta conta</button></>}
+        : <><p>Nenhum catálogo compartilhado foi inicializado. Antes de qualquer gravação, gere e revise o relatório da configuração desta conta.</p><button type="button" disabled={busy} onClick={() => void inspectSharedCatalogSource()}>Conferir configuração (somente leitura)</button></>}
+      {catalogPreflight && <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", padding: 12, border: "1px solid #ccc", borderRadius: 8 }}>{catalogPreflight}</pre>}
     </section>
 
     <section>
