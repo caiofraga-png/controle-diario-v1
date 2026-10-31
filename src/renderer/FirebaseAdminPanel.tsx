@@ -19,7 +19,7 @@ import {
 import type { OrganizationalContact, OrganizationalSector, OrganizationalUser } from "../shared/types/organization";
 import { signInWithCorporateGoogle, signOutCorporateGoogle } from "../web/firebaseAuthService";
 import { FirebasePersonalDataService } from "../web/firebasePersonalDataService";
-import { loadSharedTaskCatalog, saveSharedTaskCatalog } from "../web/firebaseSharedTaskCatalogService";
+import { loadSharedTaskCatalog } from "../web/firebaseSharedTaskCatalogService";
 
 type RequestItem = { id: string; uid?: string; email?: string; status?: string };
 
