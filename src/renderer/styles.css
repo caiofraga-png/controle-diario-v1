@@ -1262,7 +1262,7 @@ button:disabled {
   .theme-control { grid-column:2; grid-row:1; }
 }
 
-html[data-theme="dark"] {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) {
   color-scheme:dark;
   --verde-escuro:#d8eee1;
   --verde:#4da978;
@@ -1279,239 +1279,239 @@ html[data-theme="dark"] {
   --cd-button-shadow:0 2px 6px rgba(0,0,0,.24);
   background:#111a15;
 }
-html[data-theme="dark"] body {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) body {
   background:#111a15;
   color:#e5eee8;
 }
-html[data-theme="dark"] .app-main,
-html[data-theme="dark"] .content {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .app-main,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .content {
   color:#e5eee8;
 }
-html[data-theme="dark"] .header,
-html[data-theme="dark"] .card,
-html[data-theme="dark"] .work-card,
-html[data-theme="dark"] .calendar-card,
-html[data-theme="dark"] .day-modal,
-html[data-theme="dark"] .config-window,
-html[data-theme="dark"] .side-panel,
-html[data-theme="dark"] .system-panel,
-html[data-theme="dark"] .success-popup,
-html[data-theme="dark"] .links-form,
-html[data-theme="dark"] .useful-link-card,
-html[data-theme="dark"] .links-empty,
-html[data-theme="dark"] .import-destination-result,
-html[data-theme="dark"] .task-importer-popup,
-html[data-theme="dark"] .creation-popup,
-html[data-theme="dark"] .roteiro-window {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .header,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .card,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .work-card,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .calendar-card,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .day-modal,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .config-window,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .side-panel,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .system-panel,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .success-popup,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .links-form,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .useful-link-card,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .links-empty,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .import-destination-result,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .task-importer-popup,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .creation-popup,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .roteiro-window {
   background:#1b2921;
   color:#e5eee8;
   border-color:#344b3b;
 }
-html[data-theme="dark"] .header {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .header {
   border-bottom-color:#344b3b;
 }
-html[data-theme="dark"] .header-page-title strong,
-html[data-theme="dark"] .profile,
-html[data-theme="dark"] .calendar-head strong,
-html[data-theme="dark"] .config-head h2,
-html[data-theme="dark"] .workspace-intro h2,
-html[data-theme="dark"] .system-workspace-card > strong,
-html[data-theme="dark"] .success-popup h2,
-html[data-theme="dark"] .success-popup p {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .header-page-title strong,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .profile,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .calendar-head strong,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .config-head h2,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .workspace-intro h2,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .system-workspace-card > strong,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .success-popup h2,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .success-popup p {
   color:#e5eee8;
 }
-html[data-theme="dark"] .upcoming-dates,
-html[data-theme="dark"] .upcoming-dates > span,
-html[data-theme="dark"] .date,
-html[data-theme="dark"] .page-eyebrow,
-html[data-theme="dark"] .header-status,
-html[data-theme="dark"] .system-workspace-label,
-html[data-theme="dark"] .system-workspace-card p,
-html[data-theme="dark"] .links-list-head > span,
-html[data-theme="dark"] .links-empty,
-html[data-theme="dark"] .links-empty p,
-html[data-theme="dark"] .links-storage-note,
-html[data-theme="dark"] .import-note,
-html[data-theme="dark"] .import-summary span,
-html[data-theme="dark"] .import-integrity > span {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .upcoming-dates,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .upcoming-dates > span,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .date,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .page-eyebrow,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .header-status,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .system-workspace-label,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .system-workspace-card p,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .links-list-head > span,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .links-empty,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .links-empty p,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .links-storage-note,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .import-note,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .import-summary span,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .import-integrity > span {
   color:#a9bdb0;
 }
-html[data-theme="dark"] .system-workspace-card,
-html[data-theme="dark"] .import-placeholder,
-html[data-theme="dark"] .import-summary > div,
-html[data-theme="dark"] .import-integrity,
-html[data-theme="dark"] .drag-row,
-html[data-theme="dark"] .loaded-summary span {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .system-workspace-card,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .import-placeholder,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .import-summary > div,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .import-integrity,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .drag-row,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .loaded-summary span {
   background:#22342a;
   border-color:#3a5744;
   color:#dce9df;
 }
-html[data-theme="dark"] .config-head,
-html[data-theme="dark"] .config-tabs,
-html[data-theme="dark"] .config-toolbar,
-html[data-theme="dark"] .config-table th,
-html[data-theme="dark"] .config-table td,
-html[data-theme="dark"] .history-view,
-html[data-theme="dark"] .history-task,
-html[data-theme="dark"] .task-row,
-html[data-theme="dark"] .roteiro-window > header,
-html[data-theme="dark"] .roteiro-toolbar,
-html[data-theme="dark"] .roteiro-filter,
-html[data-theme="dark"] .roteiro-window .config-actions {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .config-head,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .config-tabs,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .config-toolbar,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .config-table th,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .config-table td,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .history-view,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .history-task,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .task-row,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .roteiro-window > header,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .roteiro-toolbar,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .roteiro-filter,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .roteiro-window .config-actions {
   border-color:#344b3b;
 }
-html[data-theme="dark"] .config-table th,
-html[data-theme="dark"] .config-form label,
-html[data-theme="dark"] .layout-editor h3,
-html[data-theme="dark"] .config-head span,
-html[data-theme="dark"] .side-panel h3,
-html[data-theme="dark"] .import-file-label,
-html[data-theme="dark"] .links-form > label > span,
-html[data-theme="dark"] .import-source-details summary {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .config-table th,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .config-form label,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .layout-editor h3,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .config-head span,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .side-panel h3,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .import-file-label,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .links-form > label > span,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .import-source-details summary {
   color:#b9cbbf;
 }
-html[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
-html[data-theme="dark"] textarea,
-html[data-theme="dark"] select,
-html[data-theme="dark"] .creation-editor,
-html[data-theme="dark"] .roteiro-text-editor,
-html[data-theme="dark"] .manual-folder input {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) textarea,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) select,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .creation-editor,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .roteiro-text-editor,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .manual-folder input {
   background:#142019;
   color:#e5eee8;
   border-color:#45624e;
 }
-html[data-theme="dark"] input::placeholder,
-html[data-theme="dark"] textarea::placeholder {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) input::placeholder,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) textarea::placeholder {
   color:#82998a;
 }
-html[data-theme="dark"] input[type="checkbox"],
-html[data-theme="dark"] input[type="radio"] {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) input[type="checkbox"],
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) input[type="radio"] {
   accent-color:#4da978;
 }
-html[data-theme="dark"] button:not(.sidebar-item):not(.conclude):not(.success-continue):not(.import-action-button):not(.importer-execute-button):not(.links-primary):not(.primary-wide) {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) button:not(.sidebar-item):not(.conclude):not(.success-continue):not(.import-action-button):not(.importer-execute-button):not(.links-primary):not(.primary-wide) {
   color:#d8eee1;
 }
-html[data-theme="dark"] .actions button,
-html[data-theme="dark"] .profile-list button,
-html[data-theme="dark"] .day-off,
-html[data-theme="dark"] .profile-switch,
-html[data-theme="dark"] .panel-actions button,
-html[data-theme="dark"] .calendar-actions button,
-html[data-theme="dark"] .modal-actions button,
-html[data-theme="dark"] .config-actions button,
-html[data-theme="dark"] .config-toolbar button,
-html[data-theme="dark"] .config-tabs button,
-html[data-theme="dark"] .calendar-head button,
-html[data-theme="dark"] .version-list button,
-html[data-theme="dark"] .history-head button,
-html[data-theme="dark"] .task-tools button,
-html[data-theme="dark"] .drag-row button,
-html[data-theme="dark"] .links-form-actions button,
-html[data-theme="dark"] .useful-link-actions button,
-html[data-theme="dark"] .importer-secondary-button,
-html[data-theme="dark"] .importer-switch button,
-html[data-theme="dark"] .roteiro-window header button,
-html[data-theme="dark"] .roteiro-tools button,
-html[data-theme="dark"] .tool-group button {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .actions button,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .profile-list button,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .day-off,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .profile-switch,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .panel-actions button,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .calendar-actions button,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .modal-actions button,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .config-actions button,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .config-toolbar button,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .config-tabs button,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .calendar-head button,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .version-list button,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .history-head button,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .task-tools button,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .drag-row button,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .links-form-actions button,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .useful-link-actions button,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .importer-secondary-button,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .importer-switch button,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .roteiro-window header button,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .roteiro-tools button,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .tool-group button {
   background:#24382b;
   color:#d8eee1;
   border-color:#45624e;
 }
-html[data-theme="dark"] .actions button:hover:not(:disabled),
-html[data-theme="dark"] .profile-list button:hover:not(:disabled),
-html[data-theme="dark"] .day-off:hover:not(:disabled),
-html[data-theme="dark"] .profile-switch:hover:not(:disabled),
-html[data-theme="dark"] .panel-actions button:hover:not(:disabled),
-html[data-theme="dark"] .calendar-actions button:hover:not(:disabled),
-html[data-theme="dark"] .modal-actions button:hover:not(:disabled),
-html[data-theme="dark"] .config-actions button:hover:not(:disabled),
-html[data-theme="dark"] .config-toolbar button:hover:not(:disabled),
-html[data-theme="dark"] .calendar-head button:hover:not(:disabled),
-html[data-theme="dark"] .version-list button:hover:not(:disabled),
-html[data-theme="dark"] .history-head button:hover:not(:disabled),
-html[data-theme="dark"] .task-tools button:hover:not(:disabled),
-html[data-theme="dark"] .drag-row button:hover:not(:disabled),
-html[data-theme="dark"] .links-form-actions button:hover:not(:disabled),
-html[data-theme="dark"] .useful-link-actions button:hover:not(:disabled),
-html[data-theme="dark"] .importer-secondary-button:hover:not(:disabled),
-html[data-theme="dark"] .importer-switch button:hover:not(:disabled),
-html[data-theme="dark"] .roteiro-window header button:hover:not(:disabled),
-html[data-theme="dark"] .roteiro-tools button:hover:not(:disabled),
-html[data-theme="dark"] .tool-group button:hover:not(:disabled) {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .actions button:hover:not(:disabled),
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .profile-list button:hover:not(:disabled),
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .day-off:hover:not(:disabled),
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .profile-switch:hover:not(:disabled),
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .panel-actions button:hover:not(:disabled),
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .calendar-actions button:hover:not(:disabled),
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .modal-actions button:hover:not(:disabled),
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .config-actions button:hover:not(:disabled),
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .config-toolbar button:hover:not(:disabled),
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .calendar-head button:hover:not(:disabled),
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .version-list button:hover:not(:disabled),
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .history-head button:hover:not(:disabled),
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .task-tools button:hover:not(:disabled),
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .drag-row button:hover:not(:disabled),
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .links-form-actions button:hover:not(:disabled),
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .useful-link-actions button:hover:not(:disabled),
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .importer-secondary-button:hover:not(:disabled),
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .importer-switch button:hover:not(:disabled),
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .roteiro-window header button:hover:not(:disabled),
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .roteiro-tools button:hover:not(:disabled),
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .tool-group button:hover:not(:disabled) {
   background:#2c4935;
   border-color:#5b8a68;
   color:#f0fff4;
 }
-html[data-theme="dark"] .day,
-html[data-theme="dark"] .advanced-sheet th,
-html[data-theme="dark"] .advanced-sheet td,
-html[data-theme="dark"] .advanced-sheet td input {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .day,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .advanced-sheet th,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .advanced-sheet td,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .advanced-sheet td input {
   background:#1b2921;
   color:#e5eee8;
   border-color:#3a5140;
 }
-html[data-theme="dark"] .day:hover { background:#263b2e; }
-html[data-theme="dark"] .advanced-sheet td.selected-cell {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .day:hover { background:#263b2e; }
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .advanced-sheet td.selected-cell {
   box-shadow:inset 0 0 0 2px #58b77f;
 }
-html[data-theme="dark"] .progress { background:#34483a; }
-html[data-theme="dark"] .progress > div { background:#4da978; }
-html[data-theme="dark"] .success-popup {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .progress { background:#34483a; }
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .progress > div { background:#4da978; }
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .success-popup {
   background:linear-gradient(180deg,#1b2921 0%,#20382a 100%);
   border-color:#426a52;
 }
-html[data-theme="dark"] .success-popup > span { color:#b5c8bb; }
-html[data-theme="dark"] .success-check {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .success-popup > span { color:#b5c8bb; }
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .success-check {
   background:#203d2e;
   border-color:#4b8b62;
   color:#82d6a2;
 }
-html[data-theme="dark"] .task-importer-popup > .modal-head {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .task-importer-popup > .modal-head {
   background:#1b2921;
 }
-html[data-theme="dark"] .import-map-table,
-html[data-theme="dark"] .import-map-row {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .import-map-table,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .import-map-row {
   border-color:#3a5140;
 }
-html[data-theme="dark"] .import-map-head {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .import-map-head {
   background:#24382b;
   color:#d8eee1;
 }
-html[data-theme="dark"] .import-source-details summary { color:#c4ddcc; }
-html[data-theme="dark"] .import-destination-result {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .import-source-details summary { color:#c4ddcc; }
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .import-destination-result {
   background:#203128;
   border-color:#3a5744;
 }
-html[data-theme="dark"] .import-warning {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .import-warning {
   background:#49351f;
   color:#ffdbad;
 }
-html[data-theme="dark"] .importer-switch button.active {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .importer-switch button.active {
   background:#176b45;
   border-color:#176b45;
   color:#fff;
 }
-html[data-theme="dark"] .theme-control { color:#a9bdb0; }
-html[data-theme="dark"] .theme-control select {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .theme-control { color:#a9bdb0; }
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .theme-control select {
   background:#142019;
   color:#e5eee8;
   border-color:#45624e;
 }
-html[data-theme="dark"] .company-watermark {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .company-watermark {
   opacity:.07;
   filter:brightness(0) saturate(100%) invert(83%) sepia(11%) saturate(470%) hue-rotate(86deg) brightness(96%) contrast(88%);
 }
-html[data-theme="dark"] .modal-backdrop {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .modal-backdrop {
   background:rgba(0,0,0,.66);
 }
-html[data-theme="dark"] .config-tabs button.active,
-html[data-theme="dark"] .config-embedded .config-tabs button.active {
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .config-tabs button.active,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .config-embedded .config-tabs button.active {
   color:#7ed49d;
   border-bottom-color:#4da978;
 }
-html[data-theme="dark"] .tab.active { color:#7ed49d; border-bottom-color:#4da978; }
-html[data-theme="dark"] .close-panel,
-html[data-theme="dark"] .config-head button { color:#d8eee1; }
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .tab.active { color:#7ed49d; border-bottom-color:#4da978; }
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .close-panel,
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .config-head button { color:#d8eee1; }
 
 /* Ajuste do cabeçalho com o novo seletor de aparência */
 @media (min-width:851px) {
@@ -1544,3 +1544,53 @@ html[data-theme="dark"] .config-head button { color:#d8eee1; }
   }
 }
 
+
+
+/* PALETAS ADICIONAIS — preferências individuais do colaborador */
+html[data-theme="elegant-light"] {
+  --verde-escuro:#33402b; --verde:#657b45; --verde-claro:#edf1e5; --verde-borda:#cbd4bc;
+  --texto:#30382e; --texto-suave:#737b6d; --cd-green-primary:#71864e; --cd-green-hover:#5d713d;
+  background:#f5f3eb;
+}
+html[data-theme="elegant-light"] body { background:#f5f3eb; color:#30382e; }
+html[data-theme="elegant-light"] :is(.header,.card,.work-card,.calendar-card,.day-modal,.config-window,.side-panel,.system-panel,.success-popup,.roteiro-window) { background:#fffefa; color:#30382e; border-color:#d9d7c9; }
+html[data-theme="elegant-light"] .app-sidebar { background:#29372b; }
+html[data-theme="elegant-light"] .sidebar-item.active { background:#657b45; }
+html[data-theme="elegant-light"] :is(.profile-list button,.day-off,.theme-control select) { border-color:#cbd4bc; }
+html[data-theme="elegant-light"] .progress > div { background:#71864e; }
+
+html[data-theme="blue-light"] {
+  --verde-escuro:#173c50; --verde:#24647c; --verde-claro:#e7f1f5; --verde-borda:#b9d1dc;
+  --texto:#203744; --texto-suave:#637b87; --cd-green-primary:#28718c; --cd-green-hover:#1e5d75;
+  background:#eff4f7;
+}
+html[data-theme="blue-light"] body { background:#eff4f7; color:#203744; }
+html[data-theme="blue-light"] :is(.header,.card,.work-card,.calendar-card,.day-modal,.config-window,.side-panel,.system-panel,.success-popup,.roteiro-window) { background:#fbfdfe; color:#203744; border-color:#cbdce4; }
+html[data-theme="blue-light"] .app-sidebar { background:#183c50; }
+html[data-theme="blue-light"] .sidebar-item.active { background:#28718c; border-color:rgba(185,220,235,.4); }
+html[data-theme="blue-light"] :is(.profile-list button,.day-off,.theme-control select) { border-color:#b9d1dc; }
+html[data-theme="blue-light"] .progress > div { background:#28718c; }
+
+:is(html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) {
+  --texto:#e7edf5; --texto-suave:#aab8c9; --branco:#172331;
+  --verde-escuro:#e1edf7; --verde-claro:#24384a; --verde-borda:#40566d;
+}
+html[data-theme="midnight-blue"] { --verde:#62a9c8; --cd-green-primary:#347e9f; --cd-green-hover:#4693b5; --cd-green-soft:#203b4c; --cd-green-border:#456a80; --cd-green-text:#d8edf7; background:#101c29; }
+html[data-theme="midnight-blue"] body { background:#101c29; color:#e7edf5; }
+html[data-theme="midnight-blue"] :is(.header,.card,.work-card,.calendar-card,.day-modal,.config-window,.side-panel,.system-panel,.success-popup,.links-form,.useful-link-card,.links-empty,.import-destination-result,.task-importer-popup,.creation-popup,.roteiro-window) { background:#1a2a3a; color:#e7edf5; border-color:#3b5268; }
+html[data-theme="midnight-blue"] .app-sidebar { background:#12283a; }
+html[data-theme="midnight-blue"] :is(.sidebar-item.active,.importer-switch button.active) { background:#286987; border-color:#4386a4; }
+html[data-theme="midnight-blue"] :is(input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),textarea,select,.creation-editor,.roteiro-text-editor) { background:#122130; color:#e7edf5; border-color:#49657b; }
+html[data-theme="midnight-blue"] :is(.system-workspace-card,.import-placeholder,.import-summary > div,.import-integrity,.drag-row) { background:#203448; border-color:#405d73; color:#dce8f2; }
+html[data-theme="midnight-blue"] .theme-control select { background:#122130; color:#e7edf5; border-color:#49657b; }
+html[data-theme="midnight-blue"] .progress > div { background:#62a9c8; }
+
+html[data-theme="midnight-violet"] { --verde:#a995d6; --cd-green-primary:#7660a8; --cd-green-hover:#8974ba; --cd-green-soft:#342c49; --cd-green-border:#665783; --cd-green-text:#e9e0fa; background:#1a1724; }
+html[data-theme="midnight-violet"] body { background:#1a1724; color:#eeeaf5; }
+html[data-theme="midnight-violet"] :is(.header,.card,.work-card,.calendar-card,.day-modal,.config-window,.side-panel,.system-panel,.success-popup,.links-form,.useful-link-card,.links-empty,.import-destination-result,.task-importer-popup,.creation-popup,.roteiro-window) { background:#292438; color:#eeeaf5; border-color:#4a415e; }
+html[data-theme="midnight-violet"] .app-sidebar { background:#211b30; }
+html[data-theme="midnight-violet"] :is(.sidebar-item.active,.importer-switch button.active) { background:#65518e; border-color:#8974b5; }
+html[data-theme="midnight-violet"] :is(input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),textarea,select,.creation-editor,.roteiro-text-editor) { background:#211d2e; color:#eeeaf5; border-color:#5a506e; }
+html[data-theme="midnight-violet"] :is(.system-workspace-card,.import-placeholder,.import-summary > div,.import-integrity,.drag-row) { background:#332d43; border-color:#554a6b; color:#e8e1f2; }
+html[data-theme="midnight-violet"] .theme-control select { background:#211d2e; color:#eeeaf5; border-color:#5a506e; }
+html[data-theme="midnight-violet"] .progress > div { background:#a995d6; }
