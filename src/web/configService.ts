@@ -15,12 +15,12 @@ export function createTask(config:Configuracao, input:Pick<Tarefa,"nome"|"link"|
   const nome=input.nome.trim(); if(!nome) throw new Error("INFORME O NOME DA TAREFA.");
   if(!uniqueName(config.tarefas.tarefas,nome)) throw new Error("JÁ EXISTE UMA TAREFA COM ESSE NOME.");
   if(input.link && !/^https?:\/\//i.test(input.link)) throw new Error("O LINK DA TAREFA DEVE COMEÇAR COM HTTP:// OU HTTPS://.");
-  return { id:nextId("T",config.tarefas.tarefas.map(x=>x.id)), nome, link:input.link.trim(), criacao:input.criacao, roteiro:blankRoteiro(), emailsVinculados:[], ativo:false };
+  return { id:nextId("T",config.tarefas.tarefas.map(x=>x.id)), nome, link:input.link.trim(), criacao:input.criacao, roteiro:blankRoteiro(), emailsVinculados:[], ativo:true };
 }
 export function createProfile(config:Configuracao, nome:string, tarefas:string[]):Perfil {
   const n=nome.trim(); if(!n) throw new Error("INFORME O NOME DO PERFIL.");
   if(!uniqueName(config.perfis.perfis,n)) throw new Error("JÁ EXISTE UM PERFIL COM ESSE NOME.");
-  return {id:nextId("P",config.perfis.perfis.map(x=>x.id)),nome:n,tarefas:[...new Set(tarefas)],ativo:false};
+  return {id:nextId("P",config.perfis.perfis.map(x=>x.id)),nome:n,tarefas:[...new Set(tarefas)],ativo:true};
 }
 export function createEmail(config:Configuracao, input:Pick<Email,"nome"|"titulo"|"corpo">):Email {
   const nome=input.nome.trim(); if(!nome) throw new Error("INFORME O NOME DO E-MAIL.");
