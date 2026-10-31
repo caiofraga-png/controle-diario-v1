@@ -30,7 +30,7 @@ function resolveEmailVariables(value:string){
   return value.replaceAll("\\n", "\n").replaceAll("{HOJE_YYYYMMDD}",hoje).replaceAll("{ONTEM_DDMMYYYY}",ontem);
 }
 function App() {
-  const [tab, setTab] = useState<"tarefas" | "calendario" | "configuracao" | "sistema" | "administracao">("tarefas");
+  const [tab, setTab] = useState<"tarefas" | "calendario" | "promocoes" | "configuracao" | "sistema" | "administracao">("tarefas");
   const [firebaseAccess, setFirebaseAccess] = useState<any>({ status: "checking" });
   const [firebaseBusy, setFirebaseBusy] = useState(false);
   const [themePreference, setThemePreference] = useState<"corporate-light" | "corporate-dark" | "elegant-light" | "midnight-blue" | "midnight-violet" | "blue-light" | "system">("system");
@@ -48,6 +48,8 @@ function App() {
   const observationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [calendarCursor, setCalendarCursor] = useState(() => { const { year, month } = brazilTodayParts(); return { year, month }; });
   const [calendarData, setCalendarData] = useState<any>(null);
+  const [promotions, setPromotions] = useState<any[]>([]);
+  const [promotionsMessage, setPromotionsMessage] = useState("");
   const [dayPanel, setDayPanel] = useState<string | null>(null);
   const [versions, setVersions] = useState<any[]>([]);
   const [historyRecord, setHistoryRecord] = useState<any>(null);
@@ -102,7 +104,7 @@ function App() {
     catch (error) { setMessage(error instanceof Error ? error.message : "NÃO FOI POSSÍVEL ENCERRAR A SESSÃO FIREBASE."); }
     finally { setFirebaseBusy(false); }
   }
-  useEffect(() => { if (firebaseAccess?.status === "approved") void loadData(); else { setData(null); setCalendarData(null); } }, [firebaseAccess?.status]);
+  useEffect(() => { if (firebaseAccess?.status === "approved") { void loadData(); void window.controleDiario.firebase.workflow.carregarPromocoes().then(setPromotions).catch((e:any)=>setPromotionsMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL CARREGAR AS PROMOÇÕES.")); } else { setData(null); setCalendarData(null); setPromotions([]); } }, [firebaseAccess?.status]);
   useEffect(() => {
     let active = true;
     if (firebaseAccess?.status === "approved") {
@@ -189,6 +191,7 @@ function App() {
   }
 
   async function abandon(){if(!window.confirm(`ABANDONAR EXPEDIENTE? O registro em produção de ${brDate(state.data)} será descartado. Nenhum histórico será criado.`))return;setBusy(true);try{await window.controleDiario.firebase.workflow.abandonar();await loadData();setObservation("");}catch(e){setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL ABANDONAR O EXPEDIENTE.");}finally{setBusy(false);}}
+  async function savePromotions(items:any[]){ const saved=await window.controleDiario.firebase.workflow.salvarPromocoes(items); setPromotions(saved); }
   async function saveConfig(nextConfig:any){ setBusy(true); setMessage(""); try { const result=await window.controleDiario.firebase.workflow.salvarConfiguracao(nextConfig); setData(result); setMessage("CONFIGURAÇÃO SALVA."); } catch(e){ setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR A CONFIGURAÇÃO."); throw e; } finally { setBusy(false); } }
 
   type CalendarSpecial = { data: string; folga?: boolean; feriado?: boolean };
@@ -227,7 +230,7 @@ function App() {
       <button className={`sidebar-item ${tab==="tarefas"?"active":""}`} onClick={()=>setTab("tarefas")}><span className="sidebar-icon">✓</span><span>Tarefas</span></button>
       <button className={`sidebar-item ${tab==="calendario"?"active":""}`} onClick={()=>setTab("calendario")}><span className="sidebar-icon">▦</span><span>Calendário</span></button>
       <button className="sidebar-item" disabled title="Funcionalidade planejada"><span className="sidebar-icon">⚒</span><span>Manutenções externas</span><span className="sidebar-soon">EM BREVE</span></button>
-      <button className="sidebar-item" disabled title="Funcionalidade planejada"><span className="sidebar-icon">％</span><span>Promoções ativas</span><span className="sidebar-soon">EM BREVE</span></button>
+      <button className={`sidebar-item ${tab==="promocoes"?"active":""}`} onClick={()=>setTab("promocoes")}><span className="sidebar-icon">％</span><span>Promoções ativas</span></button>
       <button className="sidebar-item" disabled title="Funcionalidade planejada"><span className="sidebar-icon">◎</span><span>Meta</span><span className="sidebar-soon">EM BREVE</span></button>
       <div className="sidebar-section-label">GERENCIAMENTO</div>
       <button className={`sidebar-item ${tab==="configuracao"?"active":""}`} onClick={()=>setTab("configuracao")}><span className="sidebar-icon">⚙</span><span>Configuração</span></button>
@@ -237,9 +240,10 @@ function App() {
       <div className="sidebar-footer"><span className={firebaseAccess?.status==="approved"?"connection-dot connected":"connection-dot"}></span><span>{firebaseAccess?.status==="approved"?"Firebase conectado":"Firebase não conectado"}</span></div>
     </aside>
     <div className="app-main">
-    <header className="header"><div className="header-page-title"><div className="page-eyebrow">CONTROLE DIÁRIO</div><strong>{{tarefas:"Tarefas do expediente",calendario:"Calendário de trabalho",configuracao:"Configuração",sistema:"Sistema",administracao:"Administração"}[tab]}</strong></div><div className="upcoming-dates" aria-live="polite"><span>Próximas datas:</span> {upcomingDates.length ? upcomingDates.join(" - ") : "Nenhuma data especial próxima"}</div><div className="header-status">{busy?"Salvando alterações…":"Organização do expediente"}</div></header>
+    <header className="header"><div className="header-page-title"><div className="page-eyebrow">CONTROLE DIÁRIO</div><strong>{{tarefas:"Tarefas do expediente",calendario:"Calendário de trabalho",promocoes:"Promoções ativas",configuracao:"Configuração",sistema:"Sistema",administracao:"Administração"}[tab]}</strong></div><div className="upcoming-dates" aria-live="polite"><span>Próximas datas:</span> {upcomingDates.length ? upcomingDates.join(" - ") : "Nenhuma data especial próxima"}</div><div className="header-status">{busy?"Salvando alterações…":"Organização do expediente"}</div></header>
     <main className="content">
-      {tab==="configuracao" ? (data?.configuracao ? <ConfigurationPanel initial={data.configuracao} onSave={saveConfig} onClose={()=>setTab("tarefas")} busy={busy} embedded canManageCatalog={firebaseAccess?.user?.role==="admin" || firebaseAccess?.user?.isSupervisor===true} themePreference={themePreference} onThemeChange={changeThemePreference} themeSaving={themeSaving}/> : <section className="card"><div className="profile">CARREGANDO CONFIGURAÇÃO…</div></section>)
+      {tab==="configuracao" ? (data?.configuracao ? <ConfigurationPanel initial={data.configuracao} onSave={saveConfig} onClose={()=>setTab("tarefas")} busy={busy} embedded canManageCatalog={firebaseAccess?.user?.role==="admin" || firebaseAccess?.user?.isSupervisor===true} themePreference={themePreference} onThemeChange={changeThemePreference} themeSaving={themeSaving} promotions={promotions} onSavePromotions={savePromotions}/> : <section className="card"><div className="profile">CARREGANDO CONFIGURAÇÃO…</div></section>)
+      : tab==="promocoes" ? <section className="promotions-workspace"><div className="workspace-intro"><h2>Promoções ativas</h2><p>Consulte benefícios, produtos elegíveis e condições comerciais vigentes.</p></div>{promotionsMessage&&<p className="system-message">{promotionsMessage}</p>}<div className="promotions-grid">{promotions.filter((p:any)=>{if(p.status!=="active")return false;const now=today();return (!p.startDate||p.startDate<=now)&&(!p.endDate||p.endDate>=now);}).map((p:any)=><article className="promotion-card" key={p.id}><div className="promotion-card-head"><span>{p.category||"CAMPANHA"}</span><strong>{p.name}</strong></div><div className="promotion-benefit">{p.benefit}</div>{p.eligible&&<div className="promotion-detail"><strong>PRODUTOS / PLANOS ELEGÍVEIS</strong><p>{p.eligible}</p></div>}{p.conditions&&<div className="promotion-detail"><strong>CONDIÇÕES</strong><p>{p.conditions}</p></div>}<div className="promotion-validity">{p.endDate?("Válida até "+brDate(p.endDate)):"Sem data final de validade"}</div></article>)}</div>{promotions.filter((p:any)=>p.status==="active"&&(!p.startDate||p.startDate<=today())&&(!p.endDate||p.endDate>=today())).length===0&&<div className="card"><p>NÃO HÁ PROMOÇÕES ATIVAS NESTE MOMENTO.</p></div>}</section>
       : tab==="administracao" ? <FirebaseAdminPanel />
       : tab==="sistema" ? <section className="system-workspace"><div className="workspace-intro"><h2>Conta e acesso</h2><p>Gerencie sua sessão e consulte o estado de autorização do Firebase.</p></div><div className="system-workspace-grid"><div className="system-workspace-card"><span className="system-workspace-label">IDENTIDADE FIREBASE</span><strong>{firebaseAccess.status==="approved" ? (firebaseAccess.user?.email || "ACESSO APROVADO") : firebaseAccess.status==="pending" ? "AGUARDANDO APROVAÇÃO" : firebaseAccess.status==="blocked" || firebaseAccess.status==="rejected" ? "ACESSO BLOQUEADO/RECUSADO" : firebaseAccess.status==="not-allowed" ? "DOMÍNIO NÃO AUTORIZADO" : firebaseAccess.status==="signed-out" ? "NÃO CONECTADO" : firebaseAccess.status==="unconfigured" ? "FIREBASE NÃO CONFIGURADO" : firebaseAccess.status==="error" ? "ERRO NA AUTENTICAÇÃO" : "VERIFICANDO SESSÃO…"}</strong><p>{firebaseAccess.status==="approved" ? "Conta empresarial autenticada e perfil aprovado." : firebaseAccess.status==="pending" ? "Sua solicitação precisa ser aprovada por um administrador." : firebaseAccess.status==="unconfigured" ? (firebaseAccess.message || "Configure as variáveis VITE_FIREBASE_* no ambiente de compilação.") : firebaseAccess.status==="error" ? (firebaseAccess.message || "Não foi possível verificar o acesso.") : "A autenticação e a autorização do sistema são gerenciadas pelo Firebase."}</p>{firebaseAccess.status==="approved" ? <button disabled={firebaseBusy} onClick={()=>void signOutFirebase()}>SAIR DO FIREBASE</button> : <button disabled={firebaseBusy || firebaseAccess.status==="checking"} onClick={()=>void signInFirebase()}>{firebaseBusy?"AGUARDE…":"ENTRAR COM GOOGLE"}</button>}</div></div>{message&&<p className="system-message">{message}</p>}</section>
 
