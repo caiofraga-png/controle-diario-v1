@@ -134,6 +134,66 @@ export default function FirebaseAdminPanel() {
     finally { setBusy(false); }
   }
 
+  async function initializeOrganizationStructure() {
+    const source = [
+      { name: "BACKOFFICE", contacts: ["BACKOFFICE ANALISTA 📈", "BACKOFFICE COMERCIAL 📈", "BACKOFFICE DADOS 📈", "BACKOFFICE SAC 📈", "ESTAGIARIOS BACK 📈"] },
+      { name: "BETA", contacts: ["BETA"] },
+      { name: "CHATBOT 📲", contacts: ["CHATBOT 📲"] },
+      { name: "CHATBOT 🛒", contacts: ["CHATBOT 🛒"] },
+      { name: "COMERCIAL 🛒", contacts: ["ATIVO 🛒", "ESTAGIARIOS 🛒", "MIDIAS SOCIAIS 🛒", "RECEPTIVO 🛒"] },
+      { name: "DESENVOLVIMENTO", contacts: ["DESENVOLVIMENTO"] },
+      { name: "DIVULGAÇÃO/MARKETING", contacts: ["DIVULGAÇÃO/MARKETING"] },
+      { name: "ESTOQUE", contacts: ["ESTOQUE"] },
+      { name: "FINANCEIRO 💰", contacts: ["ADM COBRANÇA 💰", "ADM RETENÇÃO 💰", "ADM UPGRADE 💰", "FINANCEIRO COBRANÇA 💰", "FINANCEIRO LIGAÇÃO 💰", "FINANCEIRO RETENÇÃO 💰"] },
+      { name: "LOGISTICA 🛃", contacts: ["LOGISTICA 🛃"] },
+      { name: "LOJA 🏦", contacts: ["LOJA - ITB 🏦", "LOJA - MGE 🏦", "LOJA - MRC 🏦", "LOJA - RIB 🏦"] },
+      { name: "PABX URA 🎯", contacts: ["PABX URA 🎯"] },
+      { name: "QUIOSQUE ⛩️", contacts: ["QUIOSQUE NITEROI ⛩️"] },
+      { name: "SAC", contacts: ["SAC"] },
+      { name: "SITE", contacts: ["SITE"] },
+      { name: "SITE VENDAS 🚀", contacts: ["SITE VENDAS 🚀"] },
+      { name: "SUP/FIN CHAT 💻", contacts: ["SUP/FIN CHAT 💻"] },
+      { name: "SUPORTE 🛠️", contacts: ["SUPORTE LIGAÇÃO 🛠️"] },
+      { name: "TATICO 🐉", contacts: ["TATICO 🐉"] },
+      { name: "UPCALL 📞", contacts: ["UPCALL 📞"] },
+      { name: "ZOOM", contacts: ["AGENTE TERCEIRIZADA ZOOM", "REPRESENTANTE COMERCIAL"] },
+    ];
+    const normalize = (value: string) => value.trim().toLocaleLowerCase("pt-BR");
+    setBusy(true);
+    setMessage("");
+    try {
+      const existingSectors = [...sectors];
+      const existingContacts = [...contacts];
+      let sectorsCreated = 0;
+      let contactsCreated = 0;
+      for (const item of source) {
+        let sector = existingSectors.find((candidate) => normalize(candidate.name) === normalize(item.name));
+        if (!sector) {
+          const id = await saveSector({ id: "", name: item.name, active: true });
+          sector = { id, name: item.name, active: true };
+          existingSectors.push(sector);
+          sectorsCreated += 1;
+        }
+        for (const contactName of item.contacts) {
+          const exists = existingContacts.some((candidate) =>
+            candidate.sectorId === sector!.id && normalize(candidate.name) === normalize(contactName)
+          );
+          if (!exists) {
+            const id = await saveContact({ id: "", sectorId: sector.id, name: contactName, active: true });
+            existingContacts.push({ id, sectorId: sector.id, name: contactName, active: true });
+            contactsCreated += 1;
+          }
+        }
+      }
+      setMessage(`Estrutura organizacional conferida. ${sectorsCreated} setores e ${contactsCreated} contatos adicionados; registros existentes foram preservados.`);
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Falha ao cadastrar a estrutura organizacional.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function addSector() {
     if (!sectorName.trim()) return;
     setBusy(true);
@@ -363,6 +423,9 @@ export default function FirebaseAdminPanel() {
 
     <section>
       <h3>Setores</h3>
+      <p>Cadastre a estrutura organizacional inicial com os setores e contatos já definidos. A carga adiciona somente itens ausentes e preserva os registros existentes.</p>
+      <button type="button" disabled={busy} onClick={() => void initializeOrganizationStructure()}>Cadastrar lista inicial de setores e contatos</button>
+      <p>{sectors.length} setores e {contacts.length} contatos cadastrados atualmente.</p>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <input aria-label="Novo setor" placeholder="Nome do setor" value={sectorName} onChange={(event) => setSectorName(event.target.value)} />
         <button type="button" disabled={busy} onClick={() => void addSector()}>Adicionar setor</button>
