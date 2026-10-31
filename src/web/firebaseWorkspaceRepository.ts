@@ -4,7 +4,7 @@ import { FirebasePersonalDataService } from "./firebasePersonalDataService";
 import { FirebaseOperationalService } from "./firebaseOperationalService";
 import { loadSharedTaskCatalog, saveSharedTaskCatalog } from "./firebaseSharedTaskCatalogService";
 import { requireFirebase } from "./firebaseClient";
-import { doc, getDoc } from "firebase/firestore";
+import { collection, deleteField, doc, getDoc, getDocs, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 
 /**
  * Shared task/profile/email catalog + private layout/calendar/operational state.
@@ -33,6 +33,23 @@ export class FirebaseWorkspaceRepository {
           layout: personalConfiguration.layout,
         })
       : personalConfiguration;
+
+    // Personal task text overrides are private to the signed-in collaborator.
+    // They are layered over the latest institutional template at read time.
+    const { auth, db } = requireFirebase();
+    const user = auth.currentUser;
+    if (!user) throw new Error("FAÇA LOGIN PARA CARREGAR SUAS PERSONALIZAÇÕES.");
+    const customizationSnapshot = await getDocs(collection(db, "users", user.uid, "taskCustomizations"));
+    const overrides = new Map(customizationSnapshot.docs.map(item => [item.id, item.data()]));
+    configuracao.tarefas.tarefas = configuracao.tarefas.tarefas.map(task => {
+      const override = overrides.get(task.id);
+      if (!override) return task;
+      return {
+        ...task,
+        ...(typeof override.criacao === "string" ? { criacao: override.criacao } : {}),
+        ...(override.roteiro && typeof override.roteiro === "object" ? { roteiro: override.roteiro } : {}),
+      };
+    });
 
     const [calendar, estado] = await Promise.all([
       this.personal.loadCalendar(),
@@ -79,6 +96,43 @@ export class FirebaseWorkspaceRepository {
     // including managers, keeps an independent layout.
     if (catalogChanged) await saveSharedTaskCatalog(normalized);
     await this.personal.saveLayout(normalized.layout);
+  }
+
+  async saveTaskContent(input: { id: string; criacao?: string; roteiro?: unknown }): Promise<void> {
+    const { auth, db } = requireFirebase();
+    const user = auth.currentUser;
+    if (!user) throw new Error("FAÇA LOGIN PARA SALVAR O CONTEÚDO DA TAREFA.");
+    const userSnapshot = await getDoc(doc(db, "users", user.uid));
+    const userData = userSnapshot.exists() ? userSnapshot.data() : null;
+    const isManager = userData?.status === "approved" &&
+      (userData.role === "admin" || userData.isSupervisor === true);
+
+    if (isManager) {
+      const loaded = await this.load();
+      const config = JSON.parse(JSON.stringify(loaded.configuracao)) as Configuracao;
+      const task = config.tarefas.tarefas.find(item => item.id === input.id);
+      if (!task) throw new Error("TAREFA NÃO ENCONTRADA.");
+      if (Object.prototype.hasOwnProperty.call(input, "criacao")) task.criacao = String(input.criacao ?? "");
+      if (Object.prototype.hasOwnProperty.call(input, "roteiro")) task.roteiro = JSON.parse(JSON.stringify(input.roteiro));
+      await this.saveConfiguration(config);
+      return;
+    }
+
+    const ref = doc(db, "users", user.uid, "taskCustomizations", input.id);
+    const payload: Record<string, unknown> = { taskId: input.id, updatedAt: serverTimestamp() };
+    if (Object.prototype.hasOwnProperty.call(input, "criacao")) payload.criacao = String(input.criacao ?? "");
+    if (Object.prototype.hasOwnProperty.call(input, "roteiro")) payload.roteiro = JSON.parse(JSON.stringify(input.roteiro));
+    await setDoc(ref, payload, { merge: true });
+  }
+
+  async resetTaskContent(input: { id: string; field: "criacao" | "roteiro" }): Promise<void> {
+    const { auth, db } = requireFirebase();
+    const user = auth.currentUser;
+    if (!user) throw new Error("FAÇA LOGIN PARA REDEFINIR O CONTEÚDO DA TAREFA.");
+    const ref = doc(db, "users", user.uid, "taskCustomizations", input.id);
+    const snapshot = await getDoc(ref);
+    if (!snapshot.exists() || !Object.prototype.hasOwnProperty.call(snapshot.data(), input.field)) return;
+    await updateDoc(ref, { [input.field]: deleteField(), updatedAt: serverTimestamp() });
   }
 
   async saveCalendar(calendario: LoadedData["calendario"]): Promise<void> {
