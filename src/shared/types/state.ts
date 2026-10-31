@@ -9,7 +9,7 @@ export interface TarefaSnapshot extends Omit<Tarefa, "emailsVinculados"> {
   emailsVinculados: EmailSnapshot[];
 }
 
-export interface EstadoAtual {
+export interface ExpedienteCatalogSnapshot {\n  tarefas: { schemaVersion: 1; tarefas: Tarefa[] };\n  perfis: { schemaVersion: 1; perfis: Perfil[] };\n  email: { schemaVersion: 1; emails: Email[]; emailsGlobais: string[] };\n  layout: { ordemPerfis: string[]; ordemTarefas: Record<string, string[]> };\n}\n\nexport interface EstadoAtual {
   id: string;
   data: string;
   perfil: Pick<Perfil, "id" | "nome">;
