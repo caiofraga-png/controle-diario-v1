@@ -133,6 +133,24 @@ test("usuário não acessa configuração de outra pessoa", async () => {
   await assertFails(setDoc(doc(db, "users/bob/configuration/layout"), { schemaVersion: 1 }));
 });
 
+test("colaborador lê e grava somente suas personalizações de tarefas", async () => {
+  const alice = dbAs("alice");
+  const own = doc(alice, "users/alice/taskCustomizations/T001");
+  await assertSucceeds(setDoc(own, { taskId: "T001", criacao: "Minha criação" }));
+  await assertSucceeds(getDoc(own));
+  await assertFails(getDoc(doc(alice, "users/bob/taskCustomizations/T001")));
+  await assertFails(setDoc(doc(alice, "users/bob/taskCustomizations/T001"), {
+    taskId: "T001", criacao: "Tentativa de alteração de outra pessoa",
+  }));
+});
+
+test("colaborador não pode alterar o padrão institucional compartilhado", async () => {
+  const db = dbAs("alice");
+  await assertFails(setDoc(doc(db, "sharedTaskCatalog/current"), {
+    schemaVersion: 1, tarefas: { schemaVersion: 1, tarefas: [] },
+  }));
+});
+
 test("usuário não pode alterar o próprio perfil organizacional", async () => {
   await assertFails(updateDoc(doc(dbAs("alice"), "users/alice"), { sectorId: "financeiro" }));
 });
