@@ -6,9 +6,24 @@ function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-export function buildTaskOrder(profile: Perfil | null, config: LoadedData["configuracao"]): string[] {
+export function buildTaskOrder(profile: Perfil | null, config: LoadedData["configuracao"], allowedProfileIds: string[] = []): string[] {
   const active = new Set(config.tarefas.tarefas.filter(t => t.ativo).map(t => t.id));
-  if (!profile) return config.layout.ordemTarefas.GERAL?.filter(id => active.has(id)) ?? [];
+  if (!profile) {
+    const allowed = new Set(allowedProfileIds);
+    const associated = new Set(config.perfis.perfis
+      .filter(item => item.ativo && allowed.has(item.id))
+      .flatMap(item => item.tarefas)
+      .filter(id => active.has(id)));
+    const configured = config.layout.ordemTarefas.GERAL ?? [];
+    const ordered = configured.filter(id => associated.has(id));
+    for (const profileId of config.layout.ordemPerfis) {
+      if (!allowed.has(profileId)) continue;
+      const profileTasks = config.layout.ordemTarefas[profileId] ?? [];
+      for (const id of profileTasks) if (associated.has(id) && !ordered.includes(id)) ordered.push(id);
+    }
+    for (const id of associated) if (!ordered.includes(id)) ordered.push(id);
+    return ordered;
+  }
   const configured = config.layout.ordemTarefas[profile.id] ?? [];
   const associated = new Set(profile.tarefas.filter(id => active.has(id)));
   return configured.filter(id => associated.has(id));
@@ -29,9 +44,9 @@ function emailSnapshot(email: Email, concluido = false): EmailSnapshot {
   return { ...clone(email), concluido };
 }
 
-export function buildState(data: LoadedData, date: string, profileId: string): EstadoAtual {
+export function buildState(data: LoadedData, date: string, profileId: string, allowedProfileIds: string[] = []): EstadoAtual {
   const profile = findProfile(data.configuracao, profileId);
-  const order = buildTaskOrder(profile, data.configuracao);
+  const order = buildTaskOrder(profile, data.configuracao, allowedProfileIds);
   const byId = new Map(data.configuracao.tarefas.tarefas.map(t => [t.id, t]));
   const emailById = new Map(data.configuracao.email.emails.map(e => [e.id, e]));
 
@@ -64,7 +79,10 @@ export function buildState(data: LoadedData, date: string, profileId: string): E
     tasks.push({ ...clone(task), concluida: false, emailsVinculados: emails });
   }
 
-  const profileEmailIds = profile ? data.configuracao.email.emails.filter(email => (email.perfisVinculados ?? []).includes(profile.id)).map(email => email.id) : [];
+  const selectedProfileIds = profile ? [profile.id] : allowedProfileIds;
+  const profileEmailIds = data.configuracao.email.emails
+    .filter(email => (email.perfisVinculados ?? []).some(id => selectedProfileIds.includes(id)))
+    .map(email => email.id);
   const globalIds = [...new Set([...data.configuracao.email.emailsGlobais, ...profileEmailIds])].filter(id => {
     const email = emailById.get(id);
     return Boolean(email?.ativo);
