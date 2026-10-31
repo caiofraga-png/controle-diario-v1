@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useMemo, useRef, useState } from "react";
+import { Component, StrictMode, useEffect, useMemo, useRef, useState, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 import ConfigurationPanel from "./ConfigurationPanel";
@@ -29,6 +29,33 @@ function resolveEmailVariables(value:string){
   const ontem=`${pad(yesterday.getUTCDate())}${pad(yesterday.getUTCMonth()+1)}${yesterday.getUTCFullYear()}`;
   return value.replaceAll("\\n", "\n").replaceAll("{HOJE_YYYYMMDD}",hoje).replaceAll("{ONTEM_DDMMYYYY}",ontem);
 }
+class AppErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state: { error: Error | null } = { error: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("[CONTROLE DIÁRIO] Falha durante a renderização:", error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.error) {
+      return <main style={{minHeight:"100vh",display:"grid",placeItems:"center",padding:"32px",background:"#f3f7f4",color:"#183b2b",fontFamily:"Arial,sans-serif"}}>
+        <section style={{width:"min(680px,100%)",padding:"28px",borderRadius:"16px",background:"#fff",border:"1px solid #d8e5dc",boxShadow:"0 12px 36px rgba(20,60,40,.10)"}}>
+          <div style={{fontSize:"12px",fontWeight:700,letterSpacing:"1.5px",color:"#28734b"}}>CONTROLE DIÁRIO · DIAGNÓSTICO</div>
+          <h1 style={{fontSize:"24px",margin:"12px 0"}}>O sistema encontrou uma falha ao abrir.</h1>
+          <p style={{lineHeight:1.6}}>A aplicação foi protegida para não deixar a tela simplesmente branca. Envie ao suporte a mensagem técnica abaixo:</p>
+          <pre style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere",padding:"16px",borderRadius:"8px",background:"#f1f4f2",color:"#26352c",fontSize:"13px"}}>{this.state.error.message || String(this.state.error)}</pre>
+          <button onClick={() => window.location.reload()} style={{padding:"11px 18px",border:0,borderRadius:"8px",background:"#237347",color:"#fff",fontWeight:700,cursor:"pointer"}}>RECARREGAR SISTEMA</button>
+        </section>
+      </main>;
+    }
+    return this.props.children;
+  }
+}
+
 function App() {
   const [tab, setTab] = useState<"tarefas" | "calendario" | "promocoes" | "configuracao" | "sistema" | "administracao">("tarefas");
   const [firebaseAccess, setFirebaseAccess] = useState<any>({ status: "checking" });
@@ -261,4 +288,4 @@ function App() {
     {dayPanel&&<div className="modal-backdrop" onClick={()=>setDayPanel(null)}><div className="day-modal" onClick={e=>e.stopPropagation()}><div className="modal-head"><div><div className="date">{brDate(dayPanel)}</div><div className="profile">{state?.data===dayPanel?"EXPEDIENTE EM PRODUÇÃO":"DATA"}</div></div><button onClick={()=>setDayPanel(null)}>✕</button></div>{state?.data===dayPanel&&<button className="primary-wide" onClick={()=>{setDayPanel(null);setTab("tarefas");}}>IR PARA TAREFAS</button>}<div className="calendar-actions"><button disabled={busy||state?.data===dayPanel} onClick={()=>void saveCalendarMark(dayPanel,"folga")}>🔵 FOLGA</button><button disabled={busy||state?.data===dayPanel} onClick={()=>void saveCalendarMark(dayPanel,"feriado")}>🟡 FERIADO</button></div><h3>HISTÓRICO</h3>{versions.length===0?<p>SEM REGISTRO HISTÓRICO.</p>:<div className="version-list">{versions.map(v=><button key={v.versao} onClick={()=>void openVersion(v.versao)}>R{String(v.versao).padStart(3,"0")}</button>)}</div>}{historyRecord&&<div className="history-view"><div className="history-head"><strong>REGISTRO HISTÓRICO — R{String(historyRecord.versao).padStart(3,"0")}</strong>{historyMode==="view"&&<button onClick={()=>setHistoryMode("edit")}>EDITAR</button>}</div><div className="profile">{historyRecord.perfil.nome}</div>{historyRecord.tarefas.map((t:any)=><div className="history-task" key={t.id}><label><input type="checkbox" disabled={historyMode!=="edit"||busy} checked={t.concluida} onChange={e=>editHistoryTask(t.id,e.target.checked)}/><span className={t.concluida?"done":""}>{t.nome}</span></label>{t.emailsVinculados.map((e:any)=><label className="email-row" key={e.id}><input type="checkbox" disabled={historyMode!=="edit"||busy} checked={e.concluido} onChange={ev=>editHistoryEmail(e.id,ev.target.checked)}/><span>{e.nome}</span></label>)}</div>)}{historyRecord.emailsGlobais.map((e:any)=><label className="email-row" key={`g-${e.id}`}><input type="checkbox" disabled={historyMode!=="edit"||busy} checked={e.concluido} onChange={ev=>editHistoryEmail(e.id,ev.target.checked)}/><span>{e.nome}</span></label>)}<label className="observation"><span>OBSERVAÇÃO</span><textarea disabled={historyMode!=="edit"||busy} value={historyRecord.observacao} onChange={e=>setHistoryRecord((r:any)=>({...r,observacao:e.target.value}))}/></label>{historyMode==="edit"&&<div className="modal-actions"><button onClick={()=>{setHistoryRecord(historySource);setHistoryMode("view")}}>CANCELAR</button><button className="conclude" disabled={busy} onClick={()=>void saveErrata()}>SALVAR ERRATA</button></div>}</div>}</div></div>}
   </div>;
 }
-createRoot(document.getElementById("root")!).render(<StrictMode><App/></StrictMode>);
+createRoot(document.getElementById("root")!).render(<StrictMode><AppErrorBoundary><App /></AppErrorBoundary></StrictMode>);
