@@ -25,7 +25,7 @@ export default function ConfigurationPanel({ initial, onSave, onClose, busy, emb
 
   function startNew(){ setCreating(true); setSelectedId(null); setRoute("editar"); setForm(tab==="perfis"?{nome:"",tarefas:[]}:tab==="tarefas"?{nome:"",link:"",criacao:"",ativo:false,emailsVinculados:[]}: {nome:"",titulo:"",corpo:"",ativo:false,global:false}); }
   function edit(id:string){ setCreating(false); setSelectedId(id); setRoute("editar"); const obj=tab==="perfis"?draft.perfis.perfis.find((x:any)=>x.id===id):tab==="tarefas"?draft.tarefas.tarefas.find((x:any)=>x.id===id):draft.email.emails.find((x:any)=>x.id===id); setForm(clone(obj)); if(tab==="email") setForm((f:any)=>({...clone(obj),global:draft.email.emailsGlobais.includes(id),perfisVinculados:[...(obj.perfisVinculados??[])]})); }
-  function switchTab(t:Tab){setTab(t);setRoute("lista");setSelectedId(null);setLocalMessage("");}
+  function switchTab(t:Tab){if(!canManageCatalog && t!=="layout") return;setTab(t);setRoute("lista");setSelectedId(null);setLocalMessage("");}
 
   async function saveItem(){
     setLocalMessage("");
