@@ -13,6 +13,7 @@ type Props = {
   initial: Roteiro;
   onCancel: () => void;
   onSave: (value: Roteiro) => void;
+  onReset?: () => void;
   presentation?: "popup" | "side";
   sidePosition?: "esquerda" | "direita";
 };
@@ -38,6 +39,7 @@ export default function RoteiroEditor({
   initial,
   onCancel,
   onSave,
+  onReset,
   presentation = "popup",
   sidePosition = "direita"
 }: Props) {
@@ -73,6 +75,7 @@ export default function RoteiroEditor({
 
         <div className="config-actions">
           <button onClick={onCancel}>CANCELAR</button>
+          {onReset && <button onClick={onReset}>REDEFINIR PARA PADRÃO</button>}
           <button className="primary" onClick={save}>SALVAR ROTEIRO</button>
         </div>
       </div>
