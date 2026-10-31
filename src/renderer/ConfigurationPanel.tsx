@@ -7,7 +7,7 @@ type Tab = "perfis" | "tarefas" | "email" | "layout";
 function clone<T>(v:T):T { return JSON.parse(JSON.stringify(v)); }
 function move<T>(arr:T[], from:number, to:number){ const a=[...arr]; const [x]=a.splice(from,1); a.splice(to,0,x); return a; }
 
-export default function ConfigurationPanel({ initial, onSave, onClose, busy, embedded = false }: { initial: Config; onSave: (config:Config)=>Promise<void>; onClose:()=>void; busy:boolean; embedded?:boolean }) {
+export default function ConfigurationPanel({ initial, onSave, onClose, busy, embedded = false, canManageCatalog = false }: { initial: Config; onSave: (config:Config)=>Promise<void>; onClose:()=>void; busy:boolean; embedded?:boolean; canManageCatalog?:boolean }) {
   const [tab,setTab]=useState<Tab>("perfis");
   const [draft,setDraft]=useState<Config>(()=>clone(initial));
   const [selectedId,setSelectedId]=useState<string|null>(null);
