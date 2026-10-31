@@ -234,6 +234,13 @@ service cloud.firestore {
       allow write: if activeManager();
     }
 
+    // Promotional campaigns are shared across approved collaborators.
+    // Only administrators and supervisors may create or change campaigns.
+    match /sharedPromotions/{document=**} {
+      allow read: if approvedUser();
+      allow write: if activeManager();
+    }
+
     match /settings/allowedDomains {
       allow read: if signedIn();
       allow write: if activeAdmin();
