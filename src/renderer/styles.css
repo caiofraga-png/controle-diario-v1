@@ -1621,3 +1621,27 @@ html[data-theme="midnight-blue"] .config-embedded .config-tabs button { color:#d
 html[data-theme="midnight-violet"] .config-embedded .config-tabs button { color:#e3dced; }
 html[data-theme="midnight-blue"] .config-embedded .config-tabs button.active { color:#83c5df; border-bottom-color:#62a9c8; }
 html[data-theme="midnight-violet"] .config-embedded .config-tabs button.active { color:#c2afe9; border-bottom-color:#a995d6; }
+
+
+/* PROMOÇÕES — consulta dos colaboradores e gestão administrativa */
+.promotions-workspace { width:100%; }
+.promotions-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:16px; }
+.promotion-card,.promotion-admin-card { background:var(--surface,#fff); color:var(--texto); border:1px solid var(--verde-borda); border-radius:14px; padding:20px; box-shadow:0 5px 18px rgba(20,60,40,.06); }
+.promotion-card-head { display:flex; flex-direction:column; gap:8px; padding-bottom:14px; border-bottom:1px solid var(--verde-borda); }
+.promotion-card-head span { color:var(--texto-suave); font-size:10px; font-weight:800; letter-spacing:1px; text-transform:uppercase; }
+.promotion-card-head strong { font-size:17px; color:var(--verde-escuro); }
+.promotion-benefit { margin:16px 0; font-size:20px; line-height:1.35; font-weight:800; color:var(--cd-green-primary); }
+.promotion-detail { margin-top:14px; }
+.promotion-detail strong { font-size:10px; letter-spacing:.8px; color:var(--texto-suave); }
+.promotion-detail p { margin:5px 0 0; white-space:pre-wrap; line-height:1.5; }
+.promotion-validity { margin-top:18px; padding-top:12px; border-top:1px solid var(--verde-borda); color:var(--texto-suave); font-size:12px; font-weight:700; }
+.promotion-admin-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; padding:18px 24px; }
+.promotion-admin-top { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+.promotion-status { font-size:10px; font-weight:800; border-radius:20px; padding:5px 9px; background:var(--verde-claro); color:var(--verde-escuro); }
+.promotion-status.suspended { background:#fff1d6; color:#865b13; }
+.promotion-status.closed { background:#ececec; color:#666; }
+.promotion-admin-card p { line-height:1.45; }
+.promotion-admin-card small { color:var(--texto-suave); }
+.promotion-admin-actions { display:flex; flex-wrap:wrap; gap:7px; margin-top:14px; }
+.promotion-admin-actions button { font-size:11px; padding:7px 10px; }
+@media(max-width:620px) { .promotion-admin-list { padding:12px; } .promotion-card { padding:16px; } }
