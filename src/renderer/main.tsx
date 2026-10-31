@@ -9,7 +9,7 @@ import { installWebBridge } from "../web/webBridge";
 installWebBridge();
 
 interface Bridge {
-  firebase: { signIn: () => Promise<any>; restoreSession: () => Promise<any>; observeAccess: (callback:(result:any)=>void, onError?:(error:Error)=>void)=>()=>void; signOut: () => Promise<void>; workflow: any };
+  firebase: { signIn: () => Promise<any>; restoreSession: () => Promise<any>; observeAccess: (callback:(result:any)=>void, onError?:(error:Error)=>void)=>()=>void; signOut: () => Promise<void>; loadThemePreference: () => Promise<"light"|"dark"|"system">; saveThemePreference: (theme:"light"|"dark"|"system") => Promise<void>; workflow: any };
 }
 declare global { interface Window { controleDiario: Bridge } }
 
@@ -33,6 +33,8 @@ function App() {
   const [tab, setTab] = useState<"tarefas" | "calendario" | "configuracao" | "sistema" | "administracao">("tarefas");
   const [firebaseAccess, setFirebaseAccess] = useState<any>({ status: "checking" });
   const [firebaseBusy, setFirebaseBusy] = useState(false);
+  const [themePreference, setThemePreference] = useState<"light"|"dark"|"system">("system");
+  const [themeSaving, setThemeSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [successPopup, setSuccessPopup] = useState(false);
@@ -101,6 +103,43 @@ function App() {
     finally { setFirebaseBusy(false); }
   }
   useEffect(() => { if (firebaseAccess?.status === "approved") void loadData(); else { setData(null); setCalendarData(null); } }, [firebaseAccess?.status]);
+  useEffect(() => {
+    let active = true;
+    if (firebaseAccess?.status === "approved") {
+      void window.controleDiario.firebase.loadThemePreference()
+        .then((theme) => { if (active) setThemePreference(theme); })
+        .catch(() => { if (active) setThemePreference("system"); });
+    } else {
+      setThemePreference("system");
+    }
+    return () => { active = false; };
+  }, [firebaseAccess?.status]);
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => {
+      const dark = themePreference === "dark" || (themePreference === "system" && media.matches);
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+      document.documentElement.style.colorScheme = dark ? "dark" : "light";
+    };
+    apply();
+    if (themePreference !== "system") return;
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, [themePreference]);
+  async function changeThemePreference(theme: "light"|"dark"|"system") {
+    const previous = themePreference;
+    setThemePreference(theme);
+    if (firebaseAccess?.status !== "approved") return;
+    setThemeSaving(true);
+    try {
+      await window.controleDiario.firebase.saveThemePreference(theme);
+    } catch (error) {
+      setThemePreference(previous);
+      setMessage(error instanceof Error ? error.message : "NÃO FOI POSSÍVEL SALVAR A APARÊNCIA.");
+    } finally {
+      setThemeSaving(false);
+    }
+  }
   useEffect(() => { if (firebaseAccess?.status === "approved") void loadMonth(); }, [calendarCursor.year, calendarCursor.month, firebaseAccess?.status]);
   useEffect(() => () => { if (observationTimer.current) clearTimeout(observationTimer.current); }, []);
 
@@ -192,7 +231,7 @@ function App() {
       <div className="sidebar-footer"><span className={firebaseAccess?.status==="approved"?"connection-dot connected":"connection-dot"}></span><span>{firebaseAccess?.status==="approved"?"Firebase conectado":"Firebase não conectado"}</span></div>
     </aside>
     <div className="app-main">
-    <header className="header"><div className="header-page-title"><div className="page-eyebrow">CONTROLE DIÁRIO</div><strong>{{tarefas:"Tarefas do expediente",calendario:"Calendário de trabalho",configuracao:"Configuração",sistema:"Sistema",administracao:"Administração"}[tab]}</strong></div><div className="upcoming-dates" aria-live="polite"><span>Próximas datas:</span> {upcomingDates.length ? upcomingDates.join(" - ") : "Nenhuma data especial próxima"}</div><div className="header-status">{busy?"Salvando alterações…":"Organização do expediente"}</div></header>
+    <header className="header"><div className="header-page-title"><div className="page-eyebrow">CONTROLE DIÁRIO</div><strong>{{tarefas:"Tarefas do expediente",calendario:"Calendário de trabalho",configuracao:"Configuração",sistema:"Sistema",administracao:"Administração"}[tab]}</strong></div><div className="upcoming-dates" aria-live="polite"><span>Próximas datas:</span> {upcomingDates.length ? upcomingDates.join(" - ") : "Nenhuma data especial próxima"}</div><div className="header-status">{busy?"Salvando alterações…":"Organização do expediente"}</div><label className="theme-control"><span>APARÊNCIA</span><select aria-label="Aparência do site" value={themePreference} disabled={themeSaving} onChange={e=>void changeThemePreference(e.target.value as "light"|"dark"|"system")}><option value="light">Claro</option><option value="dark">Escuro</option><option value="system">Automático</option></select></label></header>
     <main className="content">
       {tab==="configuracao" ? (data?.configuracao ? <ConfigurationPanel initial={data.configuracao} onSave={saveConfig} onClose={()=>setTab("tarefas")} busy={busy} embedded canManageCatalog={firebaseAccess?.user?.role==="admin" || firebaseAccess?.user?.isSupervisor===true}/> : <section className="card"><div className="profile">CARREGANDO CONFIGURAÇÃO…</div></section>)
       : tab==="administracao" ? <FirebaseAdminPanel />
