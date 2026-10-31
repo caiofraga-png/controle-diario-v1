@@ -2,7 +2,7 @@ import type { Configuracao, LoadedData } from "./dataRepository";
 import { defaultConfiguration, normalizeConfiguration } from "./dataRepository";
 import { FirebasePersonalDataService } from "./firebasePersonalDataService";
 import { FirebaseOperationalService } from "./firebaseOperationalService";
-import { loadSharedTaskCatalog, saveSharedTaskCatalog } from "./firebaseSharedTaskCatalogService";
+import { loadSharedTaskCatalog, saveSharedTaskCatalog, updateSharedTaskCatalog } from "./firebaseSharedTaskCatalogService";
 import { requireFirebase } from "./firebaseClient";
 import { collection, deleteField, doc, getDoc, getDocs, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 
@@ -94,7 +94,7 @@ export class FirebaseWorkspaceRepository {
 
     // Managers publish catalog changes for future expedientes. Every user,
     // including managers, keeps an independent layout.
-    if (catalogChanged) await saveSharedTaskCatalog(normalized);
+    if (catalogChanged) await updateSharedTaskCatalog(normalized);
     await this.personal.saveLayout(normalized.layout);
   }
 
