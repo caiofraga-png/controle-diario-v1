@@ -20,6 +20,8 @@ type ConfigurationKind = keyof Pick<Configuracao, "tarefas" | "perfis" | "email"
 
 const CONFIG_KINDS: ConfigurationKind[] = ["tarefas", "perfis", "email", "layout"];
 const CALENDAR_DOCUMENT = "dados";
+export type ThemePreference = "light" | "dark" | "system";
+const THEME_DOCUMENT = "appearance";
 
 /**
  * Firebase storage for private, per-user settings. Firestore Rules enforce
@@ -90,6 +92,26 @@ export class FirebasePersonalDataService {
       doc(db, "users", uid, "configuration", "layout"),
       { ...validated, updatedAt: serverTimestamp() },
     );
+  }
+
+  async loadThemePreference(): Promise<ThemePreference> {
+    const uid = this.currentUserId();
+    const { db } = requireFirebase();
+    const snapshot = await getDoc(doc(db, "users", uid, "preferences", THEME_DOCUMENT));
+    const theme = snapshot.exists() ? snapshot.data().theme : null;
+    return theme === "light" || theme === "dark" || theme === "system" ? theme : "system";
+  }
+
+  async saveThemePreference(theme: ThemePreference): Promise<void> {
+    if (theme !== "light" && theme !== "dark" && theme !== "system") {
+      throw new Error("PREFERÊNCIA DE APARÊNCIA INVÁLIDA.");
+    }
+    const uid = this.currentUserId();
+    const { db } = requireFirebase();
+    await setDoc(doc(db, "users", uid, "preferences", THEME_DOCUMENT), {
+      theme,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
   }
 
   async loadCalendar(): Promise<LoadedData["calendario"] | null> {
