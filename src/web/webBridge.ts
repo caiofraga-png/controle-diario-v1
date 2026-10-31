@@ -52,6 +52,8 @@ export function installWebBridge(){
     novoPerfil:(input:any)=>firebaseWorkflow.addProfile(input),
     novoEmail:(input:any)=>firebaseWorkflow.addEmail(input),
     salvarDataCalendario:(input:any)=>firebaseWorkflow.saveCalendarDate(input),
+    carregarPromocoes:()=>firebaseWorkflow.promotions(),
+    salvarPromocoes:(items:any[])=>firebaseWorkflow.savePromotions(items),
     mes:(input:any)=>firebaseWorkflow.month(input),
     versoes:(date:string)=>firebaseWorkflow.versions(date),
     ler:(input:any)=>firebaseWorkflow.readVersion(input),
