@@ -86,6 +86,11 @@ service cloud.firestore {
         allow read, write: if approvedUser() && request.auth.uid == uid;
       }
 
+      // Appearance preferences are private to each approved collaborator.
+      match /preferences/{document=**} {
+        allow read, write: if approvedUser() && request.auth.uid == uid;
+      }
+
       // Each collaborator can customize only their own task instructions.
       // Institutional templates remain protected in sharedTaskCatalog.
       match /taskCustomizations/{taskId} {
