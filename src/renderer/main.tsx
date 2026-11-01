@@ -116,7 +116,7 @@ function App() {
     try {
       const result = await window.controleDiario.firebase.signIn();
       setFirebaseAccess(result);
-      if (result.status === "approved") setMessage("LOGIN FIREBASE APROVADO.");
+      if (result.status === "approved") setMessage("LOGIN APROVADO.");
       else if (result.status === "pending") setMessage("SOLICITAÇÃO REGISTRADA OU JÁ PENDENTE. AGUARDE A APROVAÇÃO ADMINISTRATIVA.");
       else if (result.status === "not-allowed") setMessage("DOMÍNIO NÃO AUTORIZADO PARA ACESSO AO CONTROLE DIÁRIO.");
       else if (result.status === "blocked" || result.status === "rejected") setMessage("ACESSO BLOQUEADO OU RECUSADO. CONTATE O ADMINISTRADOR.");
@@ -273,7 +273,7 @@ function App() {
       </>}
       <button className={`sidebar-item ${tab==="sistema"?"active":""}`} onClick={()=>setTab("sistema")}><span className="sidebar-icon">◈</span><span>Sistema</span></button>
       <div className="sidebar-company-footer"><img src="./leste-logo.svg" alt="Leste Telecom" /></div>
-      <div className="sidebar-footer"><span className={firebaseAccess?.status==="approved"?"connection-dot connected":"connection-dot"}></span><span>{firebaseAccess?.status==="approved"?"Firebase conectado":"Não conectado"}</span></div>
+      <div className="sidebar-footer"><span className={firebaseAccess?.status==="approved"?"connection-dot connected":"connection-dot"}></span><span>{firebaseAccess?.status==="approved"?"Conectado":"Não conectado"}</span></div>
     </aside>
     <div className="app-main">
     <header className="header"><div className="header-page-title"><div className="page-eyebrow">CONTROLE DIÁRIO</div><strong>{{tarefas:"Tarefas do expediente",calendario:"Calendário de trabalho",promocoes:"Promoções ativas",configuracao:"Configuração",sistema:"Sistema",administracao:"Administração"}[tab]}</strong></div><div className="upcoming-dates" aria-live="polite"><span>Próximas datas:</span> {upcomingDates.length ? upcomingDates.join(" - ") : "Nenhuma data especial próxima"}</div><div className="header-status">{busy?"Salvando alterações…":"Organização do expediente"}</div></header>
