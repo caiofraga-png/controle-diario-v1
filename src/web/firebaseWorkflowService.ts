@@ -36,8 +36,28 @@ export class FirebaseWorkflowService {
     const loaded = await diagnoseFirebaseStep("carregar calendário e configuração do usuário", () => this.workspace.load());
     const history = await diagnoseFirebaseStep(`consultar histórico operacional de ${input.year}-${String(input.month).padStart(2, "0")}`, () => this.operational.listHistoryMonth(input.year, input.month));
     const prefix = `${input.year}-${String(input.month).padStart(2, "0")}-`;
+    const manual = loaded.calendario.datas.filter(item => item.data.startsWith(prefix));
+    const scale = loaded.configuracao.layout.escala12x36;
+    const generated: Array<{ data: string; folga: boolean; feriado: boolean; automatic: boolean }> = [];
+    if (scale?.referencias?.length) {
+      const daysInMonth = new Date(input.year, input.month, 0).getDate();
+      const references = scale.referencias.slice().sort((a, b) => a.primeiraFolga.localeCompare(b.primeiraFolga));
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = `${prefix}${String(day).padStart(2, "0")}`;
+        const reference = [...references].reverse().find(item => item.primeiraFolga <= date);
+        if (!reference) continue;
+        if (!scale.habilitada && date >= new Date().toISOString().slice(0, 10)) continue;
+        const start = new Date(`${reference.primeiraFolga}T12:00:00Z`).getTime();
+        const current = new Date(`${date}T12:00:00Z`).getTime();
+        const elapsedDays = Math.round((current - start) / 86400000);
+        if (elapsedDays >= 0 && elapsedDays % 2 === 0) generated.push({ data: date, folga: true, feriado: false, automatic: true });
+      }
+    }
+    const merged = new Map<string, any>();
+    for (const item of generated) merged.set(item.data, item);
+    for (const item of manual) merged.set(item.data, { ...item, automatic: false });
     return {
-      special: loaded.calendario.datas.filter(item => item.data.startsWith(prefix)),
+      special: [...merged.values()],
       completedDates: [...new Set(history.map(item => item.data))],
     };
   }
