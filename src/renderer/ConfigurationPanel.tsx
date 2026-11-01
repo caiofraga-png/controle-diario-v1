@@ -21,6 +21,9 @@ export default function ConfigurationPanel({ initial, onSave, onClose, busy, emb
   const [promotionItems,setPromotionItems]=useState<any[]>(()=>clone(promotions));
   const [promotionForm,setPromotionForm]=useState<any>({});
   useEffect(() => setPromotionItems(promotions), [promotions]);
+  // Keep the editor synchronized with the latest personal configuration returned by Firebase.
+  // This is important when a save completes and the parent reloads the persisted layout.
+  useEffect(() => { setDraft(clone(initial)); }, [initial]);
 
   const activeTasks = useMemo(()=>draft.tarefas.tarefas.filter((t:any)=>t.ativo),[draft]);
   const selectedProfile = draft.perfis.perfis.find((p:any)=>p.id===selectedId);
@@ -92,7 +95,7 @@ export default function ConfigurationPanel({ initial, onSave, onClose, busy, emb
     return <><div className="config-toolbar"><button onClick={newPromotion}>NOVA PROMOÇÃO</button></div><div className="promotion-admin-list">{promotionItems.map((p:any)=><article className="promotion-admin-card" key={p.id}><div className="promotion-admin-top"><strong>{p.name}</strong><span className={`promotion-status ${p.status}`}>{statusLabel(p.status)}</span></div><p>{p.benefit}</p><small>{p.endDate? `Validade: ${p.endDate.split("-").reverse().join("/")}`:"Sem data final — não expira automaticamente"}</small><div className="promotion-admin-actions"><button onClick={()=>editPromotion(p)}>EDITAR</button><button onClick={()=>void changePromotionStatus(p,p.status==="active"?"suspended":"active")}>{p.status==="active"?"SUSPENDER":"REATIVAR"}</button>{p.status!=="closed"&&<button onClick={()=>void changePromotionStatus(p,"closed")}>ENCERRAR</button>}</div></article>)}</div></>;
   }
 
-  async function saveLayout(){ try{await onSave(draft);setLocalMessage("LAYOUT SALVO.");}catch(e){setLocalMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR O LAYOUT.");} }
+  async function saveLayout(){ const snapshot=clone(draft); try{await onSave(snapshot);setDraft(clone(snapshot));setLocalMessage("LAYOUT SALVO.");}catch(e){setLocalMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR O LAYOUT.");} }
 
   function toggleTaskEmail(id:string){ setForm((f:any)=>({...f,emailsVinculados:(f.emailsVinculados??[]).includes(id)?(f.emailsVinculados??[]).filter((x:string)=>x!==id):[...(f.emailsVinculados??[]),id]})); }
   function toggleProfileTask(id:string){ setForm((f:any)=>({...f,tarefas:(f.tarefas??[]).includes(id)?(f.tarefas??[]).filter((x:string)=>x!==id):[...(f.tarefas??[]),id]})); }
