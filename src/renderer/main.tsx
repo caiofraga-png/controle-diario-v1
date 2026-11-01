@@ -26,7 +26,7 @@ function resolveEmailVariables(value:string){
   const pad=(n:number)=>String(n).padStart(2,"0");
   const hoje=`${year}${pad(month)}${pad(day)}`;
   const yesterday = new Date(Date.UTC(year, month - 1, day - 1));
-  const ontem=`${pad(yesterday.getUTCDate())}${pad(yesterday.getUTCMonth()+1)}${yesterday.getUTCFullYear()}`;
+  const ontem=`${pad(yesterday.getUTCDate())}/${pad(yesterday.getUTCMonth()+1)}/${yesterday.getUTCFullYear()}`;
   return value.replaceAll("\\n", "\n").replaceAll("{HOJE_YYYYMMDD}",hoje).replaceAll("{ONTEM_DDMMYYYY}",ontem);
 }
 class AppErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
