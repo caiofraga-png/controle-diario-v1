@@ -46,7 +46,9 @@ export class FirebaseWorkflowService {
         const date = `${prefix}${String(day).padStart(2, "0")}`;
         const reference = [...references].reverse().find(item => item.primeiraFolga <= date);
         if (!reference) continue;
-        const brazilToday = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+        const brazilParts = new Intl.DateTimeFormat("en-US", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+        const part = (type: string) => brazilParts.find(item => item.type === type)?.value ?? "00";
+        const brazilToday = `${part("year")}-${part("month")}-${part("day")}`;
         if (!scale.habilitada && date >= brazilToday) continue;
         const start = new Date(`${reference.primeiraFolga}T12:00:00Z`).getTime();
         const current = new Date(`${date}T12:00:00Z`).getTime();
