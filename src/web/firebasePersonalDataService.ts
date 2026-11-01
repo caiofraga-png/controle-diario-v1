@@ -88,10 +88,19 @@ export class FirebasePersonalDataService {
     const uid = this.currentUserId();
     const validated = validateLayout(layout);
     const { db } = requireFirebase();
-    await setDoc(
-      doc(db, "users", uid, "configuration", "layout"),
-      { ...validated, updatedAt: serverTimestamp() },
-    );
+    const layoutRef = doc(db, "users", uid, "configuration", "layout");
+    await setDoc(layoutRef, { ...validated, updatedAt: serverTimestamp() });
+
+    // Confirm the personal layout was actually persisted before reporting success.
+    const savedSnapshot = await getDoc(layoutRef);
+    const savedScale = savedSnapshot.exists() ? savedSnapshot.data().escala12x36 : null;
+    if (
+      !savedSnapshot.exists() ||
+      Boolean(savedScale?.habilitada) !== Boolean(validated.escala12x36?.habilitada) ||
+      JSON.stringify(savedScale?.referencias ?? []) !== JSON.stringify(validated.escala12x36?.referencias ?? [])
+    ) {
+      throw new Error("NÃO FOI POSSÍVEL CONFIRMAR A GRAVAÇÃO DA ESCALA 12X36. TENTE NOVAMENTE.");
+    }
   }
 
   async loadThemePreference(): Promise<ThemePreference> {
