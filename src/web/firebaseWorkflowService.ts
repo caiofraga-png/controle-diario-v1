@@ -46,7 +46,8 @@ export class FirebaseWorkflowService {
         const date = `${prefix}${String(day).padStart(2, "0")}`;
         const reference = [...references].reverse().find(item => item.primeiraFolga <= date);
         if (!reference) continue;
-        if (!scale.habilitada && date >= new Date().toISOString().slice(0, 10)) continue;
+        const brazilToday = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+        if (!scale.habilitada && date >= brazilToday) continue;
         const start = new Date(`${reference.primeiraFolga}T12:00:00Z`).getTime();
         const current = new Date(`${date}T12:00:00Z`).getTime();
         const elapsedDays = Math.round((current - start) / 86400000);
@@ -55,7 +56,12 @@ export class FirebaseWorkflowService {
     }
     const merged = new Map<string, any>();
     for (const item of generated) merged.set(item.data, item);
-    for (const item of manual) merged.set(item.data, { ...item, automatic: false });
+    for (const item of manual) {
+      const automatic = merged.get(item.data);
+      merged.set(item.data, automatic
+        ? { ...automatic, feriado: Boolean(item.feriado), folga: Boolean(automatic.folga || item.folga), automatic: true }
+        : { ...item, automatic: false });
+    }
     return {
       special: [...merged.values()],
       completedDates: [...new Set(history.map(item => item.data))],
