@@ -117,7 +117,7 @@ export class FirebasePersonalDataService {
     const referencias = value.referencias.filter((item: unknown) =>
       Boolean(item) && typeof item === "object" &&
       typeof (item as { primeiraFolga?: unknown }).primeiraFolga === "string" &&
-      /^\\d{4}-\\d{2}-\\d{2}$/.test((item as { primeiraFolga: string }).primeiraFolga)
+      /^\d{4}-\d{2}-\d{2}$/.test((item as { primeiraFolga: string }).primeiraFolga)
     );
     return { habilitada: value.habilitada, referencias };
   }
@@ -128,7 +128,7 @@ export class FirebasePersonalDataService {
     const normalized: ScalePreference = {
       habilitada: Boolean(scale.habilitada),
       referencias: (scale.referencias ?? [])
-        .filter(item => item && /^\\d{4}-\\d{2}-\\d{2}$/.test(item.primeiraFolga))
+        .filter(item => item && /^\d{4}-\d{2}-\d{2}$/.test(item.primeiraFolga))
         .sort((a, b) => a.primeiraFolga.localeCompare(b.primeiraFolga)),
     };
     const ref = doc(db, "users", uid, "preferences", SCALE_DOCUMENT);
