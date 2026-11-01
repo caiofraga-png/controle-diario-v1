@@ -20,6 +20,8 @@ export class FirebaseWorkspaceRepository {
   async load(): Promise<LoadedData> {
     const loadedConfiguration = await this.personal.loadConfiguration();
     const personalConfiguration = normalizeConfiguration(loadedConfiguration ?? defaultConfiguration());
+    const savedScalePreference = await this.personal.loadScalePreference();
+    if (savedScalePreference) personalConfiguration.layout.escala12x36 = savedScalePreference;
     if (!loadedConfiguration) {
       await this.personal.saveConfiguration(personalConfiguration);
     }
@@ -65,7 +67,9 @@ export class FirebaseWorkspaceRepository {
 
   async saveLayout(layout: Configuracao["layout"]): Promise<void> {
     // Layout is always private to the authenticated user; it must not pass through shared-catalog authorization.
-    await this.personal.saveLayout(layout);
+    const scale = layout.escala12x36 ?? { habilitada: false, referencias: [] };
+    await this.personal.saveScalePreference(scale);
+    await this.personal.saveLayout({ ...layout, escala12x36: scale });
   }
 
   async saveConfiguration(configuracao: Configuracao): Promise<void> {
