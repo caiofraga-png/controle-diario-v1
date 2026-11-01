@@ -10,6 +10,7 @@ export interface LayoutConfig {
   painelLateral: { largura: number };
   expansaoLateral?: { posicao: "esquerda" | "direita" };
   criacaoRoteiro?: { modo: "POPUP" | "EXPANSÃO" };
+  escala12x36?: { habilitada: boolean; referencias: Array<{ primeiraFolga: string }> };
 }
 
 export interface Configuracao {
@@ -524,6 +525,8 @@ export function normalizeConfiguration(config: Configuracao): Configuracao {
   const reconciled = JSON.parse(JSON.stringify(roteiro.config)) as Configuracao;
   const profileIds = new Set(reconciled.perfis.perfis.map(profile => profile.id));
   const taskIds = new Set(reconciled.tarefas.tarefas.map(task => task.id));
+  reconciled.layout.abas = Array.from(new Set([...(reconciled.layout.abas ?? []), "tarefas", "calendario", "promocoes", "configuracao"]));
+  reconciled.layout.escala12x36 = { habilitada: Boolean(reconciled.layout.escala12x36?.habilitada), referencias: (reconciled.layout.escala12x36?.referencias ?? []).filter((item: any) => item && typeof item.primeiraFolga === "string" && /^\d{4}-\d{2}-\d{2}$/.test(item.primeiraFolga)).sort((a: any, b: any) => a.primeiraFolga.localeCompare(b.primeiraFolga)) };
   reconciled.layout.ordemPerfis = [
     ...reconciled.layout.ordemPerfis.filter(id => profileIds.has(id)),
     ...reconciled.perfis.perfis
