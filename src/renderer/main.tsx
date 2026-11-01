@@ -232,7 +232,7 @@ function App() {
   async function savePromotions(items:any[]){ const saved=await window.controleDiario.firebase.workflow.salvarPromocoes(items); setPromotions(saved); }
   async function saveConfig(nextConfig:any){ setBusy(true); setMessage(""); try { const result=await window.controleDiario.firebase.workflow.salvarConfiguracao(nextConfig); setData(result); setMessage("CONFIGURAÇÃO SALVA."); } catch(e){ setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR A CONFIGURAÇÃO."); throw e; } finally { setBusy(false); } }
 
-  type CalendarSpecial = { data: string; folga?: boolean; feriado?: boolean };
+  type CalendarSpecial = { data: string; folga?: boolean; feriado?: boolean; automatic?: boolean };
   const specialByDate = useMemo<Map<string, CalendarSpecial>>(()=>new Map(((calendarData?.special??[]) as CalendarSpecial[]).map(x=>[x.data,x])),[calendarData]);
   const completed = new Set<string>(calendarData?.completedDates??[]);
   const upcomingDates = useMemo(() => ((calendarData?.special ?? []) as CalendarSpecial[])
