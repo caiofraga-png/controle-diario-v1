@@ -1647,3 +1647,5 @@ html[data-theme="midnight-violet"] .config-embedded .config-tabs button.active {
 @media(max-width:620px) { .promotion-admin-list { padding:12px; } .promotion-card { padding:16px; } }
 
 .calendar-scale-tools{display:flex;align-items:end;gap:14px;flex-wrap:wrap;margin:16px 0;padding:14px 16px;border:1px solid var(--border,#d8e3dc);border-radius:10px;background:var(--surface-soft,#f4f8f5)}.calendar-scale-tools p{flex-basis:100%;margin:0;font-size:13px}.calendar-scale-tools label{display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:700;letter-spacing:.04em}.calendar-scale-tools input{min-height:38px;padding:7px 10px;border:1px solid var(--border,#cbd8ce);border-radius:7px;background:var(--surface,#fff);color:var(--text,#183b2b)}.calendar-scale-tools button{min-height:38px;padding:8px 14px;border:0;border-radius:7px;background:var(--primary,#24734b);color:#fff;font-weight:700}
+
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .calendar-scale-tools button{background:var(--primary,#24734b);color:#fff;border:1px solid var(--primary,#24734b)}
