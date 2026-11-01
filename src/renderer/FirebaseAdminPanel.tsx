@@ -337,7 +337,7 @@ export default function FirebaseAdminPanel() {
       <h2>Gestão do Controle Diário</h2>
       <p>Supervisores gerenciam colaboradores, setores, contatos e perfis. Administradores mantêm também as configurações exclusivas do sistema. Expedientes são somente para consulta gerencial.</p>
       {!authorized
-        ? <button type="button" disabled={busy} onClick={() => void signInAdmin()}>Entrar com conta Google empresarial</button>
+        ? <button type="button" disabled={busy} onClick={() => void signInAdmin()}>Acessar administração</button>
         : <div><p>{isAdministrator ? "Administrador" : "Supervisor"} autenticado: {signedEmail}</p><button type="button" disabled={busy} onClick={() => void refresh()}>Atualizar dados</button> <button type="button" disabled={busy} onClick={() => { void signOutCorporateGoogle(); setAuthorized(false); setIsAdministrator(false); setSignedEmail(""); }}>Sair da administração</button></div>}
     </header>
     {message && <p role="status" className="system-message">{message}</p>}
