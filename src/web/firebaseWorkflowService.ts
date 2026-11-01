@@ -188,6 +188,11 @@ export class FirebaseWorkflowService {
     await this.workspace.saveCurrentState(null);
   }
 
+  async saveLayout(layout: Configuracao["layout"]): Promise<LoadedData> {
+    await diagnoseFirebaseStep("salvar layout pessoal do usuário", () => this.workspace.saveLayout(layout));
+    return diagnoseFirebaseStep("confirmar layout pessoal salvo", () => this.workspace.load());
+  }
+
   async saveConfiguration(config: Configuracao): Promise<LoadedData> {
     await this.workspace.saveConfiguration(config);
     return this.workspace.load();
