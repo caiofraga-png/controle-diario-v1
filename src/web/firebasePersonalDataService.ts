@@ -22,6 +22,8 @@ const CONFIG_KINDS: ConfigurationKind[] = ["tarefas", "perfis", "email", "layout
 const CALENDAR_DOCUMENT = "dados";
 export type ThemePreference = "corporate-light" | "corporate-dark" | "elegant-light" | "midnight-blue" | "midnight-violet" | "blue-light" | "system";
 const THEME_DOCUMENT = "appearance";
+const SCALE_DOCUMENT = "workSchedule";
+type ScalePreference = NonNullable<Configuracao["layout"]["escala12x36"]>;
 
 /**
  * Firebase storage for private, per-user settings. Firestore Rules enforce
@@ -100,6 +102,45 @@ export class FirebasePersonalDataService {
       JSON.stringify(savedScale?.referencias ?? []) !== JSON.stringify(validated.escala12x36?.referencias ?? [])
     ) {
       throw new Error("NÃO FOI POSSÍVEL CONFIRMAR A GRAVAÇÃO DA ESCALA 12X36. TENTE NOVAMENTE.");
+    }
+  }
+
+  async loadScalePreference(): Promise<ScalePreference | null> {
+    const uid = this.currentUserId();
+    const { db } = requireFirebase();
+    const snapshot = await getDoc(doc(db, "users", uid, "preferences", SCALE_DOCUMENT));
+    if (!snapshot.exists()) return null;
+    const value = snapshot.data().escala12x36;
+    if (!value || typeof value.habilitada !== "boolean" || !Array.isArray(value.referencias)) {
+      throw new Error("A PREFERÊNCIA PESSOAL DA ESCALA 12X36 ESTÁ INVÁLIDA.");
+    }
+    const referencias = value.referencias.filter((item: unknown) =>
+      Boolean(item) && typeof item === "object" &&
+      typeof (item as { primeiraFolga?: unknown }).primeiraFolga === "string" &&
+      /^\\d{4}-\\d{2}-\\d{2}$/.test((item as { primeiraFolga: string }).primeiraFolga)
+    );
+    return { habilitada: value.habilitada, referencias };
+  }
+
+  async saveScalePreference(scale: ScalePreference): Promise<void> {
+    const uid = this.currentUserId();
+    const { db } = requireFirebase();
+    const normalized: ScalePreference = {
+      habilitada: Boolean(scale.habilitada),
+      referencias: (scale.referencias ?? [])
+        .filter(item => item && /^\\d{4}-\\d{2}-\\d{2}$/.test(item.primeiraFolga))
+        .sort((a, b) => a.primeiraFolga.localeCompare(b.primeiraFolga)),
+    };
+    const ref = doc(db, "users", uid, "preferences", SCALE_DOCUMENT);
+    await setDoc(ref, { escala12x36: normalized, updatedAt: serverTimestamp() }, { merge: true });
+    const saved = await getDoc(ref);
+    const persisted = saved.exists() ? saved.data().escala12x36 : null;
+    if (
+      !persisted ||
+      persisted.habilitada !== normalized.habilitada ||
+      JSON.stringify(persisted.referencias ?? []) !== JSON.stringify(normalized.referencias)
+    ) {
+      throw new Error("NÃO FOI POSSÍVEL CONFIRMAR A PREFERÊNCIA PESSOAL DA ESCALA 12X36.");
     }
   }
 
