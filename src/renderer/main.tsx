@@ -187,7 +187,7 @@ function App() {
   const allowedProfileIds: string[] = firebaseAccess?.status === "approved" ? (firebaseAccess.user.allowedProfileIds ?? []) : [];
   const profiles = useMemo(() => { if (!config) return []; const frozen=state?.catalogSnapshot; const sourceProfiles=frozen?.perfis?.perfis ?? config.perfis.perfis; const order=frozen?.layout?.ordemPerfis ?? config.layout?.ordemPerfis ?? []; const allowed=new Set(allowedProfileIds); return order.map((id:string)=>sourceProfiles.find((p:any)=>p.id===id)).filter((p:any)=>p?.ativo && allowed.has(p.id)); }, [config,state,firebaseAccess]);
   const geralHasTasks = Boolean(config && profiles.some((profile: any) => { return (profile.tarefas ?? []).some((taskId: string) => config.tarefas.tarefas.some((task: any) => task.id === taskId && task.ativo)); }));
-  const allowedMenuTabs = new Set<string>(["sistema", ...(config?.layout?.abas ?? ["tarefas","calendario","promocoes","configuracao"])]);
+  const allowedMenuTabs = new Set<string>(["sistema", ...(config?.layout?.abas ?? ["tarefas","calendario","manutencoes","promocoes","meta","configuracao"])]);
   const showMenu = (id:string) => allowedMenuTabs.has(id) && (id !== "administracao" || firebaseAccess?.user?.role === "admin") && (id !== "promocoes" || firebaseAccess?.status === "approved");
   useEffect(() => { if (firebaseAccess?.status === "approved" && tab !== "sistema" && !showMenu(tab)) setTab("sistema"); }, [firebaseAccess?.status, firebaseAccess?.user?.role, config?.layout?.abas?.join("|"), tab]);
   const expansionMode = config?.layout?.criacaoRoteiro?.modo ?? "POPUP";
@@ -268,9 +268,9 @@ function App() {
         <div className="sidebar-section-label">EXPEDIENTE</div>
         {showMenu("tarefas")&&<button className={`sidebar-item ${tab==="tarefas"?"active":""}`} onClick={()=>setTab("tarefas")}><span className="sidebar-icon">✓</span><span>Tarefas</span></button>}
         {showMenu("calendario")&&<button className={`sidebar-item ${tab==="calendario"?"active":""}`} onClick={()=>setTab("calendario")}><span className="sidebar-icon">▦</span><span>Calendário</span></button>}
-        <button className="sidebar-item" disabled title="Funcionalidade planejada"><span className="sidebar-icon">⚒</span><span>Manutenções externas</span><span className="sidebar-soon">EM BREVE</span></button>
+        {showMenu("manutencoes")&&<button className="sidebar-item" disabled title="Funcionalidade planejada"><span className="sidebar-icon">⚒</span><span>Manutenções externas</span><span className="sidebar-soon">EM BREVE</span></button>}
         {showMenu("promocoes")&&<button className={`sidebar-item ${tab==="promocoes"?"active":""}`} onClick={()=>setTab("promocoes")}><span className="sidebar-icon">％</span><span>Promoções ativas</span></button>}
-        <button className="sidebar-item" disabled title="Funcionalidade planejada"><span className="sidebar-icon">◎</span><span>Meta</span><span className="sidebar-soon">EM BREVE</span></button>
+        {showMenu("meta")&&<button className="sidebar-item" disabled title="Funcionalidade planejada"><span className="sidebar-icon">◎</span><span>Meta</span><span className="sidebar-soon">EM BREVE</span></button>}
         <div className="sidebar-section-label">GERENCIAMENTO</div>
         {showMenu("configuracao")&&<button className={`sidebar-item ${tab==="configuracao"?"active":""}`} onClick={()=>setTab("configuracao")}><span className="sidebar-icon">⚙</span><span>Configuração</span></button>}
         {showMenu("administracao")&&<button className={`sidebar-item ${tab==="administracao"?"active":""}`} onClick={()=>setTab("administracao")}><span className="sidebar-icon">♙</span><span>Administração</span></button>}
