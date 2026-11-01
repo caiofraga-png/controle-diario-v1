@@ -46,6 +46,7 @@ export function installWebBridge(){
     concluir:()=>firebaseWorkflow.complete(),
     abandonar:()=>firebaseWorkflow.abandon(),
     salvarConfiguracao:(config:any)=>firebaseWorkflow.saveConfiguration(config),
+    salvarLayout:(layout:any)=>firebaseWorkflow.saveLayout(layout),
     salvarTarefa:(input:any)=>firebaseWorkflow.saveTask(input),
     redefinirConteudoTarefa:(input:any)=>firebaseWorkflow.resetTaskContent(input),
     novaTarefa:(input:any)=>firebaseWorkflow.addTask(input),
