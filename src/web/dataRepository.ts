@@ -11,6 +11,7 @@ export interface LayoutConfig {
   expansaoLateral?: { posicao: "esquerda" | "direita" };
   criacaoRoteiro?: { modo: "POPUP" | "EXPANSÃO" };
   escala12x36?: { habilitada: boolean; referencias: Array<{ primeiraFolga: string }> };
+  atalhosCabecalho?: { email: boolean; chat: boolean; keep: boolean; wiki: boolean; calendario: boolean };
 }
 
 export interface Configuracao {
@@ -594,7 +595,8 @@ export function defaultConfiguration(): Configuracao {
       abas: ["tarefas","calendario"],
       painelLateral: { largura: 420 },
       expansaoLateral: { posicao: "direita" },
-      criacaoRoteiro: { modo: "POPUP" }
+      criacaoRoteiro: { modo: "POPUP" },
+      atalhosCabecalho: { email: true, chat: true, keep: true, wiki: true, calendario: true }
     }
   };
 }
