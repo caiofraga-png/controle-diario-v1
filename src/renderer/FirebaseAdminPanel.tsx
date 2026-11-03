@@ -20,7 +20,7 @@ import type { OrganizationalContact, OrganizationalSector, OrganizationalUser } 
 import { signInWithCorporateGoogle, signOutCorporateGoogle } from "../web/firebaseAuthService";
 import { FirebasePersonalDataService } from "../web/firebasePersonalDataService";
 import { loadSharedTaskCatalog, saveSharedTaskCatalog } from "../web/firebaseSharedTaskCatalogService";
-import { exportAdministrativeBackup, inspectAdministrativeBackup, type BackupInspection } from "../web/firebaseAdminBackupService";
+import { exportAdministrativeBackup, inspectAdministrativeBackup, restoreAdministrativeBackup, type BackupInspection } from "../web/firebaseAdminBackupService";
 
 type RequestItem = { id: string; uid?: string; email?: string; status?: string };
 
@@ -375,6 +375,31 @@ export default function FirebaseAdminPanel() {
     }
   }
 
+  async function restoreBackup() {
+    if (!isAdministrator || !restorePreview) {
+      setMessage("Valide um backup antes de iniciar a restauração.");
+      return;
+    }
+    const confirmation = window.prompt("A RESTAURAÇÃO CRIARÁ SOMENTE DOCUMENTOS AUSENTES. REGISTROS EXISTENTES NÃO SERÃO ALTERADOS. Para confirmar, digite RESTAURAR.");
+    if (confirmation !== "RESTAURAR") {
+      setMessage("Restauração cancelada. Nenhum dado foi alterado.");
+      return;
+    }
+    setBusy(true);
+    setMessage("");
+    try {
+      const result = await restoreAdministrativeBackup(restorePreview);
+      setMessage("Restauração concluída. " + result.restoredCount + " documentos restaurados; " + result.skippedCount + " já existiam e foram preservados. A operação foi registrada na auditoria administrativa.");
+      setRestorePreview(null);
+      setRestoreFile(null);
+      setRestorePassword("");
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Falha durante a restauração. Consulte a auditoria administrativa.");
+    } finally {
+      setBusy(false);
+    }
+  }
   async function saveUser(user: OrganizationalUser) {
     setBusy(true);
     try {
@@ -544,7 +569,7 @@ export default function FirebaseAdminPanel() {
           <strong>Conteúdo por coleção</strong>
           <ul>{restorePreview.collections.map((item) => <li key={item.name}>{item.name}: {item.count}</li>)}</ul>
           {restorePreview.conflicts.length > 0 && <><strong>Conflitos encontrados (até 50 exibidos)</strong><ul>{restorePreview.conflicts.map((path) => <li key={path}><code>{path}</code></li>)}</ul></>}
-          <p><strong>Restauração ainda bloqueada nesta etapa.</strong> Estou concluindo a validação das permissões de gravação para preservar o histórico imutável e impedir sobrescritas. A prévia não autoriza nem executa gravações.</p>
+          <p>Ao confirmar, somente documentos ausentes serão criados. Os existentes serão ignorados, sem sobrescrita ou exclusão. O histórico continuará imutável.</p><button type="button" disabled={busy || restorePreview.missingCount === 0} onClick={() => void restoreBackup()}>Restaurar documentos ausentes</button>
         </div>}
       </div>
     </section>}
