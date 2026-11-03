@@ -155,6 +155,24 @@ export class FirebaseOperationalService {
 
     return runTransaction(db, async transaction => {
       const currentSnapshot = await transaction.get(currentRef);
+      const profileRef = doc(db, "users", uid);
+      const profileSnapshot = await transaction.get(profileRef);
+      if (!profileSnapshot.exists() || profileSnapshot.data().status !== "approved") {
+        throw new Error("O PERFIL ORGANIZACIONAL APROVADO NÃO FOI ENCONTRADO.");
+      }
+      const profile = profileSnapshot.data();
+      const sectorId = String(profile.sectorId ?? "");
+      const contactId = String(profile.contactId ?? "");
+      if (!sectorId || !contactId) {
+        throw new Error("O COLABORADOR PRECISA TER SETOR E CONTATO DEFINIDOS ANTES DE CONCLUIR O EXPEDIENTE.");
+      }
+      const sectorRef = doc(db, "organizationSectors", sectorId);
+      const contactRef = doc(db, "organizationContacts", contactId);
+      const indexRef = doc(db, "Expediente", `${uid}_${state.data}`);
+      const sectorSnapshot = await transaction.get(sectorRef);
+      const contactSnapshot = await transaction.get(contactRef);
+      const indexSnapshot = await transaction.get(indexRef);
+
       const currentData = currentSnapshot.exists() ? currentSnapshot.data() : null;
       const persistedState = currentData ? assertCurrentState(currentData) : null;
       if (!persistedState || persistedState.id !== state.id || persistedState.criadoEm !== state.criadoEm) {
@@ -164,6 +182,17 @@ export class FirebaseOperationalService {
       if (persistedProgress.total === 0 || persistedProgress.done !== persistedProgress.total) {
         throw new Error("O EXPEDIENTE AINDA NÃO ESTÁ 100% CONCLUÍDO.");
       }
+      if (!sectorSnapshot.exists() || sectorSnapshot.data().active !== true ||
+          !contactSnapshot.exists() || contactSnapshot.data().active !== true ||
+          contactSnapshot.data().sectorId !== sectorId) {
+        throw new Error("O SETOR OU CONTATO DO COLABORADOR ESTÁ INATIVO OU INCONSISTENTE. SOLICITE A REVISÃO CADASTRAL.");
+      }
+      const sectorName = String(sectorSnapshot.data().name ?? "");
+      const contactName = String(contactSnapshot.data().name ?? "");
+      if (!sectorName || !contactName) {
+        throw new Error("O SETOR E O CONTATO PRECISAM TER NOMES CADASTRADOS.");
+      }
+
       const recordRef = doc(history, recordId);
       const record: HistoryEntry = {
         schemaVersion: 1,
@@ -181,7 +210,37 @@ export class FirebaseOperationalService {
         origemVersao: null,
         ownerUid: uid,
       };
+      const assignment = {
+        uid,
+        login: String(profile.login ?? ""),
+        agent: String(profile.agent ?? ""),
+        sectorId,
+        sectorName,
+        contactId,
+        contactName,
+      };
+      const indexRecord = {
+        ownerUid: uid,
+        date: persistedState.data,
+        status: "concluido",
+        sectorId,
+        sectorName,
+        contactId,
+        contactName,
+        login: assignment.login,
+        agent: assignment.agent,
+        assignment,
+        completedAt: concluidoEm,
+      };
+
       transaction.set(recordRef, record as unknown as DocumentData);
+      if (indexSnapshot.exists()) {
+        // A daily index is unique per collaborator/date. A later version may
+        // refresh only the status/timestamp fields allowed by Firestore Rules.
+        transaction.update(indexRef, { status: "concluido", completedAt: concluidoEm });
+      } else {
+        transaction.set(indexRef, indexRecord);
+      }
       transaction.set(currentRef, {
         schemaVersion: 1,
         ownerUid: uid,
