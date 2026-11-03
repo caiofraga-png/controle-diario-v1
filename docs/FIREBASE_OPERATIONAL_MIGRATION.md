@@ -102,3 +102,10 @@ As regras e o adaptador operacional do Firestore estão implementados e cobertos
 ## Limites da migração
 
 A aplicação Firebase começa sem importar configurações, expedientes ou históricos do Google Drive. Os dados antigos não são lidos nem apagados por esta aplicação; o novo sistema mantém seus próprios dados no Firestore.
+
+
+## Backup e recuperação
+
+O plano operacional de proteção de dados está documentado em `docs/FIREBASE_BACKUP_RESTORE.md`. Ele define backup gerenciado diário, avaliação de PITR, exportação independente para Cloud Storage, controle de acesso e ensaio de restauração isolado.
+
+A configuração real dessas camadas permanece pendente de confirmação no Google Cloud Console. A compilação e os testes automatizados do repositório não comprovam que backups estejam habilitados. Não considerar a migração pronta para produção até que a agenda de backup seja confirmada e uma restauração de teste seja concluída e documentada.
