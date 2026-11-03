@@ -20,6 +20,7 @@ import type { OrganizationalContact, OrganizationalSector, OrganizationalUser } 
 import { signInWithCorporateGoogle, signOutCorporateGoogle } from "../web/firebaseAuthService";
 import { FirebasePersonalDataService } from "../web/firebasePersonalDataService";
 import { loadSharedTaskCatalog, saveSharedTaskCatalog } from "../web/firebaseSharedTaskCatalogService";
+import { exportAdministrativeBackup } from "../web/firebaseAdminBackupService";
 
 type RequestItem = { id: string; uid?: string; email?: string; status?: string };
 
@@ -46,6 +47,8 @@ export default function FirebaseAdminPanel() {
   const [catalogProfiles, setCatalogProfiles] = useState<Array<{ id: string; nome: string; ativo: boolean }>>([]);
   const [catalogReady, setCatalogReady] = useState(false);
   const [catalogPreflight, setCatalogPreflight] = useState<string>("");
+  const [backupPassword, setBackupPassword] = useState("");
+  const [backupPasswordConfirm, setBackupPasswordConfirm] = useState("");
 
   async function refresh() {
     setBusy(true);
@@ -319,6 +322,33 @@ export default function FirebaseAdminPanel() {
     }
   }
 
+  async function exportBackup() {
+    if (!isAdministrator) {
+      setMessage("A exportação integral é exclusiva de administradores.");
+      return;
+    }
+    if (backupPassword.length < 12) {
+      setMessage("Defina uma senha com pelo menos 12 caracteres.");
+      return;
+    }
+    if (backupPassword !== backupPasswordConfirm) {
+      setMessage("As senhas informadas não coincidem.");
+      return;
+    }
+    setBusy(true);
+    setMessage("");
+    try {
+      const result = await exportAdministrativeBackup(backupPassword);
+      setMessage(`Backup criptografado gerado: ${result.fileName}. ${result.documentCount} documentos de ${result.userCount} usuários incluídos.`);
+      setBackupPassword("");
+      setBackupPasswordConfirm("");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Não foi possível gerar o backup administrativo.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function saveUser(user: OrganizationalUser) {
     setBusy(true);
     try {
@@ -456,6 +486,19 @@ export default function FirebaseAdminPanel() {
       <textarea rows={4} value={domains} onChange={(event) => setDomains(event.target.value)} />
       <button type="button" disabled={busy} onClick={() => void saveDomains()}>Salvar domínios</button></>}
     </section>
+
+    {isAdministrator && <section>
+      <h3>Backup administrativo</h3>
+      <p>Gera um arquivo JSON criptografado com os cadastros institucionais e os dados privados de todos os colaboradores, incluindo expedientes em andamento, históricos, configurações, preferências e personalizações. A exportação é somente leitura e não altera o Firestore.</p>
+      <label style={{ display: "grid", gap: 6, maxWidth: 420 }}>Senha de criptografia (mínimo de 12 caracteres)
+        <input type="password" autoComplete="new-password" value={backupPassword} onChange={(event) => setBackupPassword(event.target.value)} />
+      </label>
+      <label style={{ display: "grid", gap: 6, maxWidth: 420 }}>Confirme a senha
+        <input type="password" autoComplete="new-password" value={backupPasswordConfirm} onChange={(event) => setBackupPasswordConfirm(event.target.value)} />
+      </label>
+      <p><small>A senha não é enviada ao Firebase nem incluída no arquivo. Guarde-a em local seguro: sem ela, o conteúdo não poderá ser descriptografado.</small></p>
+      <button type="button" disabled={busy || !backupPassword || !backupPasswordConfirm} onClick={() => void exportBackup()}>Gerar backup administrativo criptografado</button>
+    </section>}
     </>}
   </main>;
 }
