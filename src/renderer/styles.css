@@ -1689,3 +1689,27 @@ html[data-theme="midnight-violet"] .config-embedded .config-tabs button.active {
   outline:2px solid #69b98a;
   outline-offset:3px;
 }
+
+
+/* Central de alertas no canto superior direito do cabeçalho */
+.app-main > .header { position:sticky; }
+.header-notifications { position:absolute; top:50%; right:22px; transform:translateY(-50%); z-index:25; }
+.notification-bell {
+  width:40px; height:40px; display:grid; place-items:center; border-radius:50%;
+  border:1px solid #1b603a; background:#237347; color:#fff; cursor:pointer;
+  font-size:21px; line-height:1; box-shadow:0 2px 6px rgba(20,60,40,.18);
+}
+.notification-bell:hover { background:#185d39; }
+.notification-bell:focus-visible { outline:2px solid #69b98a; outline-offset:3px; }
+.notification-popover {
+  position:absolute; top:50px; right:0; width:min(320px,calc(100vw - 32px));
+  padding:17px 18px; border:1px solid var(--verde-borda); border-radius:12px;
+  background:var(--surface,#fff); color:var(--texto); box-shadow:0 12px 32px rgba(10,35,24,.2);
+}
+.notification-popover > strong { display:block; color:var(--verde-escuro); font-size:12px; letter-spacing:.08em; }
+.notification-popover p { margin:10px 0; font-size:13px; line-height:1.45; }
+.notification-popover ul { margin:8px 0 12px; padding-left:19px; font-size:12px; line-height:1.7; }
+.notification-popover > span { color:var(--texto-suave); font-size:10px; font-weight:800; letter-spacing:.07em; }
+@media(max-width:850px) { .header-notifications { right:14px; } .app-main > .header { padding-right:64px; } }
+@media(max-width:620px) { .header-notifications { top:12px; right:12px; transform:none; } .notification-popover { top:46px; } }
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .notification-popover { background:var(--surface,#1a2a3a); border-color:var(--verde-borda); color:var(--texto); }
