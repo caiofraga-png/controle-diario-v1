@@ -268,10 +268,9 @@ function App() {
       <div className="sidebar-company-top"><img src="./leste-logo.svg" alt="Leste Telecom" /></div>
       {firebaseAccess?.status === "approved" && <>
         <div className="sidebar-section-label">EXPEDIENTE</div>
-        {showMenu("tarefas")&&<button className={`sidebar-item ${tab==="tarefas"?"active":""}`} onClick={()=>setTab("tarefas")}><span className="sidebar-icon">✓</span><span>Tarefas</span></button>}
-        
-        {showMenu("inadimplencia")&&<button className="sidebar-item" disabled title="Funcionalidade planejada"><span className="sidebar-icon">⚠</span><span>Alertas de inadimplência</span><span className="sidebar-soon">EM BREVE</span></button>}
         {showMenu("supervisao")&&<button className={`sidebar-item ${tab==="supervisao"?"active":""}`} onClick={()=>setTab("supervisao")}><span className="sidebar-icon">◉</span><span>Visão Geral</span></button>}
+        {showMenu("tarefas")&&<button className={`sidebar-item ${tab==="tarefas"?"active":""}`} onClick={()=>setTab("tarefas")}><span className="sidebar-icon">✓</span><span>Tarefas</span></button>}
+        {showMenu("inadimplencia")&&<button className="sidebar-item" disabled title="Funcionalidade planejada"><span className="sidebar-icon">⚠</span><span>Alertas de inadimplência</span><span className="sidebar-soon">EM BREVE</span></button>}
         {showMenu("manutencoes")&&<button className="sidebar-item" disabled title="Funcionalidade planejada"><span className="sidebar-icon">⚒</span><span>Manutenções externas</span><span className="sidebar-soon">EM BREVE</span></button>}
         {showMenu("promocoes")&&<button className={`sidebar-item ${tab==="promocoes"?"active":""}`} onClick={()=>setTab("promocoes")}><span className="sidebar-icon">％</span><span>Promoções ativas</span></button>}
         {showMenu("meta")&&<button className="sidebar-item" disabled title="Funcionalidade planejada"><span className="sidebar-icon">◎</span><span>Meta</span><span className="sidebar-soon">EM BREVE</span></button>}
