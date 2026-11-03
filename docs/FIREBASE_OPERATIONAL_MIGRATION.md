@@ -2,7 +2,7 @@
 
 **Situação:** o fluxo principal da aplicação web nesta branch foi direcionado ao Firebase. A branch permanece em homologação e não deve ser mesclada ou publicada antes dos testes ponta a ponta.
 
-O fluxo principal de expediente, configuração, calendário e histórico foi direcionado ao Firebase nesta branch. Os serviços antigos de persistência por Google Drive não devem ser usados por esse fluxo. Esta branch continua em homologação; não mesclar nem publicar antes da validação ponta a ponta.
+O fluxo principal de expediente, configuração, preferências, links e histórico foi direcionado ao Firebase nesta branch. O calendário interno foi retirado da interface; não reintroduzir sua navegação ou marcações manuais sem nova solicitação. Os serviços antigos de persistência por Google Drive não devem ser usados por esse fluxo. Esta branch continua em homologação; não mesclar nem publicar antes da validação ponta a ponta.
 
 ## Comportamentos atuais que precisam ser preservados
 
@@ -23,7 +23,7 @@ Todos os registros privados ficam vinculados ao UID do Firebase autenticado. O U
 | Conceito atual no Google Drive | Local proposto no Firestore | Observações |
 |---|---|---|
 | Arquivos de configuração de tarefas, perfis, e-mails e layout | `users/{uid}/configuration/{documentId}` | Preservar a versão do esquema e as validações atuais. O primeiro acesso não copia automaticamente a configuração de outra pessoa. |
-| Datas especiais do calendário | `users/{uid}/calendar/{documentId}` | Preservar o significado das datas especiais e usar documentos de tamanho limitado, em vez de um único documento que cresça continuamente. |
+| Preferências de calendário legadas | `users/{uid}/calendar/{documentId}` | A coleção pode permanecer para compatibilidade/histórico técnico, mas a interface atual não oferece calendário interno nem grava novas folgas/feriados. Não apagar dados existentes automaticamente. |
 | Expediente atual | `users/{uid}/operational/currentState` | Armazenar os dados de `EstadoAtual`, além do UID proprietário e das datas de controle. |
 | Cópia anterior/de recuperação | `users/{uid}/operational/previousState` | Validar a recuperação durante os testes ponta a ponta antes da liberação. |
 | Versões permanentes do histórico | `users/{uid}/operational/history_{date}_R{version}` | Cada versão completa de `RegistroHistorico` será um documento próprio. O ID deve ser determinístico para que novas tentativas detectem uma gravação já realizada. |
@@ -82,8 +82,8 @@ As regras e o adaptador operacional do Firestore estão implementados e cobertos
 ## Autorização e restrições das consultas
 
 - Cada colaborador só acessa sua própria configuração, calendário, estado atual e histórico.
-- O acesso de leitura do administrador serve à supervisão gerencial; não deve permitir gravar ou excluir registros operacionais de outras pessoas.
-- Um supervisor só pode consultar os registros de índice permitidos pela política ativa do Firestore. A primeira versão usa o setor atual como regra inicial, mas filtros futuros precisam ser respaldados por uma política aplicada no servidor, não apenas pela interface.
+- O acesso de leitura de administradores e supervisores abrange o índice `Expediente` de todos os setores; ambos permanecem sem permissão para editar ou excluir registros de terceiros.
+- Colaboradores comuns só podem consultar os próprios registros. Os filtros visuais de setor/contato organizam a consulta, mas não substituem as regras de autorização aplicadas pelo Firestore.
 - Toda consulta precisa ser compatível com as regras de segurança do Firestore. Um filtro `where` executado no cliente não é, por si só, uma barreira de autorização.
 - Os campos `sectorId`, `contactId`, `login`, `agent`, `ownerUid` e os campos de situação/data do índice devem corresponder à fotografia registrada e ao registro oficial.
 - Não permita gravações arbitrárias nos campos de identidade, função, sinalizador de supervisor ou aprovação da conta.
@@ -91,7 +91,7 @@ As regras e o adaptador operacional do Firestore estão implementados e cobertos
 ## Validações obrigatórias antes de trocar o armazenamento em uso
 
 1. Verificar a compilação e os testes de conversão de esquema e validações existentes.
-2. Testar no Emulador do Firestore: leitura/gravação dos próprios dados, bloqueio de acesso cruzado entre usuários, leitura somente pelo administrador, leitura pelo supervisor do mesmo setor, bloqueio de leitura de outro setor e bloqueio de edição/exclusão de registros alheios.
+2. Testar no Emulador do Firestore: leitura/gravação dos próprios dados, bloqueio de acesso cruzado entre usuários, leitura global por supervisor e administrador, bloqueio de leitura de dados privados de outros usuários e bloqueio de edição/exclusão de registros alheios.
 3. Testar a conclusão do expediente em caso de sucesso, interrupção de rede, nova tentativa após sucesso e ausência de duplicação do histórico/cartão.
 4. Testar erratas: alterações válidas de marcações/observação geram nova versão; mudanças na estrutura das tarefas, roteiro, links, conteúdo dos e-mails ou identidade dos e-mails são rejeitadas.
 5. Confirmar que datas especiais e indicadores de dias concluídos no calendário mantêm o comportamento atual.
