@@ -352,8 +352,8 @@ export async function restoreAdministrativeBackup(
     paths.add(item.path);
   }
 
-  const auditRef = doc(collection(db, "adminAudit"));
   const writeAudit = async (action: string, details: Record<string, unknown>) => {
+    const auditRef = doc(collection(db, "adminAudit"));
     await runTransaction(db, async (transaction) => {
       transaction.set(auditRef, {
         actorUid: actor.uid,
