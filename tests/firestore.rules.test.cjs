@@ -315,6 +315,12 @@ test("supervisor não pode alterar nem criar administrador", async () => {
   }));
 });
 
+test("supervisor não pode conceder nem retirar privilégio de supervisão", async () => {
+  const db = dbAs("supervisor");
+  await assertFails(updateDoc(doc(db, "users/alice"), { isSupervisor: true }));
+  await assertFails(updateDoc(doc(db, "users/supervisor"), { isSupervisor: false }));
+});
+
 test("supervisor pode aprovar solicitação, mas só como colaborador", async () => {
   const db = dbAs("supervisor");
   await assertSucceeds(setDoc(doc(db, "users/pending"), {
