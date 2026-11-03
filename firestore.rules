@@ -74,7 +74,10 @@ service cloud.firestore {
       allow update: if request.resource.data.uid == resource.data.uid
         && request.resource.data.role == resource.data.role
         && (activeAdmin()
-          || (activeSupervisor() && request.auth.uid != uid && resource.data.role == "employee"));
+          || (activeSupervisor()
+            && request.auth.uid != uid
+            && resource.data.role == "employee"
+            && request.resource.data.isSupervisor == resource.data.isSupervisor));
       allow delete: if false;
 
       // Private per-user configuration and calendar remain isolated.
