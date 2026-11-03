@@ -4,6 +4,7 @@ import {
   getDocs,
   limit,
   orderBy,
+  runTransaction,
   query,
   serverTimestamp,
   setDoc,
@@ -66,26 +67,54 @@ export async function approveAccessRequest(input: {
   sectorId: string;
   contactId: string;
 }) {
-  const { db } = requireFirebase();
+  const { auth, db } = requireFirebase();
+  const actor = auth.currentUser;
+  if (!actor) throw new Error("É necessário autenticar-se para administrar o sistema.");
+  const requestRef = doc(db, "accessRequests", input.uid);
+  const userRef = doc(db, "users", input.uid);
+  const auditRef = doc(collection(db, "adminAudit"));
   const now = new Date().toISOString();
-  await setDoc(doc(db, "users", input.uid), {
-    uid: input.uid,
-    email: input.email.trim().toLowerCase(),
-    login: input.login.trim(),
-    agent: input.agent.trim(),
-    sectorId: input.sectorId,
-    contactId: input.contactId,
-    isSupervisor: false,
-    status: "approved",
-    role: "employee",
-    createdAt: now,
-    updatedAt: now,
+  const email = input.email.trim().toLowerCase();
+
+  await runTransaction(db, async (transaction) => {
+    const requestSnapshot = await transaction.get(requestRef);
+    const userSnapshot = await transaction.get(userRef);
+    if (!requestSnapshot.exists() || requestSnapshot.data().status !== "pending") {
+      throw new Error("A SOLICITAÇÃO NÃO EXISTE OU JÁ FOI DECIDIDA.");
+    }
+    if (String(requestSnapshot.data().email ?? "").trim().toLowerCase() !== email) {
+      throw new Error("O E-MAIL DA SOLICITAÇÃO NÃO CONFERE COM O CADASTRO INFORMADO.");
+    }
+    if (userSnapshot.exists()) {
+      throw new Error("JÁ EXISTE UM PERFIL ORGANIZACIONAL PARA ESTE USUÁRIO. REVISE O CADASTRO ANTES DE APROVAR.");
+    }
+
+    transaction.set(userRef, {
+      uid: input.uid,
+      email,
+      login: input.login.trim(),
+      agent: input.agent.trim(),
+      sectorId: input.sectorId,
+      contactId: input.contactId,
+      isSupervisor: false,
+      status: "approved",
+      role: "employee",
+      createdAt: now,
+      updatedAt: now,
+    });
+    transaction.update(requestRef, {
+      status: "approved",
+      decidedAt: serverTimestamp(),
+    });
+    transaction.set(auditRef, {
+      actorUid: actor.uid,
+      actorEmail: actor.email ?? "",
+      action: "ACCESS_APPROVED",
+      targetUid: input.uid,
+      details: { email },
+      createdAt: serverTimestamp(),
+    });
   });
-  await updateDoc(doc(db, "accessRequests", input.uid), {
-    status: "approved",
-    decidedAt: serverTimestamp(),
-  });
-  await audit("ACCESS_APPROVED", input.uid, { email: input.email });
 }
 
 export async function rejectAccessRequest(uid: string, reason = "") {
