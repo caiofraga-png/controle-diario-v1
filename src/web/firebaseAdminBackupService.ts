@@ -205,7 +205,7 @@ async function decryptEnvelope(envelope: EncryptedBackupEnvelope, password: stri
   );
   let plaintext: ArrayBuffer;
   try {
-    plaintext = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
+    plaintext = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv.buffer as ArrayBuffer }, key, ciphertext.buffer as ArrayBuffer);
   } catch {
     throw new Error("Não foi possível abrir o backup. Verifique a senha e se o arquivo está íntegro.");
   }
