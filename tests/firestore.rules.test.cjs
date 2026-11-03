@@ -165,6 +165,48 @@ test("supervisor não pode ler subcoleções privadas de outros colaboradores pa
   }
 });
 
+test("administrador pode restaurar documentos privados ausentes, mas não sobrescrever nem excluir", async () => {
+  const admin = dbAs("admin");
+  const layout = doc(admin, "users/alice/configuration/layout");
+  await assertSucceeds(setDoc(layout, { schemaVersion: 1, blocos: [], restaurado: true }));
+  await assertFails(updateDoc(layout, { restaurado: false }));
+  await assertFails(deleteDoc(layout));
+
+  const currentState = doc(admin, "users/alice/operational/currentState");
+  await assertSucceeds(setDoc(currentState, {
+    schemaVersion: 1, ownerUid: "alice", estado: null, updatedAt: "2026-10-28T12:00:00Z",
+  }));
+  await assertFails(updateDoc(currentState, { estado: { id: "alterado" } }));
+  await assertFails(deleteDoc(currentState));
+
+  const history = doc(admin, "users/alice/operational/history/entries/backup-R001");
+  await assertSucceeds(setDoc(history, {
+    schemaVersion: 1, ownerUid: "alice", id: "backup-R001", versao: 1,
+    data: "2026-10-28", perfil: { id: "P001", nome: "MÍDIAS" }, tarefas: [],
+    emailsGlobais: [], observacao: "Registro restaurado", status: "CONCLUIDO",
+    criadoEm: "2026-10-28T08:00:00Z", concluidoEm: "2026-10-28T12:00:00Z",
+    ultimaAlteracao: "2026-10-28T12:00:00Z", origemVersao: null,
+  }));
+  await assertFails(updateDoc(history, { observacao: "não pode alterar" }));
+  await assertFails(deleteDoc(history));
+});
+
+test("supervisor não pode restaurar dados privados de outro colaborador", async () => {
+  const supervisor = dbAs("supervisor");
+  await assertFails(setDoc(doc(supervisor, "users/alice/configuration/layout"), { schemaVersion: 1 }));
+  await assertFails(setDoc(doc(supervisor, "users/alice/operational/currentState"), {
+    schemaVersion: 1, ownerUid: "alice", estado: null,
+  }));
+});
+
+test("administrador pode recriar índice histórico de expediente sem poder editá-lo", async () => {
+  const admin = dbAs("admin");
+  const ref = doc(admin, "Expediente/bob_backup_2026-10-27");
+  await assertSucceeds(setDoc(ref, expediente("bob", { date: "2026-10-27" })));
+  await assertFails(updateDoc(ref, { status: "alterado" }));
+  await assertFails(deleteDoc(ref));
+});
+
 test("colaborador lê e grava somente suas personalizações de tarefas", async () => {
   const alice = dbAs("alice");
   const own = doc(alice, "users/alice/taskCustomizations/T001");
