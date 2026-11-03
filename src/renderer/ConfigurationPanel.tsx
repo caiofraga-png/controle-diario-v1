@@ -102,11 +102,6 @@ export default function ConfigurationPanel({ initial, onSave, onSaveLayout, onCl
   function toggleTaskEmail(id:string){ setForm((f:any)=>({...f,emailsVinculados:(f.emailsVinculados??[]).includes(id)?(f.emailsVinculados??[]).filter((x:string)=>x!==id):[...(f.emailsVinculados??[]),id]})); }
   function toggleProfileTask(id:string){ setForm((f:any)=>({...f,tarefas:(f.tarefas??[]).includes(id)?(f.tarefas??[]).filter((x:string)=>x!==id):[...(f.tarefas??[]),id]})); }
 
-  function renderList(){
-
-    if(tab==="perfis") return <><div className="config-toolbar"><button onClick={startNew}>NOVO PERFIL</button></div><table className="config-table"><thead><tr><th>PERFIL</th><th>STATUS</th><th>AÇÕES</th></tr></thead><tbody>{draft.perfis.perfis.map((p:any)=><tr key={p.id}><td>{p.nome}</td><td>{p.ativo?"ATIVO":"INATIVO"}</td><td><button onClick={()=>edit(p.id)}>EDITAR</button></td></tr>)}</tbody></table></>;
-    if(tab==="tarefas") return <><div className="config-toolbar"><button onClick={startNew}>NOVA TAREFA</button></div><table className="config-table"><thead><tr><th>TAREFA</th><th>STATUS</th><th>AÇÕES</th></tr></thead><tbody>{draft.tarefas.tarefas.map((t:any)=><tr key={t.id}><td>{t.nome}</td><td>{t.ativo?"ATIVO":"INATIVO"}</td><td><button onClick={()=>edit(t.id)}>EDITAR</button></td></tr>)}</tbody></table></>;
-    if(tab==="email") return <><div className="config-toolbar"><button onClick={startNew}>NOVO E-MAIL</button></div><table className="config-table"><thead><tr><th>E-MAIL</th><th>STATUS</th><th>AÇÕES</th></tr></thead><tbody>{draft.email.emails.map((e:any)=><tr key={e.id}><td>{e.nome}</td><td>{e.ativo?"ATIVO":"INATIVO"}</td><td><button onClick={()=>edit(e.id)}>EDITAR</button></td></tr>)}</tbody></table></>;
   function renderShortcuts(){
     const builtIns=[{id:"email",label:"EMAIL"},{id:"chat",label:"CHAT"},{id:"keep",label:"KEEP"},{id:"wiki",label:"WIKI"},{id:"calendario",label:"CALENDÁRIO"},{id:"flit",label:"FLIT"},{id:"youk",label:"YOUK"}];
     const custom=draft.layout.atalhosPersonalizados??[];
@@ -130,6 +125,11 @@ export default function ConfigurationPanel({ initial, onSave, onSaveLayout, onCl
     </div>;
   }
 
+  function renderList(){
+
+    if(tab==="perfis") return <><div className="config-toolbar"><button onClick={startNew}>NOVO PERFIL</button></div><table className="config-table"><thead><tr><th>PERFIL</th><th>STATUS</th><th>AÇÕES</th></tr></thead><tbody>{draft.perfis.perfis.map((p:any)=><tr key={p.id}><td>{p.nome}</td><td>{p.ativo?"ATIVO":"INATIVO"}</td><td><button onClick={()=>edit(p.id)}>EDITAR</button></td></tr>)}</tbody></table></>;
+    if(tab==="tarefas") return <><div className="config-toolbar"><button onClick={startNew}>NOVA TAREFA</button></div><table className="config-table"><thead><tr><th>TAREFA</th><th>STATUS</th><th>AÇÕES</th></tr></thead><tbody>{draft.tarefas.tarefas.map((t:any)=><tr key={t.id}><td>{t.nome}</td><td>{t.ativo?"ATIVO":"INATIVO"}</td><td><button onClick={()=>edit(t.id)}>EDITAR</button></td></tr>)}</tbody></table></>;
+    if(tab==="email") return <><div className="config-toolbar"><button onClick={startNew}>NOVO E-MAIL</button></div><table className="config-table"><thead><tr><th>E-MAIL</th><th>STATUS</th><th>AÇÕES</th></tr></thead><tbody>{draft.email.emails.map((e:any)=><tr key={e.id}><td>{e.nome}</td><td>{e.ativo?"ATIVO":"INATIVO"}</td><td><button onClick={()=>edit(e.id)}>EDITAR</button></td></tr>)}</tbody></table></>;
     const blockNames:any={data:"DATA",perfil:"PERFIL",tarefas:"TAREFAS",emails:"E-MAIL",observacao:"OBSERVAÇÃO",progresso:"PROGRESSO"};
     const lateral=draft.layout.expansaoLateral??{posicao:"direita"};
     const cr=draft.layout.criacaoRoteiro??{modo:"POPUP"};
