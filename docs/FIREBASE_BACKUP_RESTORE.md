@@ -2,6 +2,24 @@
 
 ## Objetivo e limites
 
+## Estratégia aprovada sem faturamento
+
+O projeto não terá conta de faturamento vinculada. Portanto, backups gerenciados do Firestore, PITR e Cloud Storage não fazem parte da solução aprovada e não devem ser habilitados.
+
+A primeira camada será uma exportação administrativa manual, executada no navegador por um administrador aprovado:
+- um único arquivo JSON por exportação, criptografado com AES-256-GCM;
+- derivação da chave a partir de senha informada pelo administrador (PBKDF2-SHA256);
+- resumo SHA-256 do conteúdo original para verificação de integridade após descriptografia;
+- inclusão dos dados institucionais e dos dados privados conhecidos de todos os usuários, incluindo expediente em andamento, histórico, configurações, preferências, calendário, personalizações e links;
+- operação somente de leitura, sem alteração do Firestore.
+
+A senha não é transmitida ao Firebase nem gravada no arquivo. Deve ser guardada separadamente; perder a senha significa perder acesso ao conteúdo exportado.
+
+O módulo não enumera subcoleções desconhecidas automaticamente: o Firestore Web SDK não oferece listagem de subcoleções. Sempre que o modelo de dados ganhar um novo caminho privado, a lista de exportação deverá ser atualizada e testada.
+
+A restauração controlada, incluindo validação de integridade e prévia de conflitos, permanece como etapa posterior. Até que seja implementada e testada, o arquivo é uma cópia de segurança exportada, não um procedimento de restauração pronto para uso.
+
+
 Este procedimento define como proteger os dados do Controle Diário no Cloud Firestore e como recuperar o serviço após exclusão acidental, corrupção lógica ou indisponibilidade.
 
 **Estado deste documento:** plano técnico preparado para homologação. A existência deste arquivo não significa que backups, PITR, bucket ou alertas já estejam habilitados no projeto. Nenhuma rotina deste documento deve ser executada em produção sem autorização e validação do projeto, região, permissões e custos.
