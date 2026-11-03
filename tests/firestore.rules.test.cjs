@@ -133,6 +133,38 @@ test("usuário não acessa configuração de outra pessoa", async () => {
   await assertFails(setDoc(doc(db, "users/bob/configuration/layout"), { schemaVersion: 1 }));
 });
 
+test("administrador pode ler subcoleções privadas de qualquer colaborador para backup", async () => {
+  const admin = dbAs("admin");
+  const privatePaths = [
+    "users/alice/configuration/layout",
+    "users/alice/preferences/appearance",
+    "users/alice/calendar/dados",
+    "users/alice/taskCustomizations/T001",
+    "users/alice/usefulLinks/L001",
+    "users/alice/operational/currentState",
+    "users/alice/operational/history/entries/2026-10-28_R001",
+  ];
+  for (const path of privatePaths) {
+    await assertSucceeds(getDoc(doc(admin, path)));
+  }
+});
+
+test("supervisor não pode ler subcoleções privadas de outros colaboradores para backup", async () => {
+  const supervisor = dbAs("supervisor");
+  const privatePaths = [
+    "users/alice/configuration/layout",
+    "users/alice/preferences/appearance",
+    "users/alice/calendar/dados",
+    "users/alice/taskCustomizations/T001",
+    "users/alice/usefulLinks/L001",
+    "users/alice/operational/currentState",
+    "users/alice/operational/history/entries/2026-10-28_R001",
+  ];
+  for (const path of privatePaths) {
+    await assertFails(getDoc(doc(supervisor, path)));
+  }
+});
+
 test("colaborador lê e grava somente suas personalizações de tarefas", async () => {
   const alice = dbAs("alice");
   const own = doc(alice, "users/alice/taskCustomizations/T001");
