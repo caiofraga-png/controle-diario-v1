@@ -20,7 +20,7 @@ import type { OrganizationalContact, OrganizationalSector, OrganizationalUser } 
 import { signInWithCorporateGoogle, signOutCorporateGoogle } from "../web/firebaseAuthService";
 import { FirebasePersonalDataService } from "../web/firebasePersonalDataService";
 import { loadSharedTaskCatalog, saveSharedTaskCatalog } from "../web/firebaseSharedTaskCatalogService";
-import { exportAdministrativeBackup } from "../web/firebaseAdminBackupService";
+import { exportAdministrativeBackup, inspectAdministrativeBackup, type BackupInspection } from "../web/firebaseAdminBackupService";
 
 type RequestItem = { id: string; uid?: string; email?: string; status?: string };
 
@@ -49,6 +49,9 @@ export default function FirebaseAdminPanel() {
   const [catalogPreflight, setCatalogPreflight] = useState<string>("");
   const [backupPassword, setBackupPassword] = useState("");
   const [backupPasswordConfirm, setBackupPasswordConfirm] = useState("");
+  const [restorePassword, setRestorePassword] = useState("");
+  const [restoreFile, setRestoreFile] = useState<File | null>(null);
+  const [restorePreview, setRestorePreview] = useState<BackupInspection | null>(null);
 
   async function refresh() {
     setBusy(true);
@@ -349,6 +352,29 @@ export default function FirebaseAdminPanel() {
     }
   }
 
+  async function inspectBackup() {
+    if (!isAdministrator) {
+      setMessage("A restauração é exclusiva de administradores.");
+      return;
+    }
+    if (!restoreFile || !restorePassword) {
+      setMessage("Selecione o arquivo e informe a senha do backup.");
+      return;
+    }
+    setBusy(true);
+    setMessage("");
+    setRestorePreview(null);
+    try {
+      const preview = await inspectAdministrativeBackup(restoreFile, restorePassword);
+      setRestorePreview(preview);
+      setMessage("Backup descriptografado e validado. Nenhum dado foi gravado.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Não foi possível validar o backup.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function saveUser(user: OrganizationalUser) {
     setBusy(true);
     try {
@@ -498,6 +524,29 @@ export default function FirebaseAdminPanel() {
       </label>
       <p><small>A senha não é enviada ao Firebase nem incluída no arquivo. Guarde-a em local seguro: sem ela, o conteúdo não poderá ser descriptografado.</small></p>
       <button type="button" disabled={busy || !backupPassword || !backupPasswordConfirm} onClick={() => void exportBackup()}>Gerar backup administrativo criptografado</button>
+      <div style={{ borderTop: "1px solid #ddd", marginTop: 20, paddingTop: 16, display: "grid", gap: 10 }}>
+        <h4>Conferir backup para restauração</h4>
+        <p>Selecione um arquivo exportado anteriormente. A conferência descriptografa o conteúdo, valida a integridade e o projeto de origem e identifica documentos que já existem. Esta etapa é somente leitura.</p>
+        <label style={{ display: "grid", gap: 6, maxWidth: 520 }}>Arquivo JSON do backup
+          <input type="file" accept=".json,application/json" onChange={(event) => { setRestoreFile(event.target.files?.[0] ?? null); setRestorePreview(null); }} />
+        </label>
+        <label style={{ display: "grid", gap: 6, maxWidth: 420 }}>Senha do backup
+          <input type="password" autoComplete="new-password" value={restorePassword} onChange={(event) => { setRestorePassword(event.target.value); setRestorePreview(null); }} />
+        </label>
+        <button type="button" disabled={busy || !restoreFile || !restorePassword} onClick={() => void inspectBackup()}>Validar arquivo e visualizar conflitos</button>
+        {restorePreview && <div style={{ border: "1px solid #aaa", borderRadius: 8, padding: 12, display: "grid", gap: 8 }}>
+          <strong>Prévia validada — nenhum dado foi alterado</strong>
+          <span>Data: {new Date(restorePreview.createdAt).toLocaleString("pt-BR")}</span>
+          <span>Responsável pelo backup: {restorePreview.createdBy}</span>
+          <span>Projeto Firebase: {restorePreview.projectId}</span>
+          <span>Colaboradores: {restorePreview.userCount} · Documentos: {restorePreview.documentCount}</span>
+          <span>Documentos ausentes: {restorePreview.missingCount} · Já existentes: {restorePreview.existingCount}</span>
+          <strong>Conteúdo por coleção</strong>
+          <ul>{restorePreview.collections.map((item) => <li key={item.name}>{item.name}: {item.count}</li>)}</ul>
+          {restorePreview.conflicts.length > 0 && <><strong>Conflitos encontrados (até 50 exibidos)</strong><ul>{restorePreview.conflicts.map((path) => <li key={path}><code>{path}</code></li>)}</ul></>}
+          <p><strong>Restauração ainda bloqueada nesta etapa.</strong> Estou concluindo a validação das permissões de gravação para preservar o histórico imutável e impedir sobrescritas. A prévia não autoriza nem executa gravações.</p>
+        </div>}
+      </div>
     </section>}
     </>}
   </main>;
