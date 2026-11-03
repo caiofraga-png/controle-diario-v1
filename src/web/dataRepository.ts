@@ -11,7 +11,7 @@ export interface LayoutConfig {
   expansaoLateral?: { posicao: "esquerda" | "direita" };
   criacaoRoteiro?: { modo: "POPUP" | "EXPANSÃO" };
   escala12x36?: { habilitada: boolean; referencias: Array<{ primeiraFolga: string }> };
-  atalhosCabecalho?: { email: boolean; chat: boolean; keep: boolean; wiki: boolean; calendario: boolean };
+  atalhosCabecalho?: { email: boolean; chat: boolean; keep: boolean; wiki: boolean; calendario: boolean; flit: boolean; youk: boolean };
 }
 
 export interface Configuracao {
@@ -528,7 +528,7 @@ export function normalizeConfiguration(config: Configuracao): Configuracao {
   const taskIds = new Set(reconciled.tarefas.tarefas.map(task => task.id));
   reconciled.layout.abas = Array.from(new Set([...(reconciled.layout.abas ?? []), "tarefas", "calendario", "manutencoes", "promocoes", "meta", "inadimplencia", "supervisao", "configuracao"]));
   reconciled.layout.escala12x36 = { habilitada: Boolean(reconciled.layout.escala12x36?.habilitada), referencias: (reconciled.layout.escala12x36?.referencias ?? []).filter((item: any) => item && typeof item.primeiraFolga === "string" && /^\d{4}-\d{2}-\d{2}$/.test(item.primeiraFolga)).sort((a: any, b: any) => a.primeiraFolga.localeCompare(b.primeiraFolga)) };
-  reconciled.layout.atalhosCabecalho = { email: true, chat: true, keep: true, wiki: true, calendario: true, ...(reconciled.layout.atalhosCabecalho ?? {}) };
+  reconciled.layout.atalhosCabecalho = { email: true, chat: true, keep: true, wiki: true, calendario: true, flit: true, youk: true, ...(reconciled.layout.atalhosCabecalho ?? {}) };
   reconciled.layout.ordemPerfis = [
     ...reconciled.layout.ordemPerfis.filter(id => profileIds.has(id)),
     ...reconciled.perfis.perfis
@@ -597,7 +597,7 @@ export function defaultConfiguration(): Configuracao {
       painelLateral: { largura: 420 },
       expansaoLateral: { posicao: "direita" },
       criacaoRoteiro: { modo: "POPUP" },
-      atalhosCabecalho: { email: true, chat: true, keep: true, wiki: true, calendario: true }
+      atalhosCabecalho: { email: true, chat: true, keep: true, wiki: true, calendario: true, flit: true, youk: true }
     }
   };
 }
