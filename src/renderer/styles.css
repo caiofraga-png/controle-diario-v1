@@ -1649,3 +1649,25 @@ html[data-theme="midnight-violet"] .config-embedded .config-tabs button.active {
 .calendar-scale-tools{display:flex;align-items:end;gap:14px;flex-wrap:wrap;margin:16px 0;padding:14px 16px;border:1px solid var(--border,#d8e3dc);border-radius:10px;background:var(--surface-soft,#f4f8f5)}.calendar-scale-tools p{flex-basis:100%;margin:0;font-size:13px}.calendar-scale-tools label{display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:700;letter-spacing:.04em}.calendar-scale-tools input{min-height:38px;padding:7px 10px;border:1px solid var(--border,#cbd8ce);border-radius:7px;background:var(--surface,#fff);color:var(--text,#183b2b)}.calendar-scale-tools button{min-height:38px;padding:8px 14px;border:0;border-radius:7px;background:var(--primary,#24734b);color:#fff;font-weight:700}
 
 :is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .calendar-scale-tools button{background:var(--primary,#24734b);color:#fff;border:1px solid var(--primary,#24734b)}
+
+/* Atalhos corporativos centralizados no cabeçalho */
+.app-main > .header { min-height:76px; height:auto; }
+.header-center-tools { justify-self:center; display:flex; flex-direction:column; align-items:center; gap:4px; min-width:0; }
+.quick-links { display:flex; align-items:center; justify-content:center; gap:8px; }
+.quick-links a { display:inline-flex; align-items:center; justify-content:center; padding:7px 13px; border:1px solid rgba(255,255,255,.22); border-radius:7px; color:#fff; background:rgba(255,255,255,.07); text-decoration:none; font-size:13px; font-weight:700; transition:background .15s ease,border-color .15s ease,transform .15s ease; white-space:nowrap; }
+.quick-links a:hover { background:rgba(105,195,151,.2); border-color:#69c397; transform:translateY(-1px); }
+.quick-links a:focus-visible { outline:2px solid #a9d8bf; outline-offset:2px; }
+.header-center-tools .upcoming-dates { font-size:11px; line-height:1.25; }
+@media (max-width:850px) {
+  .app-main > .header { grid-template-columns:minmax(180px,1fr) minmax(260px,1.2fr); }
+  .header-center-tools { justify-self:end; }
+  .quick-links { gap:5px; flex-wrap:wrap; }
+  .quick-links a { padding:6px 9px; font-size:12px; }
+}
+@media (max-width:620px) {
+  .app-main > .header { grid-template-columns:1fr; gap:9px; padding:12px 16px; }
+  .header-center-tools { justify-self:start; align-items:flex-start; width:100%; }
+  .quick-links { justify-content:flex-start; }
+  .header-center-tools .upcoming-dates { justify-self:start; text-align:left; }
+}
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .quick-links a { color:#fff; background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.2); }
