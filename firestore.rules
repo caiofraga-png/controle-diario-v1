@@ -83,30 +83,40 @@ service cloud.firestore {
       // Private per-user configuration and calendar remain isolated.
       match /configuration/{document=**} {
         allow read: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
-        allow write: if approvedUser() && request.auth.uid == uid;
+        allow create: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
+        allow update: if approvedUser() && request.auth.uid == uid;
+        allow delete: if false;
       }
 
       match /calendar/{document=**} {
         allow read: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
-        allow write: if approvedUser() && request.auth.uid == uid;
+        allow create: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
+        allow update: if approvedUser() && request.auth.uid == uid;
+        allow delete: if false;
       }
 
       // Appearance preferences are private to each approved collaborator.
       match /preferences/{document=**} {
         allow read: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
-        allow write: if approvedUser() && request.auth.uid == uid;
+        allow create: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
+        allow update: if approvedUser() && request.auth.uid == uid;
+        allow delete: if false;
       }
 
       // Each collaborator can customize only their own task instructions.
       // Institutional templates remain protected in sharedTaskCatalog.
       match /taskCustomizations/{taskId} {
         allow read: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
-        allow write: if approvedUser() && request.auth.uid == uid;
+        allow create: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
+        allow update: if approvedUser() && request.auth.uid == uid;
+        allow delete: if false;
       }
 
       match /usefulLinks/{document=**} {
         allow read: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
-        allow write: if approvedUser() && request.auth.uid == uid;
+        allow create: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
+        allow update: if approvedUser() && request.auth.uid == uid;
+        allow delete: if false;
       }
 
       // Mutable current state belongs only to the approved owner.
@@ -115,7 +125,7 @@ service cloud.firestore {
         allow read: if activeAdmin() || (approvedUser() && request.auth.uid == uid
           && (!exists(/databases/$(database)/documents/users/$(uid)/operational/currentState)
             || resource.data.ownerUid == uid));
-        allow create: if approvedUser() && request.auth.uid == uid
+        allow create: if (activeAdmin() || (approvedUser() && request.auth.uid == uid))
           && request.resource.data.ownerUid == uid
           && request.resource.data.schemaVersion == 1
           && request.resource.data.keys().hasOnly(["schemaVersion", "ownerUid", "estado", "updatedAt"])
@@ -200,7 +210,13 @@ service cloud.firestore {
           || activeAdmin()
           || activeSupervisor());
 
-      allow create: if approvedUser() && validExpedienteSnapshot();
+      allow create: if (approvedUser() && validExpedienteSnapshot())
+        || (activeAdmin()
+          && request.resource.data.ownerUid is string
+          && request.resource.data.assignment is map
+          && request.resource.data.assignment.uid == request.resource.data.ownerUid
+          && request.resource.data.date is string
+          && request.resource.data.status is string);
 
       // The index can update only its operational status/timestamp. Ownership,
       // date, identity and historical assignment snapshot are immutable.
@@ -215,12 +231,13 @@ service cloud.firestore {
     }
 
     match /accessRequests/{uid} {
-      allow create: if ownUserDocument(uid)
-        && allowedCorporateDomain()
-        && request.resource.data.keys().hasOnly(["uid", "email", "status", "requestedAt"])
-        && request.resource.data.uid == request.auth.uid
-        && request.resource.data.email == request.auth.token.email
-        && request.resource.data.status == "pending";
+      allow create: if activeAdmin()
+        || (ownUserDocument(uid)
+          && allowedCorporateDomain()
+          && request.resource.data.keys().hasOnly(["uid", "email", "status", "requestedAt"])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.email == request.auth.token.email
+          && request.resource.data.status == "pending");
       allow read: if ownUserDocument(uid) || activeManager();
       allow update, delete: if activeManager();
     }
@@ -262,8 +279,11 @@ service cloud.firestore {
     match /adminAudit/{auditId} {
       allow read: if activeAdmin();
       allow create: if activeManager()
-        && request.resource.data.actorUid == request.auth.uid
-        && request.resource.data.createdAt == request.time;
+        && ((request.resource.data.actorUid == request.auth.uid
+          && request.resource.data.createdAt == request.time)
+          || (activeAdmin()
+            && request.resource.data.actorUid is string
+            && request.resource.data.createdAt is timestamp));
       allow update, delete: if false;
     }
 
