@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, Timestamp, type DocumentData, type QueryDocumentSnapshot } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, runTransaction, serverTimestamp, Timestamp, type DocumentData, type QueryDocumentSnapshot } from "firebase/firestore";
 import { requireFirebase } from "./firebaseClient";
 
 type BackupDocument = { id: string; path: string; data: Record<string, unknown> };
@@ -287,4 +287,66 @@ export async function inspectAdministrativeBackup(file: File, password: string):
     conflicts: conflicts.slice(0, 50),
     payload: payload as unknown as BackupPayload,
   };
+}
+
+
+function reviveBackupValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(reviveBackupValue);
+  if (isRecord(value)) {
+    if (value.__type === "firestore-timestamp" && typeof value.iso === "string") {
+      const date = new Date(value.iso);
+      if (!Number.isFinite(date.getTime())) throw new Error("O backup contém uma data inválida.");
+      return Timestamp.fromDate(date);
+    }
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, reviveBackupValue(item)]));
+  }
+  return value;
+}
+
+export async function restoreAdministrativeBackup(
+  inspection: BackupInspection,
+): Promise<{ restoredCount: number; skippedCount: number }> {
+  const { auth, db } = requireFirebase();
+  const actor = auth.currentUser;
+  if (!actor || !actor.emailVerified) throw new Error("Entre com uma conta empresarial verificada.");
+  const actorSnapshot = await getDoc(doc(db, "users", actor.uid));
+  const actorProfile = actorSnapshot.exists() ? actorSnapshot.data() : null;
+  if (actorProfile?.status !== "approved" || actorProfile.role !== "admin") {
+    throw new Error("A restauração é exclusiva de administradores aprovados.");
+  }
+  const documents = Object.values(inspection.payload.collections).flat();
+  let restoredCount = 0;
+  let skippedCount = 0;
+  for (const item of documents) {
+    if (!allowedBackupPath(item.path) || item.path.split("/").at(-1) !== item.id) {
+      throw new Error("O backup contém um caminho não autorizado. Nenhum documento foi restaurado.");
+    }
+    const reference = doc(db, item.path);
+    const created = await runTransaction(db, async (transaction) => {
+      const current = await transaction.get(reference);
+      if (current.exists()) return false;
+      transaction.set(reference, reviveBackupValue(item.data) as DocumentData);
+      return true;
+    });
+    if (created) restoredCount += 1;
+    else skippedCount += 1;
+  }
+  const auditRef = doc(collection(db, "adminAudit"));
+  await runTransaction(db, async (transaction) => {
+    transaction.set(auditRef, {
+      actorUid: actor.uid,
+      actorEmail: actor.email ?? "",
+      action: "ADMIN_BACKUP_RESTORED",
+      targetUid: "all",
+      details: {
+        backupCreatedAt: inspection.createdAt,
+        backupCreatedBy: inspection.createdBy,
+        restoredCount,
+        skippedCount,
+        projectId: inspection.projectId,
+      },
+      createdAt: serverTimestamp(),
+    });
+  });
+  return { restoredCount, skippedCount };
 }
