@@ -23,8 +23,8 @@ Validar a persistência individual e a consulta gerencial do Leste – Controle 
 | EXP-04 | Colaborador tenta modificar a identidade ou atribuição de expediente existente | Acesso negado |
 | EXP-05 | Colaborador tenta atualizar campos diferentes de `status` e `completedAt` no índice | Acesso negado |
 | EXP-06 | Cliente tenta excluir documento do índice `Expediente` | Acesso negado |
-| EXP-07 | Supervisor consulta expedientes de seu setor atual | Somente leitura e apenas registros autorizados |
-| EXP-08 | Supervisor tenta consultar outro setor ou editar expediente alheio | Acesso negado |
+| EXP-07 | Supervisor consulta expedientes de todos os setores | Leitura permitida em toda a organização |
+| EXP-08 | Supervisor tenta editar expediente alheio | Acesso negado |
 | EXP-09 | Administrador consulta expediente de outro usuário | Leitura permitida; edição negada |
 | HIS-01 | Fechamento repetido do mesmo expediente | Sem duplicação de versões |
 | HIS-02 | Falha durante fechamento e nova tentativa | Recuperação consistente, sem perda de dados |
@@ -38,8 +38,10 @@ Validar a persistência individual e a consulta gerencial do Leste – Controle 
 
 1. **Índice `Expediente`:** as regras são testadas pelo workflow de validação no emulador. A criação exige proprietário autenticado e aprovado, fotografia de atribuição correspondente ao perfil atual e correspondência entre os campos duplicados e a fotografia. A atualização pelo proprietário fica limitada a `status` e `completedAt`; a exclusão pelo cliente é negada.
 2. **Dados operacionais por usuário:** `currentState` e histórico possuem regras explícitas de propriedade; os demais documentos operacionais não modelados permanecem negados. Os testes do emulador passaram. A homologação manual ainda precisa validar recuperação, concorrência e histórico imutável.
+3. **Supervisão:** o índice compartilhado `Expediente` permite leitura global a supervisores e administradores. Colaboradores comuns leem apenas os próprios registros; nenhum perfil gerencial pode editar ou excluir o índice de terceiros.
+4. **Privilégios:** apenas administradores podem conceder ou retirar `isSupervisor`; supervisores não podem alterar essa permissão nem modificar contas administrativas.
 3. A gravação do índice `Expediente` e a gravação do histórico pessoal precisam ser coordenadas para evitar inconsistências em falhas parciais.
-4. Consultas de supervisão precisam ser testadas com filtros compatíveis com as regras e índices do Firestore.
+4. Consultas de supervisão são globais: supervisores e administradores podem consultar expedientes de todos os setores, sem permissão de edição. As consultas devem usar filtros compatíveis com as regras e índices do Firestore.
 5. O primeiro administrador depende de um procedimento confiável de inicialização, externo ao cliente web.
 6. Os testes automatizados das regras são executados no Firestore Emulator pelo GitHub Actions e passaram no commit atualmente validado. Repetir os testes sempre que as regras forem alteradas.
 
