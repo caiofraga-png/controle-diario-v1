@@ -301,12 +301,16 @@ export class FirebaseOperationalService {
     const uid = this.uid();
     const { db } = requireFirebase();
     const history = this.historyCollection(uid);
-    const existing = await getDocs(query(history, where("ownerUid", "==", uid)));
-    const versions = existing.docs.filter(item => item.data().data === source.data).map(item => Number(item.data().versao)).filter(Number.isFinite);
-    const versao = (versions.length ? Math.max(...versions) : 0) + 1;
-    const recordId = source.data + "_R" + String(versao).padStart(3, "0");
-
     return runTransaction(db, async transaction => {
+      // Read the version set inside the transaction so concurrent erratas
+      // cannot select and overwrite the same immutable history document.
+      const existing = await transaction.get(query(history, where("ownerUid", "==", uid)));
+      const versions = existing.docs
+        .filter(item => item.data().data === source.data)
+        .map(item => Number(item.data().versao))
+        .filter(Number.isFinite);
+      const versao = (versions.length ? Math.max(...versions) : 0) + 1;
+      const recordId = source.data + "_R" + String(versao).padStart(3, "0");
       const recordRef = doc(history, recordId);
       const record: HistoryEntry = {
         ...clone(source),
