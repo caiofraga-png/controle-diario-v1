@@ -1713,3 +1713,27 @@ html[data-theme="midnight-violet"] .config-embedded .config-tabs button.active {
 @media(max-width:850px) { .header-notifications { right:14px; } .app-main > .header { padding-right:64px; } }
 @media(max-width:620px) { .header-notifications { top:12px; right:12px; transform:none; } .notification-popover { top:46px; } }
 :is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .notification-popover { background:var(--surface,#1a2a3a); border-color:var(--verde-borda); color:var(--texto); }
+
+
+/* Aproxima os atalhos do título do cabeçalho */
+@media (min-width:851px) {
+  .app-main > .header {
+    display:grid;
+    grid-template-columns:max-content max-content minmax(0,1fr);
+    justify-content:start;
+    column-gap:26px;
+    padding-right:82px;
+  }
+  .app-main > .header > .header-page-title { justify-self:start; }
+  .app-main > .header > .header-center-tools {
+    justify-self:start;
+    align-items:flex-start;
+    margin:0;
+  }
+  .app-main > .header .quick-links { justify-content:flex-start; }
+  .app-main > .header .header-center-tools .upcoming-dates {
+    align-self:flex-start;
+    text-align:left;
+  }
+  .app-main > .header > .header-status { justify-self:end; }
+}
