@@ -82,34 +82,39 @@ service cloud.firestore {
 
       // Private per-user configuration and calendar remain isolated.
       match /configuration/{document=**} {
-        allow read, write: if approvedUser() && request.auth.uid == uid;
+        allow read: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
+        allow write: if approvedUser() && request.auth.uid == uid;
       }
 
       match /calendar/{document=**} {
-        allow read, write: if approvedUser() && request.auth.uid == uid;
+        allow read: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
+        allow write: if approvedUser() && request.auth.uid == uid;
       }
 
       // Appearance preferences are private to each approved collaborator.
       match /preferences/{document=**} {
-        allow read, write: if approvedUser() && request.auth.uid == uid;
+        allow read: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
+        allow write: if approvedUser() && request.auth.uid == uid;
       }
 
       // Each collaborator can customize only their own task instructions.
       // Institutional templates remain protected in sharedTaskCatalog.
       match /taskCustomizations/{taskId} {
-        allow read, write: if approvedUser() && request.auth.uid == uid;
+        allow read: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
+        allow write: if approvedUser() && request.auth.uid == uid;
       }
 
       match /usefulLinks/{document=**} {
-        allow read, write: if approvedUser() && request.auth.uid == uid;
+        allow read: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
+        allow write: if approvedUser() && request.auth.uid == uid;
       }
 
       // Mutable current state belongs only to the approved owner.
       // The envelope and owner UID cannot be changed by a client update.
       match /operational/currentState {
-        allow read: if approvedUser() && request.auth.uid == uid
+        allow read: if activeAdmin() || (approvedUser() && request.auth.uid == uid
           && (!exists(/databases/$(database)/documents/users/$(uid)/operational/currentState)
-            || resource.data.ownerUid == uid);
+            || resource.data.ownerUid == uid));
         allow create: if approvedUser() && request.auth.uid == uid
           && request.resource.data.ownerUid == uid
           && request.resource.data.schemaVersion == 1
@@ -127,8 +132,8 @@ service cloud.firestore {
       // Completed records and errata are append-only: creation is allowed for
       // the approved owner, but clients cannot update or delete a saved version.
       match /operational/history/entries/{historyId} {
-        allow read: if approvedUser() && request.auth.uid == uid
-          && resource.data.ownerUid == uid;
+        allow read: if activeAdmin() || (approvedUser() && request.auth.uid == uid
+          && resource.data.ownerUid == uid);
         allow create: if approvedUser() && request.auth.uid == uid
           && request.resource.data.ownerUid == uid
           && request.resource.data.schemaVersion == 1
