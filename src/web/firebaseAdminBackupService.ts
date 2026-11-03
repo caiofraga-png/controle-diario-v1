@@ -247,6 +247,16 @@ export async function inspectAdministrativeBackup(file: File, password: string):
     throw new Error("Este backup pertence a outro projeto Firebase. A restauração foi bloqueada.");
   }
   const collections = payload.collections as Record<string, unknown>;
+  const expectedCollections = ["users", "users/*/private-data", ...ROOT_COLLECTIONS];
+  if (Object.keys(collections).length !== expectedCollections.length
+    || expectedCollections.some((name) => !Object.prototype.hasOwnProperty.call(collections, name))) {
+    throw new Error("O backup está incompleto: faltam coleções obrigatórias ou há coleções desconhecidas.");
+  }
+  if (!Number.isFinite(Date.parse(payload.createdAt))
+    || typeof payload.createdBy.uid !== "string" || typeof payload.createdBy.email !== "string"
+    || !Array.isArray(payload.scope)) {
+    throw new Error("Os metadados do backup estão incompletos ou inválidos.");
+  }
   const allDocuments: BackupDocument[] = [];
   for (const [collectionName, value] of Object.entries(collections)) {
     if (!Array.isArray(value)) throw new Error(`A coleção ${collectionName} possui estrutura inválida.`);
@@ -256,11 +266,23 @@ export async function inspectAdministrativeBackup(file: File, password: string):
         || entry.path.split("/").at(-1) !== entry.id) {
         throw new Error(`Documento inválido ou caminho não autorizado no backup: ${collectionName}.`);
       }
-      if (collectionName === "users" && entry.path.split("/").length !== 2) {
+      const parts = entry.path.split("/");
+      if (collectionName === "users" && (parts.length !== 2 || parts[0] !== "users")) {
         throw new Error("A coleção de usuários contém um caminho inesperado.");
       }
-      if (collectionName === "users/*/private-data" && !entry.path.startsWith("users/")) {
+      if (collectionName === "users/*/private-data" && (parts[0] !== "users" || parts.length < 4)) {
         throw new Error("Foi encontrado um caminho privado fora da coleção de usuários.");
+      }
+      if (ROOT_COLLECTIONS.includes(collectionName as typeof ROOT_COLLECTIONS[number])
+        && (parts.length !== 2 || parts[0] !== collectionName)) {
+        throw new Error(`O documento não corresponde à coleção ${collectionName}.`);
+      }
+      if (typeof entry.data.ownerUid === "string" && parts[0] === "users" && entry.data.ownerUid !== parts[1]) {
+        throw new Error(`O proprietário não corresponde ao caminho do documento ${entry.path}.`);
+      }
+      if (parts[0] === "Expediente" && isRecord(entry.data.assignment)
+        && entry.data.assignment.uid !== entry.data.ownerUid) {
+        throw new Error(`A atribuição do expediente não corresponde ao proprietário em ${entry.path}.`);
       }
       allDocuments.push(entry as unknown as BackupDocument);
     }
@@ -306,7 +328,7 @@ function reviveBackupValue(value: unknown): unknown {
 export async function restoreAdministrativeBackup(
   inspection: BackupInspection,
 ): Promise<{ restoredCount: number; skippedCount: number }> {
-  const { auth, db } = requireFirebase();
+  const { auth, db, app } = requireFirebase();
   const actor = auth.currentUser;
   if (!actor || !actor.emailVerified) throw new Error("Entre com uma conta empresarial verificada.");
   const actorSnapshot = await getDoc(doc(db, "users", actor.uid));
@@ -314,39 +336,72 @@ export async function restoreAdministrativeBackup(
   if (actorProfile?.status !== "approved" || actorProfile.role !== "admin") {
     throw new Error("A restauração é exclusiva de administradores aprovados.");
   }
+  if (!inspection?.payload || inspection.projectId !== (app.options.projectId ?? "")
+    || inspection.payload.projectId !== inspection.projectId
+    || inspection.payload.format !== "controle-diario-admin-backup"
+    || inspection.payload.schemaVersion !== 1) {
+    throw new Error("A prévia não corresponde a um backup validado deste projeto. Faça a conferência novamente.");
+  }
   const documents = Object.values(inspection.payload.collections).flat();
+  const paths = new Set<string>();
+  for (const item of documents) {
+    if (!item || !allowedBackupPath(item.path) || item.path.split("/").at(-1) !== item.id
+      || !isRecord(item.data) || paths.has(item.path)) {
+      throw new Error("O backup contém caminhos duplicados ou documentos inválidos. Nenhum dado foi restaurado.");
+    }
+    paths.add(item.path);
+  }
+
+  const auditRef = doc(collection(db, "adminAudit"));
+  const writeAudit = async (action: string, details: Record<string, unknown>) => {
+    await runTransaction(db, async (transaction) => {
+      transaction.set(auditRef, {
+        actorUid: actor.uid,
+        actorEmail: actor.email ?? "",
+        action,
+        targetUid: "all",
+        details,
+        createdAt: serverTimestamp(),
+      });
+    });
+  };
+  const baseDetails = {
+    backupCreatedAt: inspection.createdAt,
+    backupCreatedBy: inspection.createdBy,
+    projectId: inspection.projectId,
+    documentCount: documents.length,
+  };
+  await writeAudit("ADMIN_BACKUP_RESTORE_STARTED", baseDetails);
+
   let restoredCount = 0;
   let skippedCount = 0;
-  for (const item of documents) {
-    if (!allowedBackupPath(item.path) || item.path.split("/").at(-1) !== item.id) {
-      throw new Error("O backup contém um caminho não autorizado. Nenhum documento foi restaurado.");
+  try {
+    for (const item of documents) {
+      const reference = doc(db, item.path);
+      const created = await runTransaction(db, async (transaction) => {
+        const current = await transaction.get(reference);
+        if (current.exists()) return false;
+        transaction.set(reference, reviveBackupValue(item.data) as DocumentData);
+        return true;
+      });
+      if (created) restoredCount += 1;
+      else skippedCount += 1;
     }
-    const reference = doc(db, item.path);
-    const created = await runTransaction(db, async (transaction) => {
-      const current = await transaction.get(reference);
-      if (current.exists()) return false;
-      transaction.set(reference, reviveBackupValue(item.data) as DocumentData);
-      return true;
+    await writeAudit("ADMIN_BACKUP_RESTORED", {
+      ...baseDetails, restoredCount, skippedCount, result: "completed",
     });
-    if (created) restoredCount += 1;
-    else skippedCount += 1;
+    return { restoredCount, skippedCount };
+  } catch (error) {
+    try {
+      await writeAudit("ADMIN_BACKUP_RESTORE_PARTIAL", {
+        ...baseDetails, restoredCount, skippedCount, result: "partial",
+        error: error instanceof Error ? error.message.slice(0, 500) : "Falha não identificada",
+      });
+    } catch {
+      // O erro original deve ser preservado; a interface informará que a operação pode ter sido parcial.
+    }
+    throw new Error(
+      `A restauração foi interrompida após ${restoredCount} documentos criados e ${skippedCount} preservados. Nenhum documento existente foi sobrescrito. Verifique a auditoria antes de tentar novamente. Motivo: ${error instanceof Error ? error.message : "falha não identificada"}`,
+    );
   }
-  const auditRef = doc(collection(db, "adminAudit"));
-  await runTransaction(db, async (transaction) => {
-    transaction.set(auditRef, {
-      actorUid: actor.uid,
-      actorEmail: actor.email ?? "",
-      action: "ADMIN_BACKUP_RESTORED",
-      targetUid: "all",
-      details: {
-        backupCreatedAt: inspection.createdAt,
-        backupCreatedBy: inspection.createdBy,
-        restoredCount,
-        skippedCount,
-        projectId: inspection.projectId,
-      },
-      createdAt: serverTimestamp(),
-    });
-  });
-  return { restoredCount, skippedCount };
 }
