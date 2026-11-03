@@ -12,6 +12,7 @@ export interface LayoutConfig {
   criacaoRoteiro?: { modo: "POPUP" | "EXPANSÃO" };
   escala12x36?: { habilitada: boolean; referencias: Array<{ primeiraFolga: string }> };
   atalhosCabecalho?: { email: boolean; chat: boolean; keep: boolean; wiki: boolean; calendario: boolean; flit: boolean; youk: boolean };
+  atalhosPersonalizados?: Array<{ id: string; nome: string; url: string; ativo: boolean }>;
 }
 
 export interface Configuracao {
@@ -529,6 +530,7 @@ export function normalizeConfiguration(config: Configuracao): Configuracao {
   reconciled.layout.abas = Array.from(new Set([...(reconciled.layout.abas ?? []), "tarefas", "calendario", "manutencoes", "promocoes", "meta", "inadimplencia", "supervisao", "configuracao"]));
   reconciled.layout.escala12x36 = { habilitada: Boolean(reconciled.layout.escala12x36?.habilitada), referencias: (reconciled.layout.escala12x36?.referencias ?? []).filter((item: any) => item && typeof item.primeiraFolga === "string" && /^\d{4}-\d{2}-\d{2}$/.test(item.primeiraFolga)).sort((a: any, b: any) => a.primeiraFolga.localeCompare(b.primeiraFolga)) };
   reconciled.layout.atalhosCabecalho = { email: true, chat: true, keep: true, wiki: true, calendario: true, flit: true, youk: true, ...(reconciled.layout.atalhosCabecalho ?? {}) };
+  reconciled.layout.atalhosPersonalizados = (reconciled.layout.atalhosPersonalizados ?? []).filter((item: any) => item && typeof item.id === "string" && typeof item.nome === "string" && typeof item.url === "string" && /^https?:\\/\\//i.test(item.url)).map((item: any) => ({ id: item.id, nome: item.nome.trim().slice(0, 32), url: item.url.trim(), ativo: item.ativo !== false })).filter((item: any) => item.nome && item.nome.length > 0);
   reconciled.layout.ordemPerfis = [
     ...reconciled.layout.ordemPerfis.filter(id => profileIds.has(id)),
     ...reconciled.perfis.perfis
@@ -597,7 +599,8 @@ export function defaultConfiguration(): Configuracao {
       painelLateral: { largura: 420 },
       expansaoLateral: { posicao: "direita" },
       criacaoRoteiro: { modo: "POPUP" },
-      atalhosCabecalho: { email: true, chat: true, keep: true, wiki: true, calendario: true, flit: true, youk: true }
+      atalhosCabecalho: { email: true, chat: true, keep: true, wiki: true, calendario: true, flit: true, youk: true },
+      atalhosPersonalizados: []
     }
   };
 }
