@@ -144,7 +144,7 @@ service cloud.firestore {
       match /operational/history/entries/{historyId} {
         allow read: if activeAdmin() || (approvedUser() && request.auth.uid == uid
           && resource.data.ownerUid == uid);
-        allow create: if approvedUser() && request.auth.uid == uid
+        allow create: if (activeAdmin() || (approvedUser() && request.auth.uid == uid))
           && request.resource.data.ownerUid == uid
           && request.resource.data.schemaVersion == 1
           && request.resource.data.status == "CONCLUIDO"
