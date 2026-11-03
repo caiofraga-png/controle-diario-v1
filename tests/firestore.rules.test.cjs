@@ -207,6 +207,25 @@ test("administrador pode recriar índice histórico de expediente sem poder edit
   await assertFails(deleteDoc(ref));
 });
 
+test("administrador pode criar perfil administrativo ausente durante restauração", async () => {
+  const admin = dbAs("admin");
+  await assertSucceeds(setDoc(doc(admin, "users/restored-admin"), {
+    uid: "restored-admin", email: "restored@lestetelecom.net.br",
+    role: "admin", status: "approved", login: "restored", agent: "Restaurado",
+  }));
+});
+
+test("administrador não pode sobrescrever configuração privada de colaborador", async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "users/alice/configuration/layout"), {
+      schemaVersion: 1, valor: "original",
+    });
+  });
+  await assertFails(setDoc(doc(dbAs("admin"), "users/alice/configuration/layout"), {
+    schemaVersion: 1, valor: "sobrescrito",
+  }));
+});
+
 test("colaborador lê e grava somente suas personalizações de tarefas", async () => {
   const alice = dbAs("alice");
   const own = doc(alice, "users/alice/taskCustomizations/T001");
