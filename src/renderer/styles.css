@@ -1671,3 +1671,21 @@ html[data-theme="midnight-violet"] .config-embedded .config-tabs button.active {
   .header-center-tools .upcoming-dates { justify-self:start; text-align:left; }
 }
 :is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .quick-links a { color:#fff; background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.2); }
+
+
+/* Correção de contraste dos atalhos: botões visíveis também nos temas claros */
+.app-main > .header .quick-links a {
+  color:#ffffff !important;
+  background:#237347 !important;
+  border:1px solid #1b603a !important;
+  box-shadow:0 2px 5px rgba(20,60,40,.16);
+}
+.app-main > .header .quick-links a:hover {
+  color:#ffffff !important;
+  background:#185d39 !important;
+  border-color:#124a2d !important;
+}
+.app-main > .header .quick-links a:focus-visible {
+  outline:2px solid #69b98a;
+  outline-offset:3px;
+}
