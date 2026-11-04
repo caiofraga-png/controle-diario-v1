@@ -1923,3 +1923,17 @@ html[data-theme="midnight-violet"] .config-embedded .config-tabs button.active {
   outline:2px solid #8bd8ae;
   outline-offset:2px;
 }
+
+
+/* Tela inicial de Tarefas — seleção de perfil antes de iniciar o expediente */
+.start-card { display:flex; flex-direction:column; align-items:stretch; gap:18px; max-width:560px; }
+.start-card .date-select { width:100%; max-width:220px; margin:0; }
+.start-profile-select { display:flex; flex-direction:column; gap:7px; width:100%; color:var(--texto); }
+.start-profile-select > span { color:var(--texto-suave); font-size:11px; font-weight:800; letter-spacing:.06em; }
+.start-profile-select select { width:100%; min-height:48px; padding:11px 14px; border:1px solid var(--verde-borda); border-radius:10px; background:var(--surface,#fff); color:var(--texto); font:inherit; font-size:14px; font-weight:700; }
+.start-profile-select select:focus-visible { outline:2px solid var(--verde,#237347); outline-offset:2px; }
+.start-expediente-button { width:100%; min-height:48px; padding:12px 18px; border:1px solid #237347; border-radius:10px; background:#237347; color:#fff; font-size:12px; font-weight:900; letter-spacing:.05em; cursor:pointer; transition:background .15s ease,border-color .15s ease,transform .15s ease; }
+.start-expediente-button:hover:not(:disabled) { background:#185d39; border-color:#185d39; transform:translateY(-1px); }
+.start-expediente-button:disabled { opacity:.55; cursor:not-allowed; }
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .start-profile-select select { background:var(--surface,#1a2a3a); color:var(--texto); border-color:var(--verde-borda); }
+@media(max-width:620px) { .start-card { width:100%; } .start-card .date-select { max-width:none; } }
