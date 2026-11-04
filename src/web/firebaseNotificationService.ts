@@ -55,7 +55,8 @@ export async function canCurrentUserPublishDelinquency(): Promise<boolean> {
   if (profile.status !== "approved" || permission.enabled !== true) return false;
   const sectors = Array.isArray(permission.sectorIds) ? permission.sectorIds : [];
   const contacts = Array.isArray(permission.contactIds) ? permission.contactIds : [];
-  return sectors.includes(profile.sectorId) || contacts.includes(profile.contactId);
+  const agents = Array.isArray(permission.agentIds) ? permission.agentIds : [];
+  return sectors.includes(profile.sectorId) || contacts.includes(profile.contactId) || agents.includes(user.uid);
 }
 export async function publishDelinquencyNotification(message = "Novo alerta de inadimplência"): Promise<void> {
   const { auth, db } = requireFirebase();
