@@ -299,7 +299,7 @@ service cloud.firestore {
     match /featurePermissions/{featureId} {
       allow read: if approvedUser();
       allow create: if featureId == "delinquency"
-        && request.resource.data.keys().hasOnly(["schemaVersion", "enabled", "sectorIds", "contactIds", "agentIds", "updatedAt", "updatedByUid"])
+        && request.resource.data.keys().hasOnly(["schemaVersion", "enabled", "sectorIds", "wholeSectorIds", "contactIds", "agentIds", "updatedAt", "updatedByUid"])
         && request.resource.data.schemaVersion == 1
         && request.resource.data.enabled is bool
         && request.resource.data.sectorIds is list
@@ -313,7 +313,7 @@ service cloud.firestore {
             && request.resource.data.updatedAt is timestamp));
       allow update: if activeManager()
         && featureId == "delinquency"
-        && request.resource.data.keys().hasOnly(["schemaVersion", "enabled", "sectorIds", "contactIds", "agentIds", "updatedAt", "updatedByUid"])
+        && request.resource.data.keys().hasOnly(["schemaVersion", "enabled", "sectorIds", "wholeSectorIds", "contactIds", "agentIds", "updatedAt", "updatedByUid"])
         && request.resource.data.schemaVersion == 1
         && request.resource.data.enabled is bool
         && request.resource.data.sectorIds is list
