@@ -60,8 +60,8 @@ service cloud.firestore {
       return approvedUser()
         && exists(/databases/$(database)/documents/featurePermissions/delinquency)
         && get(/databases/$(database)/documents/featurePermissions/delinquency).data.enabled == true
-        && ((get(/databases/$(database)/documents/featurePermissions/delinquency).data.sectorIds is list
-            && get(/databases/$(database)/documents/featurePermissions/delinquency).data.sectorIds.hasAny([userRecord(request.auth.uid).data.sectorId]))
+        && ((get(/databases/$(database)/documents/featurePermissions/delinquency).data.wholeSectorIds is list
+            && get(/databases/$(database)/documents/featurePermissions/delinquency).data.wholeSectorIds.hasAny([userRecord(request.auth.uid).data.sectorId]))
           || (get(/databases/$(database)/documents/featurePermissions/delinquency).data.contactIds is list
             && get(/databases/$(database)/documents/featurePermissions/delinquency).data.contactIds.hasAny([userRecord(request.auth.uid).data.contactId]))
           || (get(/databases/$(database)/documents/featurePermissions/delinquency).data.agentIds is list
@@ -303,6 +303,7 @@ service cloud.firestore {
         && request.resource.data.schemaVersion == 1
         && request.resource.data.enabled is bool
         && request.resource.data.sectorIds is list
+        && request.resource.data.wholeSectorIds is list
         && request.resource.data.contactIds is list
         && request.resource.data.agentIds is list
         && ((activeManager()
@@ -317,6 +318,7 @@ service cloud.firestore {
         && request.resource.data.schemaVersion == 1
         && request.resource.data.enabled is bool
         && request.resource.data.sectorIds is list
+        && request.resource.data.wholeSectorIds is list
         && request.resource.data.contactIds is list
         && request.resource.data.agentIds is list
         && request.resource.data.updatedByUid == request.auth.uid
