@@ -1,55 +1,144 @@
-import { collection, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, type Unsubscribe, onSnapshot } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, writeBatch, type Unsubscribe } from "firebase/firestore";
 import { requireFirebase } from "./firebaseClient";
-import { publishSharedNotification } from "./firebaseNotificationService";
 
 export type MaintenanceStatus = "ongoing" | "completed";
 export interface ExternalMaintenance {
-  id: string; title: string; date: string; location: string; description: string;
-  status: MaintenanceStatus; createdByUid: string; createdAt?: unknown;
-  updatedByUid: string; updatedAt?: unknown;
+  id: string;
+  title: string;
+  date: string;
+  location: string;
+  description: string;
+  status: MaintenanceStatus;
+  createdByUid: string;
+  createdAt?: unknown;
+  updatedByUid: string;
+  updatedAt?: unknown;
 }
 export interface MaintenanceHistory {
-  id: string; changedByUid: string; changedAt?: unknown;
-  before: Record<string, unknown> | null; after: Record<string, unknown>;
+  id: string;
+  changedByUid: string;
+  changedAt?: unknown;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown>;
 }
+export type ExternalMaintenanceInput = Pick<ExternalMaintenance, "title" | "date" | "location" | "description" | "status">;
+
 async function currentUserCanManage(): Promise<boolean> {
-  const {auth,db}=requireFirebase(); const user=auth.currentUser;
-  if(!user) return false;
-  const [u,p]=await Promise.all([getDoc(doc(db,"users",user.uid)),getDoc(doc(db,"featurePermissions","maintenance"))]);
-  if(!u.exists()||!p.exists()) return false;
-  const profile=u.data(), permission=p.data();
-  if(profile.status!=="approved"||permission.enabled!==true) return false;
-  const sectors=Array.isArray(permission.wholeSectorIds)?permission.wholeSectorIds:[];
-  const contacts=Array.isArray(permission.contactIds)?permission.contactIds:[];
-  const agents=Array.isArray(permission.agentIds)?permission.agentIds:[];
-  return sectors.includes(profile.sectorId)||contacts.includes(profile.contactId)||agents.includes(user.uid);
+  const { auth, db } = requireFirebase();
+  const user = auth.currentUser;
+  if (!user) return false;
+  const [userSnapshot, permissionSnapshot] = await Promise.all([
+    getDoc(doc(db, "users", user.uid)),
+    getDoc(doc(db, "featurePermissions", "maintenance")),
+  ]);
+  if (!userSnapshot.exists()) return false;
+  const profile = userSnapshot.data();
+  if (profile.status !== "approved") return false;
+  if (profile.role === "admin" || profile.isSupervisor === true) return true;
+  if (!permissionSnapshot.exists()) return false;
+  const permission = permissionSnapshot.data();
+  if (permission.enabled !== true) return false;
+  const sectors = Array.isArray(permission.wholeSectorIds) ? permission.wholeSectorIds : [];
+  const contacts = Array.isArray(permission.contactIds) ? permission.contactIds : [];
+  const agents = Array.isArray(permission.agentIds) ? permission.agentIds : [];
+  return sectors.includes(profile.sectorId) || contacts.includes(profile.contactId) || agents.includes(user.uid);
 }
-export async function saveExternalMaintenance(input: Omit<ExternalMaintenance,"id"|"createdByUid"|"createdAt"|"updatedByUid"|"updatedAt">, id?:string):Promise<void>{
-  const {auth,db}=requireFirebase(); const user=auth.currentUser;
-  if(!user||!(await currentUserCanManage())) throw new Error("SEU SETOR, CONTATO OU USUÁRIO NÃO POSSUI PERMISSÃO PARA EDITAR MANUTENÇÕES.");
-  const now=serverTimestamp();
-  if(id){
-    const ref=doc(db,"externalMaintenances",id); const old=await getDoc(ref);
-    if(!old.exists()) throw new Error("MANUTENÇÃO NÃO ENCONTRADA.");
-    const before=old.data();
-    const changed=["title","date","location","description","status"].some(key=>before[key]!==input[key as keyof typeof input]);
-    if(!changed) return;
-    await updateDoc(ref,{...input,updatedByUid:user.uid,updatedAt:now});
-    const historyRef=doc(collection(db,"externalMaintenances",id,"history"));
-    await setDoc(historyRef,{changedByUid:user.uid,changedAt:now,before:{title:before.title,date:before.date,location:before.location,description:before.description,status:before.status},after:input});
-  }else{
-    const ref=doc(collection(db,"externalMaintenances"));
-    await setDoc(ref,{...input,createdByUid:user.uid,createdAt:now,updatedByUid:user.uid,updatedAt:now});
-    const historyRef=doc(collection(db,"externalMaintenances",ref.id,"history"));
-    await setDoc(historyRef,{changedByUid:user.uid,changedAt:now,before:null,after:input});
+
+function validateInput(input: ExternalMaintenanceInput): void {
+  if (!input.title.trim()) throw new Error("INFORME O TÍTULO DA MANUTENÇÃO.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) throw new Error("INFORME UMA DATA VÁLIDA.");
+  if (!input.location.trim()) throw new Error("INFORME O LOCAL DA MANUTENÇÃO.");
+  if (!input.description.trim()) throw new Error("INFORME A DESCRIÇÃO DA MANUTENÇÃO.");
+  if (input.status !== "ongoing" && input.status !== "completed") throw new Error("STATUS DE MANUTENÇÃO INVÁLIDO.");
+}
+
+export async function canCurrentUserManageMaintenances(): Promise<boolean> {
+  return currentUserCanManage();
+}
+
+export async function saveExternalMaintenance(input: ExternalMaintenanceInput, id?: string): Promise<void> {
+  validateInput(input);
+  const { auth, db } = requireFirebase();
+  const user = auth.currentUser;
+  if (!user || !(await currentUserCanManage())) {
+    throw new Error("SEU SETOR, CONTATO OU USUÁRIO NÃO POSSUI PERMISSÃO PARA CADASTRAR OU EDITAR MANUTENÇÕES.");
   }
-  const notificationRef=doc(collection(db,"sharedNotifications"));
-  await setDoc(notificationRef,{category:"manutencoes",message:"Atualização de manutenção",target:"manutencoes",createdByUid:user.uid,createdAt:now});
+
+  const batch = writeBatch(db);
+  const now = serverTimestamp();
+  const notificationRef = doc(collection(db, "sharedNotifications"));
+  const notification = {
+    category: "manutencoes",
+    message: "Atualização de manutenção",
+    target: "manutencoes",
+    createdByUid: user.uid,
+    createdAt: now,
+  };
+
+  if (id) {
+    const maintenanceRef = doc(db, "externalMaintenances", id);
+    const snapshot = await getDoc(maintenanceRef);
+    if (!snapshot.exists()) throw new Error("MANUTENÇÃO NÃO ENCONTRADA.");
+    const previous = snapshot.data();
+    const before = {
+      title: previous.title,
+      date: previous.date,
+      location: previous.location,
+      description: previous.description,
+      status: previous.status,
+    };
+    const changed = (Object.keys(before) as Array<keyof typeof before>)
+      .some(key => before[key] !== input[key]);
+    if (!changed) return;
+
+    const historyRef = doc(collection(db, "externalMaintenances", id, "history"));
+    batch.update(maintenanceRef, { ...input, updatedByUid: user.uid, updatedAt: now });
+    batch.set(historyRef, {
+      changedByUid: user.uid,
+      changedAt: now,
+      before,
+      after: input,
+    });
+  } else {
+    const maintenanceRef = doc(collection(db, "externalMaintenances"));
+    const historyRef = doc(collection(db, "externalMaintenances", maintenanceRef.id, "history"));
+    batch.set(maintenanceRef, {
+      ...input,
+      createdByUid: user.uid,
+      createdAt: now,
+      updatedByUid: user.uid,
+      updatedAt: now,
+    });
+    batch.set(historyRef, {
+      changedByUid: user.uid,
+      changedAt: now,
+      before: null,
+      after: input,
+    });
+  }
+
+  // Maintenance data, immutable audit entry and notification are committed together.
+  batch.set(notificationRef, notification);
+  await batch.commit();
 }
-export function subscribeExternalMaintenances(callback:(items:ExternalMaintenance[])=>void,onError?:(error:Error)=>void):Unsubscribe{
- const {db}=requireFirebase();return onSnapshot(query(collection(db,"externalMaintenances"),orderBy("updatedAt","desc")),s=>callback(s.docs.map(d=>({id:d.id,...d.data()} as ExternalMaintenance))),e=>onError?.(e));
+
+export function subscribeExternalMaintenances(
+  callback: (items: ExternalMaintenance[]) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe {
+  const { db } = requireFirebase();
+  return onSnapshot(
+    query(collection(db, "externalMaintenances"), orderBy("updatedAt", "desc")),
+    snapshot => callback(snapshot.docs.map(item => ({ id: item.id, ...item.data() } as ExternalMaintenance))),
+    error => onError?.(error),
+  );
 }
-export async function loadMaintenanceHistory(id:string):Promise<MaintenanceHistory[]>{
- const {db}=requireFirebase();const s=await getDocs(query(collection(db,"externalMaintenances",id,"history"),orderBy("changedAt","desc")));
- return s.docs.map(d=>({id:d.id,...d.data()} as MaintenanceHistory));
+
+export async function loadMaintenanceHistory(id: string): Promise<MaintenanceHistory[]> {
+  const { db } = requireFirebase();
+  const snapshot = await getDocs(query(
+    collection(db, "externalMaintenances", id, "history"),
+    orderBy("changedAt", "desc"),
+  ));
+  return snapshot.docs.map(item => ({ id: item.id, ...item.data() } as MaintenanceHistory));
 }
