@@ -322,7 +322,7 @@ service cloud.firestore {
       let notificationPath = /databases/$(database)/documents/sharedNotifications/$(request.resource.data.lastNotificationId);
       return request.resource.data.lastNotificationId is string
         && existsAfter(notificationPath)
-        && getAfter(notificationPath).data.keys().hasOnly(["category", "message", "target", "createdByUid", "createdAt"])
+        && getAfter(notificationPath).data.keys().hasOnly(["category", "message", "target", "maintenanceId", "createdByUid", "createdAt"])
         && getAfter(notificationPath).data.category == "manutencoes"
         && getAfter(notificationPath).data.target == "manutencoes"
         && getAfter(notificationPath).data.message == "Atualização de manutenção"
