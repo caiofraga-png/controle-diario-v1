@@ -524,3 +524,23 @@ test("preferências de notificações são privadas por usuário", async () => {
     schemaVersion: 1, categories: { cobranca: false },
   }));
 });
+
+
+test("somente setor ou contato liberado pode publicar notificação de cobrança", async () => {
+  await assertSucceeds(setDoc(doc(dbAs("supervisor"), "featurePermissions/delinquency"), {
+    schemaVersion: 1, enabled: true, sectorIds: ["suporte"], contactIds: [],
+    updatedAt: serverTimestamp(), updatedByUid: "supervisor",
+  }));
+  await assertSucceeds(setDoc(doc(dbAs("alice"), "sharedNotifications/cobranca-alice"), {
+    category: "cobranca", message: "Novo alerta de inadimplência",
+    target: "inadimplencia", createdByUid: "alice", createdAt: serverTimestamp(),
+  }));
+  await assertFails(setDoc(doc(dbAs("bob"), "sharedNotifications/cobranca-bob"), {
+    category: "cobranca", message: "Novo alerta de inadimplência",
+    target: "inadimplencia", createdByUid: "bob", createdAt: serverTimestamp(),
+  }));
+  await assertFails(setDoc(doc(dbAs("alice"), "sharedNotifications/cobranca-outro-tipo"), {
+    category: "manutencoes", message: "Atualização de manutenção",
+    target: "manutencoes", createdByUid: "alice", createdAt: serverTimestamp(),
+  }));
+});
