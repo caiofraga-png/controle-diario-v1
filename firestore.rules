@@ -267,6 +267,34 @@ service cloud.firestore {
       allow write: if activeManager();
     }
 
+    // Shared notifications are visible to every approved collaborator.
+    // Only administrators and supervisors may publish institutional notices.
+    match /sharedNotifications/{notificationId} {
+      allow read: if approvedUser();
+      allow create: if activeManager()
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.category in ["cobranca", "promocoes", "manutencoes"]
+        && request.resource.data.target in ["inadimplencia", "promocoes", "manutencoes"]
+        && request.resource.data.message is string
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // Supervisors and administrators manage scoped permissions for delinquency notices.
+    match /featurePermissions/{featureId} {
+      allow read: if approvedUser();
+      allow create, update: if activeManager()
+        && featureId == "delinquency"
+        && request.resource.data.keys().hasOnly(["schemaVersion", "enabled", "sectorIds", "contactIds", "updatedAt", "updatedByUid"])
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.enabled is bool
+        && request.resource.data.sectorIds is list
+        && request.resource.data.contactIds is list
+        && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
     match /settings/allowedDomains {
       allow read: if signedIn();
       allow write: if activeAdmin();
