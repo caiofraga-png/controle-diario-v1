@@ -506,7 +506,7 @@ test("notificações institucionais podem ser publicadas por supervisores e lida
 test("permissão de publicação de inadimplência é gerenciada por supervisão e administração", async () => {
   const permission = {
     schemaVersion: 1, enabled: true, sectorIds: ["suporte"],
-    contactIds: ["equipe-a"], updatedAt: serverTimestamp(), updatedByUid: "supervisor",
+    contactIds: ["equipe-a"], agentIds: [], updatedAt: serverTimestamp(), updatedByUid: "supervisor",
   };
   await assertSucceeds(setDoc(doc(dbAs("supervisor"), "featurePermissions/delinquency"), permission));
   await assertSucceeds(getDoc(doc(dbAs("alice"), "featurePermissions/delinquency")));
@@ -528,7 +528,7 @@ test("preferências de notificações são privadas por usuário", async () => {
 
 test("somente setor ou contato liberado pode publicar notificação de cobrança", async () => {
   await assertSucceeds(setDoc(doc(dbAs("supervisor"), "featurePermissions/delinquency"), {
-    schemaVersion: 1, enabled: true, sectorIds: ["suporte"], contactIds: [],
+    schemaVersion: 1, enabled: true, sectorIds: ["suporte"], contactIds: [], agentIds: [],
     updatedAt: serverTimestamp(), updatedByUid: "supervisor",
   }));
   await assertSucceeds(setDoc(doc(dbAs("alice"), "sharedNotifications/cobranca-alice"), {
