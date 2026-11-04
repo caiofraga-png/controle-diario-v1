@@ -11,6 +11,7 @@ const {
   setDoc,
   updateDoc,
   deleteDoc,
+  serverTimestamp,
 } = require("firebase/firestore");
 
 const PROJECT_ID = "leste-controle-diario-rules-test";
@@ -138,6 +139,7 @@ test("administrador pode ler subcoleções privadas de qualquer colaborador para
   const privatePaths = [
     "users/alice/configuration/layout",
     "users/alice/preferences/appearance",
+    "users/alice/preferences/notifications",
     "users/alice/calendar/dados",
     "users/alice/taskCustomizations/T001",
     "users/alice/usefulLinks/L001",
@@ -482,5 +484,43 @@ test("e-mail corporativo não verificado não pode solicitar acesso", async () =
     email: "newuser@lestetelecom.net.br",
     status: "pending",
     requestedAt: new Date().toISOString(),
+  }));
+});
+
+
+test("notificações institucionais podem ser publicadas por supervisores e lidas por todos os aprovados", async () => {
+  const supervisor = dbAs("supervisor");
+  const notification = {
+    category: "promocoes", message: "Nova promoção ativa", target: "promocoes",
+    createdByUid: "supervisor", createdAt: serverTimestamp(),
+  };
+  await assertSucceeds(setDoc(doc(supervisor, "sharedNotifications/promo-1"), notification));
+  await assertSucceeds(getDoc(doc(dbAs("alice"), "sharedNotifications/promo-1")));
+  await assertFails(setDoc(doc(dbAs("alice"), "sharedNotifications/forbidden"), {
+    ...notification, createdByUid: "alice",
+  }));
+  await assertFails(updateDoc(doc(supervisor, "sharedNotifications/promo-1"), { message: "Alterada" }));
+  await assertFails(deleteDoc(doc(supervisor, "sharedNotifications/promo-1")));
+});
+
+test("permissão de publicação de inadimplência é gerenciada por supervisão e administração", async () => {
+  const permission = {
+    schemaVersion: 1, enabled: true, sectorIds: ["suporte"],
+    contactIds: ["equipe-a"], updatedAt: serverTimestamp(), updatedByUid: "supervisor",
+  };
+  await assertSucceeds(setDoc(doc(dbAs("supervisor"), "featurePermissions/delinquency"), permission));
+  await assertSucceeds(getDoc(doc(dbAs("alice"), "featurePermissions/delinquency")));
+  await assertFails(setDoc(doc(dbAs("alice"), "featurePermissions/delinquency"), {
+    ...permission, updatedByUid: "alice",
+  }));
+});
+
+test("preferências de notificações são privadas por usuário", async () => {
+  const own = doc(dbAs("alice"), "users/alice/preferences/notifications");
+  await assertSucceeds(setDoc(own, { schemaVersion: 1, categories: { cobranca: false, promocoes: true, manutencoes: true } }));
+  await assertSucceeds(getDoc(own));
+  await assertFails(getDoc(doc(dbAs("bob"), "users/alice/preferences/notifications")));
+  await assertFails(setDoc(doc(dbAs("alice"), "users/bob/preferences/notifications"), {
+    schemaVersion: 1, categories: { cobranca: false },
   }));
 });
