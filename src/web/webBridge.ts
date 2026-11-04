@@ -45,6 +45,7 @@ export function installWebBridge(){
    },
    workflow:{
     load:()=>firebaseWorkflow.load(),
+    perfilAnterior:()=>firebaseWorkflow.lastUsedProfileId(),
     iniciar:(input:any)=>firebaseWorkflow.start(input),
     trocarPerfil:(profileId:string)=>firebaseWorkflow.switchProfile(profileId),
     marcar:(input:any)=>firebaseWorkflow.mark(input),
