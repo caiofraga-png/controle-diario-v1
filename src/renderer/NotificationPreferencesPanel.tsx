@@ -45,7 +45,7 @@ export default function NotificationPreferencesPanel({ canManageAccess = false }
             const data = permission.data();
             setEnabled(data.enabled === true);
             setSectorIds(Array.isArray(data.sectorIds) ? data.sectorIds : []);
-            setWholeSectorIds(Array.isArray(data.wholeSectorIds) ? data.wholeSectorIds : []);
+            setWholeSectorIds(Array.isArray(data.wholeSectorIds) ? data.wholeSectorIds : (Array.isArray(data.sectorIds) ? data.sectorIds : []));
             setContactIds(Array.isArray(data.contactIds) ? data.contactIds : []);
             setAgentIds(Array.isArray(data.agentIds) ? data.agentIds : []);
           }
