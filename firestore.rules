@@ -382,6 +382,7 @@ service cloud.firestore {
           "title", "date", "location", "description", "status",
           "updatedByUid", "updatedAt", "lastHistoryId", "lastNotificationId"
         ])
+        && request.resource.data.diff(resource.data).affectedKeys().hasAny(["title", "date", "location", "description", "status"])
         && request.resource.data.createdByUid == resource.data.createdByUid
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.updatedByUid == request.auth.uid
