@@ -325,6 +325,7 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)/history/$(request.resource.data.lastHistoryId)).data.maintenanceId == maintenanceId
         && getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)/history/$(request.resource.data.lastHistoryId)).data.changedByUid == request.auth.uid
         && getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)/history/$(request.resource.data.lastHistoryId)).data.changedAt == request.time
+        && getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)/history/$(request.resource.data.lastHistoryId)).data.changedByName is string
         && getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)/history/$(request.resource.data.lastHistoryId)).data.after is map;
     }
 
@@ -367,9 +368,10 @@ service cloud.firestore {
       match /history/{entryId} {
         allow read: if approvedUser();
         allow create: if (activeManager() || maintenancePublisher())
-          && request.resource.data.keys().hasOnly(["maintenanceId", "changedByUid", "changedAt", "before", "after"])
+          && request.resource.data.keys().hasOnly(["maintenanceId", "changedByUid", "changedByName", "changedAt", "before", "after"])
           && request.resource.data.maintenanceId == maintenanceId
           && request.resource.data.changedByUid == request.auth.uid
+          && request.resource.data.changedByName is string
           && request.resource.data.changedAt == request.time
           && (request.resource.data.before == null || request.resource.data.before is map)
           && request.resource.data.after is map
