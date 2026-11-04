@@ -1,157 +1,84 @@
-# Backup e recuperação do Firebase — Controle Diário
+# Backup e restauração administrativa — Controle Diário
 
-## Objetivo e limites
+## Estratégia aprovada
 
-## Estratégia aprovada sem faturamento
+O projeto não terá conta de faturamento vinculada. Portanto, esta solução não depende de backups gerenciados do Firestore, PITR, Cloud Storage, Cloud Functions ou serviços pagos.
 
-O projeto não terá conta de faturamento vinculada. Portanto, backups gerenciados do Firestore, PITR e Cloud Storage não fazem parte da solução aprovada e não devem ser habilitados.
+A proteção disponível nesta versão é uma exportação administrativa manual, feita pelo navegador por um administrador aprovado:
+- arquivo JSON criptografado com AES-256-GCM;
+- chave derivada da senha informada pelo administrador com PBKDF2-SHA256 (310.000 iterações);
+- verificação de integridade SHA-256 após descriptografia;
+- arquivo local, sem enviar a senha ao Firebase;
+- leitura dos dados, sem alterar os documentos de origem.
 
-A primeira camada será uma exportação administrativa manual, executada no navegador por um administrador aprovado:
-- um único arquivo JSON por exportação, criptografado com AES-256-GCM;
-- derivação da chave a partir de senha informada pelo administrador (PBKDF2-SHA256);
-- resumo SHA-256 do conteúdo original para verificação de integridade após descriptografia;
-- inclusão dos dados institucionais e dos dados privados conhecidos de todos os usuários, incluindo expediente em andamento, histórico, configurações, preferências, calendário, personalizações e links;
-- operação somente de leitura, sem alteração do Firestore.
+A senha deve ter pelo menos 12 caracteres e ser guardada separadamente do arquivo. Sem ela, não será possível abrir o backup.
 
-A senha não é transmitida ao Firebase nem gravada no arquivo. Deve ser guardada separadamente; perder a senha significa perder acesso ao conteúdo exportado.
+## Escopo incluído
 
-O módulo não enumera subcoleções desconhecidas automaticamente: o Firestore Web SDK não oferece listagem de subcoleções. Sempre que o modelo de dados ganhar um novo caminho privado, a lista de exportação deverá ser atualizada e testada.
+A exportação contempla os documentos encontrados nos caminhos conhecidos pela aplicação:
 
-A restauração controlada, incluindo validação de integridade e prévia de conflitos, permanece como etapa posterior. Até que seja implementada e testada, o arquivo é uma cópia de segurança exportada, não um procedimento de restauração pronto para uso.
+- documentos de perfil em `users`;
+- documentos privados conhecidos por usuário: `configuration/tarefas`, `configuration/perfis`, `configuration/email`, `configuration/layout`, `preferences/appearance`, `preferences/workSchedule`, `calendar/dados` e `operational/currentState`;
+- subcoleções privadas conhecidas: `taskCustomizations`, `usefulLinks` e `operational/history/entries`;
+- coleções institucionais: `accessRequests`, `adminAudit`, `organizationContacts`, `organizationSectors`, `Expediente`, `settings`, `sharedPromotions` e `sharedTaskCatalog`.
 
+**Limite importante:** o Firestore Web SDK não permite enumerar automaticamente subcoleções desconhecidas. Este arquivo não é uma cópia genérica de todo o banco. Quando a aplicação ganhar novos caminhos de dados, a lista do serviço de backup, os testes e esta documentação deverão ser atualizados juntos.
 
-Este procedimento define como proteger os dados do Controle Diário no Cloud Firestore e como recuperar o serviço após exclusão acidental, corrupção lógica ou indisponibilidade.
+## Como gerar o arquivo
 
-**Estado deste documento:** plano técnico preparado para homologação. A existência deste arquivo não significa que backups, PITR, bucket ou alertas já estejam habilitados no projeto. Nenhuma rotina deste documento deve ser executada em produção sem autorização e validação do projeto, região, permissões e custos.
+1. Entre no Controle Diário com uma conta empresarial verificada e aprovada com perfil de administrador.
+2. Abra o painel de administração e localize **Backup administrativo**.
+3. Informe uma senha forte com pelo menos 12 caracteres e confirme-a.
+4. Acione **Gerar backup administrativo criptografado**.
+5. Guarde o arquivo JSON em local seguro e independente do computador de uso diário.
+6. Guarde a senha em outro local seguro. Não envie o arquivo nem a senha em canais públicos.
 
-O projeto identificado atualmente pelo fluxo de homologação é `controle-diario-510808`. Antes de qualquer configuração, confirme no Google Cloud Console que esse é o projeto correto e que não contém dados de produção.
+A exportação é somente leitura. O número de documentos e usuários informado ao final serve como referência para identificar o arquivo.
 
-## Dados que precisam ser protegidos
+## Como validar e restaurar
 
-O backup do banco deve abranger o banco Firestore completo, não apenas a coleção `Expediente`. Entre os dados importantes estão:
+A restauração também é exclusiva de administrador aprovado e só aceita um arquivo do mesmo projeto Firebase.
 
-- `users/{uid}`: identidade organizacional, status, papel, setor, contato e perfis autorizados;
-- subcoleções privadas `configuration`, `preferences`, `usefulLinks`, `taskCustomizations` e `operational`;
-- `Expediente`: índice compartilhado usado pela Visão Geral;
-- `accessRequests`, `organizationSectors`, `organizationContacts`;
-- `sharedTaskCatalog`, `sharedPromotions`, `settings` e `adminAudit`.
+1. Na área **Conferir backup para restauração**, selecione o JSON e informe a senha.
+2. Acione **Validar arquivo e visualizar conflitos**.
+3. Confira a origem, data, projeto, quantidade de usuários, documentos e distribuição por coleção.
+4. Analise os documentos ausentes e os caminhos que já existem.
+5. Para iniciar, acione **Restaurar documentos ausentes** e confirme a palavra solicitada pela interface.
+6. Ao terminar, confira o resultado e os registros de auditoria administrativos.
 
-O histórico operacional é append-only nas regras do cliente, mas isso não substitui backup: exclusões administrativas, falhas de configuração, incidentes de credenciais ou erros de aplicação ainda podem comprometer dados.
+A validação confere formato, versão, integridade criptográfica, projeto de origem, coleções obrigatórias, caminhos permitidos, duplicidades e vínculos básicos de propriedade. A rotina de restauração repete as validações estruturais antes de gravar.
 
-## Camadas recomendadas
+### Política de gravação
 
-### 1. Backups gerenciados do Firestore
+- A restauração cria somente documentos ausentes.
+- Se um documento já existir, ele será preservado e ignorado.
+- Não há sobrescrita nem exclusão de documentos existentes.
+- O histórico operacional continua imutável.
+- A operação registra início e conclusão na auditoria administrativa; se houver interrupção, tenta registrar o resultado parcial.
+- A restauração é sequencial, documento a documento, e **não é atômica**. Uma falha de conexão ou permissão pode deixar parte dos documentos restaurados. A interface informa quantos foram criados e quantos foram preservados; consulte a auditoria antes de repetir.
 
-Habilitar uma agenda de backups gerenciados para o banco `(default)`, preferencialmente:
+A restauração não substitui um ensaio de recuperação de banco completo e não deve ser tratada como mecanismo para reverter alterações em documentos que já existem.
 
-- frequência diária;
-- retenção de 14 semanas, se disponível e aprovada;
-- horário de execução fora do período de maior uso;
-- revisão periódica do estado da agenda e dos backups concluídos.
+## Cuidados operacionais
 
-A disponibilidade de agenda, frequência, retenção e região deve ser confirmada para a localização real do banco no Google Cloud Console. Backups gerenciados têm cobrança própria; verificar preços vigentes e estimativa de armazenamento antes de habilitar.
+- Faça exportações em intervalos regulares e antes de mudanças estruturais relevantes.
+- Mantenha mais de uma cópia do arquivo em locais seguros e independentes.
+- Restrinja o acesso ao arquivo e à senha: o conteúdo inclui dados pessoais e operacionais de todos os colaboradores.
+- Não coloque arquivos de backup, senhas ou chaves privadas no repositório GitHub.
+- Não execute restauração em produção como teste. Sempre que possível, valide primeiro em ambiente isolado.
+- Antes de uma recuperação real, registre o motivo, o projeto, o horário e o escopo; comunique os responsáveis e obtenha autorização operacional.
 
-Os backups gerenciados são cópias de recuperação do banco. A restauração normalmente cria um banco de destino separado; planejar a troca da aplicação para o banco restaurado, a validação e o retorno controlado. Não presumir que a restauração sobrescreve o banco original.
+## O que Actions verdes confirma — e o que não confirma
 
-### 2. Recuperação pontual (PITR)
+O GitHub Actions valida a compilação, os testes automatizados e as regras incluídas no workflow. Isso não confirma que um arquivo de backup real foi exportado, que a senha foi guardada, que o arquivo pode ser recuperado em outro dispositivo ou que todos os caminhos futuros estão incluídos.
 
-Avaliar habilitar Point-in-Time Recovery (PITR) para o banco, se disponível na região e compatível com a necessidade operacional.
+A configuração efetiva de backups gerenciados, PITR, buckets, IAM, alertas, região e custos só poderia ser confirmada no Google Cloud Console. Esses serviços não fazem parte da estratégia aprovada sem faturamento.
 
-- PITR oferece recuperação para um instante dentro da janela suportada pelo Firestore (atualmente até sete dias, sujeita à configuração e ao produto).
-- PITR não substitui backups gerenciados de retenção mais longa.
-- Há cobrança adicional e requisitos de configuração; confirmar preço e janela disponíveis no Console antes de ativar.
+## Manutenção desta documentação
 
-### 3. Exportação independente para Cloud Storage
-
-Para uma cópia independente do mecanismo de backup gerenciado, planejar exportações periódicas do banco para um bucket Cloud Storage dedicado, com:
-
-- bucket no projeto/ambiente aprovado e localização compatível com a política de dados da empresa;
-- acesso restrito a uma identidade de serviço específica;
-- versionamento e/ou política de retenção/imutabilidade conforme política corporativa;
-- criptografia e monitoramento;
-- nomes de exportação com data/hora, sem sobrescrever exportações anteriores;
-- teste de importação em um banco de recuperação isolado.
-
-Exportação/importação do Firestore é uma camada adicional de portabilidade e recuperação; não é substituta automática de backups gerenciados. Confirmar custos de armazenamento, operações e tráfego, além das permissões IAM necessárias.
-
-## Frequência e objetivos operacionais propostos
-
-| Camada | Frequência / janela | Objetivo |
-|---|---|---|
-| Backup gerenciado | Diário; retenção-alvo 14 semanas | Recuperação de falhas e incidentes com janela maior |
-| PITR | Contínuo dentro da janela suportada | Recuperar alterações recentes ou exclusões acidentais |
-| Exportação Cloud Storage | Semanal, e antes de mudanças estruturais relevantes | Cópia independente e portabilidade |
-
-Metas iniciais para discussão, não garantias técnicas: RPO de até 24 horas para backup diário e RTO definido após ensaio de restauração. PITR pode reduzir a perda potencial de alterações recentes, mas o RTO depende da restauração, validação e troca do banco.
-
-## Controle de acesso
-
-- Não colocar chaves privadas de contas de serviço no repositório, em variáveis `VITE_*), em issues ou no chat.
-- Preferir identidade de serviço dedicada com menor privilégio necessário e credenciais de curta duração/federação quando suportadas.
-- Separar permissões de operação de backup, leitura de backups e restauração.
-- Restringir quem pode excluir backups, alterar agendas, remover buckets ou iniciar restaurações.
-- Registrar responsáveis, aprovações e ações de recuperação.
-- Não conceder papel amplo de Owner/Editor apenas para simplificar a configuração.
-
-## Procedimento de verificação
-
-Depois de habilitar cada camada no Console:
-
-1. Confirmar projeto, banco, região e agenda.
-2. Confirmar ao menos um backup concluído com sucesso e sua data.
-3. Confirmar a janela PITR efetivamente habilitada, se adotada.
-4. Confirmar exportação concluída no bucket, se adotada.
-5. Verificar alertas para falha de backup/exportação e para alteração/exclusão de configuração.
-6. Registrar custos estimados, responsáveis e local das cópias.
-7. Repetir a verificação periodicamente e após alterações de projeto/região.
-
-Uma execução verde do GitHub Actions não confirma que os backups do Firestore estejam ativos.
-
-## Ensaio de restauração
-
-O ensaio deve ocorrer em um projeto/banco isolado, nunca sobre o banco em uso:
-
-1. Selecionar um backup conhecido ou um ponto PITR aprovado.
-2. Restaurar para um banco de destino separado, ou importar a exportação para um banco de teste.
-3. Aplicar/revisar índices e regras de segurança compatíveis com a versão da aplicação.
-4. Verificar presença e consistência de documentos organizacionais, configurações, histórico individual e índice `Expediente`.
-5. Conferir contagens e amostras de registros, incluindo diferentes usuários e datas.
-6. Validar que os documentos históricos mantêm `ownerUid`, versões e fotografia de setor/contato.
-7. Executar os testes de regras e a compilação da aplicação contra o ambiente restaurado.
-8. Testar login e leitura em uma conta de teste autorizada.
-9. Documentar duração, falhas, diferenças e responsável pelo ensaio.
-
-Não apontar a aplicação ativa para o banco restaurado antes de aprovação formal. Não copiar dados restaurados para produção como parte de um teste.
-
-## Recuperação de incidente
-
-Em caso de exclusão ou corrupção suspeita:
-
-1. Suspender alterações administrativas e novas gravações afetadas, quando operacionalmente seguro.
-2. Registrar horário aproximado, escopo, projeto e banco envolvidos.
-3. Preservar evidências e verificar logs de auditoria disponíveis.
-4. Escolher o ponto de recuperação com o responsável pelo negócio, considerando o instante do incidente e a perda aceitável de dados.
-5. Restaurar em banco isolado e executar o ensaio de validação.
-6. Planejar janela de indisponibilidade, troca de configuração e comunicação aos usuários.
-7. Só efetuar a troca após aprovação explícita do responsável.
-8. Manter o banco original preservado até a conclusão da validação e do período de segurança acordado.
-
-## Checklist de implantação — pendente no Console
-
-- [ ] Confirmar que `controle-diario-510808` é o projeto correto e exclusivo de homologação.
-- [ ] Confirmar região e tipo do banco Firestore.
-- [ ] Consultar custos de backup gerenciado, PITR e Cloud Storage.
-- [ ] Habilitar agenda diária de backup com retenção aprovada.
-- [ ] Avaliar e, se aprovado, habilitar PITR.
-- [ ] Criar bucket dedicado para exportações, se aprovado.
-- [ ] Configurar IAM de menor privilégio e retenção das exportações.
-- [ ] Configurar alertas de falha e alteração/exclusão.
-- [ ] Executar restauração de teste em ambiente isolado.
-- [ ] Registrar RPO/RTO aprovados, responsáveis e evidências do ensaio.
-
-## Estado atual confirmado no repositório
-
-- Não foi encontrada rotina de backup, exportação, PITR ou restauração nos workflows atuais.
-- O workflow de homologação compila, testa regras no emulador e publica regras/Hosting; ele não cria nem verifica backups.
-- O arquivo `firebase.json` configura regras, emulador e Hosting, sem configuração de backup.
-- A configuração efetiva de backups, PITR, buckets, IAM, alertas, região e custos só pode ser confirmada no Google Cloud Console.
+Sempre que forem criados ou removidos documentos/subcoleções no Firestore:
+1. atualizar os caminhos em `src/web/firebaseAdminBackupService.ts`;
+2. revisar as permissões de leitura/exportação e criação/restauração em `firestore.rules`;
+3. ampliar `tests/firestore.rules.test.cjs` e os testes do serviço, quando aplicável;
+4. atualizar esta lista de escopo;
+5. executar Actions e revisar o resultado antes de considerar a mudança concluída.
