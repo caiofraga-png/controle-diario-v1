@@ -17,6 +17,7 @@ export interface ExternalMaintenance {
 export interface MaintenanceHistory {
   id: string;
   changedByUid: string;
+  changedByName?: string;
   changedAt?: unknown;
   before: Record<string, unknown> | null;
   after: Record<string, unknown>;
@@ -64,6 +65,8 @@ export async function saveExternalMaintenance(input: ExternalMaintenanceInput, i
     throw new Error("SEU SETOR, CONTATO OU USUÁRIO NÃO POSSUI PERMISSÃO PARA CADASTRAR OU EDITAR MANUTENÇÕES.");
   }
 
+  const userProfile = await getDoc(doc(db, "users", user.uid));
+  const changedByName = String(userProfile.data()?.agent || user.displayName || user.email || user.uid);
   const batch = writeBatch(db);
   const now = serverTimestamp();
   const notificationRef = doc(collection(db, "sharedNotifications"));
@@ -96,6 +99,7 @@ export async function saveExternalMaintenance(input: ExternalMaintenanceInput, i
     batch.set(historyRef, {
       maintenanceId: id,
       changedByUid: user.uid,
+      changedByName,
       changedAt: now,
       before,
       after: input,
