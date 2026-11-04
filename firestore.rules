@@ -316,7 +316,8 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/sharedNotifications/$(request.resource.data.lastNotificationId)).data.category == "manutencoes"
         && getAfter(/databases/$(database)/documents/sharedNotifications/$(request.resource.data.lastNotificationId)).data.target == "manutencoes"
         && getAfter(/databases/$(database)/documents/sharedNotifications/$(request.resource.data.lastNotificationId)).data.createdByUid == request.auth.uid
-        && getAfter(/databases/$(database)/documents/sharedNotifications/$(request.resource.data.lastNotificationId)).data.createdAt == request.time;
+        && getAfter(/databases/$(database)/documents/sharedNotifications/$(request.resource.data.lastNotificationId)).data.createdAt == request.time
+        && getAfter(/databases/$(database)/documents/sharedNotifications/$(request.resource.data.lastNotificationId)).data.message == "Atualização de manutenção";
     }
 
     function validMaintenanceHistory(maintenanceId) {
@@ -325,7 +326,7 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)/history/$(request.resource.data.lastHistoryId)).data.maintenanceId == maintenanceId
         && getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)/history/$(request.resource.data.lastHistoryId)).data.changedByUid == request.auth.uid
         && getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)/history/$(request.resource.data.lastHistoryId)).data.changedAt == request.time
-        && getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)/history/$(request.resource.data.lastHistoryId)).data.changedByName is string
+        && getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)/history/$(request.resource.data.lastHistoryId)).data.changedByName == userRecord(request.auth.uid).data.agent
         && getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)/history/$(request.resource.data.lastHistoryId)).data.after is map;
     }
 
@@ -371,7 +372,7 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly(["maintenanceId", "changedByUid", "changedByName", "changedAt", "before", "after"])
           && request.resource.data.maintenanceId == maintenanceId
           && request.resource.data.changedByUid == request.auth.uid
-          && request.resource.data.changedByName is string
+          && request.resource.data.changedByName == userRecord(request.auth.uid).data.agent
           && request.resource.data.changedAt == request.time
           && (request.resource.data.before == null || request.resource.data.before is map)
           && request.resource.data.after is map
