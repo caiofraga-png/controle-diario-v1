@@ -53,7 +53,7 @@ export async function canCurrentUserPublishDelinquency(): Promise<boolean> {
   const profile = userSnapshot.data();
   const permission = permissionSnapshot.data();
   if (profile.status !== "approved" || permission.enabled !== true) return false;
-  const sectors = Array.isArray(permission.sectorIds) ? permission.sectorIds : [];
+  const sectors = Array.isArray(permission.wholeSectorIds) ? permission.wholeSectorIds : [];
   const contacts = Array.isArray(permission.contactIds) ? permission.contactIds : [];
   const agents = Array.isArray(permission.agentIds) ? permission.agentIds : [];
   return sectors.includes(profile.sectorId) || contacts.includes(profile.contactId) || agents.includes(user.uid);
