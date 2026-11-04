@@ -74,7 +74,7 @@ export async function savePromotions(promotions: Promotion[]): Promise<void> {
   const previousItems = previousSnapshot.exists() && Array.isArray(previousSnapshot.data().promotions)
     ? validatePromotions(previousSnapshot.data().promotions) : [];
   const previouslyActive = new Set(previousItems.filter(item => item.status === "active").map(item => item.id));
-  const newlyActive = validated.filter(item => item.status === "active" && !previouslyActive.has(item.id)
+  const newlyActive = (previousSnapshot.exists() ? validated : []).filter(item => item.status === "active" && !previouslyActive.has(item.id)
     && (!item.startDate || item.startDate <= new Date().toISOString().slice(0, 10))
     && (!item.endDate || item.endDate >= new Date().toISOString().slice(0, 10)));
   const ids = new Set<string>();
