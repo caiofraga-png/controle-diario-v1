@@ -126,10 +126,10 @@ export default function MaintenancePanel() {
   return <section className="maintenance-workspace">
     <div className="workspace-intro maintenance-intro">
       <div>
-        <h2>Manutenções Externas</h2>
+        <h2>Área Falha</h2>
         <p>Acompanhe manutenções em andamento e consulte os registros concluídos.</p>
       </div>
-      {canManage && !creating && !historyItem && <button className="primary maintenance-new-button" onClick={openCreate}>＋ NOVA MANUTENÇÃO</button>}
+      {canManage && view === "ongoing" && !creating && !historyItem && <button className="primary maintenance-new-button" onClick={openCreate}>＋ NOVA MANUTENÇÃO</button>}
     </div>
 
     {message && <p role="status" className="system-message">{message}</p>}
