@@ -541,7 +541,7 @@ test("manutenção exige gravação atômica do histórico imutável e do aviso"
     lastHistoryId: "history-1", lastNotificationId: "maintenance-notice-1",
   });
   batch.set(history, {
-    maintenanceId: "maintenance-1", changedByUid: "alice",
+    maintenanceId: "maintenance-1", changedByUid: "alice", changedByName: "Alice",
     changedAt: serverTimestamp(), before: null, after: details,
   });
   batch.set(notification, {
@@ -595,7 +595,7 @@ test("colaborador sem autorização não pode cadastrar manutenção externa", a
     lastHistoryId: "history-bob", lastNotificationId: "maintenance-notice-bob",
   });
   batch.set(history, {
-    maintenanceId: "maintenance-bob", changedByUid: "bob",
+    maintenanceId: "maintenance-bob", changedByUid: "bob", changedByName: "Bob",
     changedAt: serverTimestamp(), before: null, after: details,
   });
   batch.set(notification, {
