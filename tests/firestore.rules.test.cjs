@@ -553,6 +553,11 @@ test("manutenção exige gravação atômica do histórico imutável e do aviso"
   await assertSucceeds(getDoc(maintenance));
   await assertSucceeds(getDoc(history));
   await assertSucceeds(getDoc(notification));
+  await assertFails(setDoc(doc(dbAs("supervisor"), "sharedNotifications/orphan-maintenance"), {
+    category: "manutencoes", message: "Atualização de manutenção",
+    target: "manutencoes", maintenanceId: "missing-maintenance",
+    createdByUid: "supervisor", createdAt: serverTimestamp(),
+  }));
 
   const updatedDetails = { ...details, title: "Manutenção de rede atualizada", status: "completed" };
   const updateBatch = writeBatch(db);
