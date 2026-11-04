@@ -1782,3 +1782,9 @@ html[data-theme="midnight-violet"] .config-embedded .config-tabs button.active {
 .custom-shortcut-form label { display:flex; flex-direction:column; gap:6px; font-size:11px; font-weight:800; }
 .custom-shortcut-form input { width:100%; min-width:0; min-height:38px; padding:8px 10px; border:1px solid var(--verde-borda); border-radius:7px; background:var(--surface,#fff); color:var(--texto); }
 @media(max-width:620px) { .custom-shortcut-form { grid-template-columns:1fr; } .custom-shortcut-row { align-items:flex-start; flex-direction:column; } }
+
+.notification-permission-list { display:grid; gap:6px; margin:8px 0 16px; }
+.notification-permission-contact { border:1px solid var(--verde-borda); border-radius:9px; padding:8px 12px; background:var(--surface,transparent); }
+.notification-permission-contact > .check-line { margin:0; }
+.notification-permission-agents { display:grid; gap:6px; margin:8px 0 2px 28px; padding:10px 12px; border-left:2px solid var(--verde-borda); }
+.notification-permission-agents > small { color:var(--texto-suave); font-size:11px; font-weight:700; letter-spacing:.04em; }
