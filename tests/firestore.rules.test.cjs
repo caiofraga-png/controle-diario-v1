@@ -563,7 +563,7 @@ test("manutenção exige gravação atômica do histórico imutável e do aviso"
     lastHistoryId: "history-2", lastNotificationId: "maintenance-notice-2",
   });
   updateBatch.set(history2, {
-    maintenanceId: "maintenance-1", changedByUid: "alice",
+    maintenanceId: "maintenance-1", changedByUid: "alice", changedByName: "Alice",
     changedAt: serverTimestamp(), before: details, after: updatedDetails,
   });
   updateBatch.set(notification2, {
