@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   canCurrentUserManageMaintenances,
   loadMaintenanceHistory,
@@ -87,7 +87,7 @@ export default function MaintenancePanel() {
     setEditing(null);
   }
 
-  async function submitForm(event: React.FormEvent<HTMLFormElement>) {
+  async function submitForm(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
     setMessage("");
