@@ -14,14 +14,14 @@ export type BackupPayload = {
 
 const ROOT_COLLECTIONS = [
   "accessRequests", "adminAudit", "organizationContacts", "organizationSectors",
-  "Expediente", "settings", "sharedPromotions", "sharedTaskCatalog",
+  "Expediente", "settings", "sharedPromotions", "sharedTaskCatalog", "sharedNotifications", "featurePermissions",
 ] as const;
 
 // Firestore Web SDK não lista subcoleções dinamicamente. Manter esta relação
 // sincronizada com os caminhos efetivamente utilizados pela aplicação.
 const USER_DOCUMENTS = [
   "configuration/tarefas", "configuration/perfis", "configuration/email", "configuration/layout",
-  "preferences/appearance", "preferences/workSchedule", "calendar/dados", "operational/currentState",
+  "preferences/appearance", "preferences/workSchedule", "preferences/notifications", "calendar/dados", "operational/currentState",
 ] as const;
 const USER_COLLECTIONS = [
   "taskCustomizations", "usefulLinks", "operational/history/entries",
