@@ -49,15 +49,14 @@ export default function PromotionPanel({ promotions, message, canManage, onSave 
     finally { setBusy(false); }
   }
   const items=tab==="ongoing"?classified.ongoing:classified.completed;
-  return <section className="promotions-workspace">
-    <div className="workspace-intro"><h2>Promoções ativas</h2><p>Consulte benefícios, produtos elegíveis e condições comerciais das promoções em andamento e concluídas.</p></div>
+  return <section className="maintenance-workspace promotions-workspace">
+    <div className="workspace-intro maintenance-intro"><div><h2>Promoções ativas</h2><p>Consulte benefícios, produtos elegíveis e condições comerciais das promoções em andamento e concluídas.</p></div>{canManage && !form && tab === "ongoing" && <button className="primary maintenance-new-button" type="button" onClick={()=>{setForm(emptyPromotion());setLocalMessage("");}}>＋ NOVA PROMOÇÃO</button>}</div>
     {(localMessage||message)&&<p className="system-message">{localMessage||message}</p>}
-    <div className="maintenance-tabs" role="tablist" aria-label="Situação das promoções">
-      <button type="button" className={tab==="ongoing"?"active":""} onClick={()=>{setTab("ongoing");setForm(null);}}>EM ANDAMENTO ({classified.ongoing.length})</button>
-      <button type="button" className={tab==="completed"?"active":""} onClick={()=>{setTab("completed");setForm(null);}}>CONCLUÍDAS ({classified.completed.length})</button>
+    <div className="maintenance-view-tabs" role="tablist" aria-label="Situação das promoções">
+      <button type="button" className={tab==="ongoing"?"active":""} onClick={()=>{setTab("ongoing");setForm(null);}}>EM ANDAMENTO <span>{classified.ongoing.length}</span></button>
+      <button type="button" className={tab==="completed"?"active":""} onClick={()=>{setTab("completed");setForm(null);}}>CONCLUÍDAS / HISTÓRICO <span>{classified.completed.length}</span></button>
     </div>
-    {form?<div className="maintenance-form">
-      <h3>{promotions.some(item=>item.id===form.id)?"EDITAR PROMOÇÃO":"CADASTRAR NOVA PROMOÇÃO"}</h3>
+    {form?<div className="maintenance-form-card"><div className="maintenance-section-heading"><div><h3>{promotions.some(item=>item.id===form.id)?"EDITAR PROMOÇÃO":"CADASTRAR NOVA PROMOÇÃO"}</h3><p>Preencha as informações e salve para atualizar as promoções disponíveis.</p></div></div><div className="maintenance-form">
       <label>NOME DA PROMOÇÃO<input value={String(form.name??"")} onChange={e=>update("name",e.target.value)}/></label>
       <label>CATEGORIA<input value={String(form.category??"")} onChange={e=>update("category",e.target.value)}/></label>
       <label>BENEFÍCIO<textarea rows={3} value={String(form.benefit??"")} onChange={e=>update("benefit",e.target.value)}/></label>
@@ -68,10 +67,9 @@ export default function PromotionPanel({ promotions, message, canManage, onSave 
         <label>DATA FINAL<input type="date" value={String(form.endDate??"")} onChange={e=>update("endDate",e.target.value)}/></label>
       </div>
       <label>STATUS<select value={String(form.status??"active")} onChange={e=>update("status",e.target.value)}><option value="active">EM ANDAMENTO</option><option value="suspended">SUSPENSA</option><option value="closed">CONCLUÍDA</option></select></label>
-      <div className="maintenance-form-actions"><button type="button" onClick={()=>setForm(null)}>CANCELAR</button><button type="button" className="primary" disabled={busy} onClick={()=>void save()}>SALVAR PROMOÇÃO</button></div>
-    </div>:<>
-      {canManage&&tab==="ongoing"&&<div className="config-toolbar"><button className="primary" type="button" onClick={()=>{setForm(emptyPromotion());setLocalMessage("");}}>NOVA PROMOÇÃO</button></div>}
-      <div className="promotions-grid">{items.map(item=><article className="promotion-card" key={item.id}>
+      <div className="maintenance-form-actions"><button type="button" className="secondary" onClick={()=>setForm(null)}>CANCELAR</button><button type="button" className="primary" disabled={busy} onClick={()=>void save()}>SALVAR PROMOÇÃO</button></div>
+    </div></div>:<>
+      <div className="promotions-grid">{items.map(item=><article className="maintenance-card promotion-card" key={item.id}>
         <div className="promotion-card-head"><span>{item.category||"CAMPANHA"}</span><strong>{item.name}</strong></div>
         <div className="promotion-benefit">{item.benefit}</div>
         {item.eligible&&<div className="promotion-detail"><strong>PRODUTOS / PLANOS ELEGÍVEIS</strong><p>{item.eligible}</p></div>}
@@ -79,9 +77,9 @@ export default function PromotionPanel({ promotions, message, canManage, onSave 
         <div className="promotion-validity">{dateLabel(item.endDate)}</div>
         {item.status==="suspended"&&<div className="promotion-status suspended">SUSPENSA</div>}
         {item.status==="closed"&&<div className="promotion-status closed">CONCLUÍDA</div>}
-        {canManage&&<div className="maintenance-form-actions"><button type="button" onClick={()=>{setForm({...item});setLocalMessage("");}}>EDITAR</button>{item.status!=="closed"?<button type="button" disabled={busy} onClick={()=>void changeStatus(item,"closed")}>CONCLUIR</button>:<button type="button" disabled={busy} onClick={()=>void changeStatus(item,"active")}>REABRIR</button>}</div>}
+        {canManage&&<div className="maintenance-card-actions"><button type="button" className="secondary" onClick={()=>{setForm({...item});setLocalMessage("");}}>EDITAR</button>{item.status!=="closed"?<button type="button" className="primary" disabled={busy} onClick={()=>void changeStatus(item,"closed")}>CONCLUIR</button>:<button type="button" className="primary" disabled={busy} onClick={()=>void changeStatus(item,"active")}>REABRIR</button>}</div>}
       </article>)}</div>
-      {items.length===0&&<div className="card"><p>{tab==="ongoing"?"NÃO HÁ PROMOÇÕES EM ANDAMENTO.":"NÃO HÁ PROMOÇÕES CONCLUÍDAS NO HISTÓRICO."}</p></div>}
+      {items.length===0&&<div className="maintenance-empty">{tab==="ongoing"?"NÃO HÁ PROMOÇÕES EM ANDAMENTO." :"NÃO HÁ PROMOÇÕES CONCLUÍDAS NO HISTÓRICO."}</div>}
     </>}
   </section>;
 }
