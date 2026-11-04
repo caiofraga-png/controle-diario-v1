@@ -553,6 +553,26 @@ test("manutenção exige gravação atômica do histórico imutável e do aviso"
   await assertSucceeds(getDoc(maintenance));
   await assertSucceeds(getDoc(history));
   await assertSucceeds(getDoc(notification));
+
+  const updatedDetails = { ...details, title: "Manutenção de rede atualizada", status: "completed" };
+  const updateBatch = writeBatch(db);
+  const history2 = doc(db, "externalMaintenances/maintenance-1/history/history-2");
+  const notification2 = doc(db, "sharedNotifications/maintenance-notice-2");
+  updateBatch.update(maintenance, {
+    ...updatedDetails, updatedByUid: "alice", updatedAt: serverTimestamp(),
+    lastHistoryId: "history-2", lastNotificationId: "maintenance-notice-2",
+  });
+  updateBatch.set(history2, {
+    maintenanceId: "maintenance-1", changedByUid: "alice",
+    changedAt: serverTimestamp(), before: details, after: updatedDetails,
+  });
+  updateBatch.set(notification2, {
+    category: "manutencoes", message: "Atualização de manutenção",
+    target: "manutencoes", createdByUid: "alice", createdAt: serverTimestamp(),
+  });
+  await assertSucceeds(updateBatch.commit());
+
+  await assertFails(updateDoc(maintenance, { title: "Edição sem histórico" }));
   await assertFails(updateDoc(history, { after: { ...details, title: "Alterado" } }));
   await assertFails(deleteDoc(history));
   await assertFails(deleteDoc(maintenance));
