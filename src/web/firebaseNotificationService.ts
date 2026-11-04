@@ -41,6 +41,22 @@ export async function saveNotificationPreferences(categories: NotificationPrefer
     updatedAt: serverTimestamp(),
   });
 }
+export async function canCurrentUserPublishDelinquency(): Promise<boolean> {
+  const { auth, db } = requireFirebase();
+  const user = auth.currentUser;
+  if (!user) return false;
+  const [userSnapshot, permissionSnapshot] = await Promise.all([
+    getDoc(doc(db, "users", user.uid)),
+    getDoc(doc(db, "featurePermissions", "delinquency")),
+  ]);
+  if (!userSnapshot.exists() || !permissionSnapshot.exists()) return false;
+  const profile = userSnapshot.data();
+  const permission = permissionSnapshot.data();
+  if (profile.status !== "approved" || permission.enabled !== true) return false;
+  const sectors = Array.isArray(permission.sectorIds) ? permission.sectorIds : [];
+  const contacts = Array.isArray(permission.contactIds) ? permission.contactIds : [];
+  return sectors.includes(profile.sectorId) || contacts.includes(profile.contactId);
+}
 export function subscribeSharedNotifications(callback: (items: SharedNotification[]) => void, onError?: (error: Error) => void): Unsubscribe {
   const { db } = requireFirebase();
   const q = query(collection(db, "sharedNotifications"), orderBy("createdAt", "desc"), limit(30));
