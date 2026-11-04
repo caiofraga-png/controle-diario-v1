@@ -342,14 +342,51 @@ export async function restoreAdministrativeBackup(
     || inspection.payload.schemaVersion !== 1) {
     throw new Error("A prévia não corresponde a um backup validado deste projeto. Faça a conferência novamente.");
   }
-  const documents = Object.values(inspection.payload.collections).flat();
+  const backupCollections = inspection.payload.collections;
+  const expectedCollections = ["users", "users/*/private-data", ...ROOT_COLLECTIONS];
+  if (!isRecord(backupCollections)
+    || Object.keys(backupCollections).length !== expectedCollections.length
+    || expectedCollections.some((name) => !Object.prototype.hasOwnProperty.call(backupCollections, name))
+    || !Number.isFinite(Date.parse(inspection.payload.createdAt))
+    || !isRecord(inspection.payload.createdBy)
+    || typeof inspection.payload.createdBy.uid !== "string"
+    || typeof inspection.payload.createdBy.email !== "string"
+    || !Array.isArray(inspection.payload.scope)) {
+    throw new Error("O backup não passou pela validação estrutural completa. Faça a conferência novamente.");
+  }
+  const documents: BackupDocument[] = [];
   const paths = new Set<string>();
-  for (const item of documents) {
-    if (!item || !allowedBackupPath(item.path) || item.path.split("/").at(-1) !== item.id
-      || !isRecord(item.data) || paths.has(item.path)) {
-      throw new Error("O backup contém caminhos duplicados ou documentos inválidos. Nenhum dado foi restaurado.");
+  for (const [collectionName, value] of Object.entries(backupCollections)) {
+    if (!Array.isArray(value)) {
+      throw new Error(`A coleção ${collectionName} possui estrutura inválida. Nenhum dado foi restaurado.`);
     }
-    paths.add(item.path);
+    for (const candidate of value) {
+      if (!isRecord(candidate) || typeof candidate.id !== "string" || typeof candidate.path !== "string"
+        || !isRecord(candidate.data) || !allowedBackupPath(candidate.path)
+        || candidate.path.split("/").at(-1) !== candidate.id || paths.has(candidate.path)) {
+        throw new Error("O backup contém caminhos duplicados ou documentos inválidos. Nenhum dado foi restaurado.");
+      }
+      const parts = candidate.path.split("/");
+      if ((collectionName === "users" && (parts.length !== 2 || parts[0] !== "users"))
+        || (collectionName === "users/*/private-data"
+          && (parts[0] !== "users" || parts.length < 4
+            || !(USER_DOCUMENTS.includes(parts.slice(2).join("/") as typeof USER_DOCUMENTS[number])
+              || USER_COLLECTIONS.some((prefix) => parts.slice(2).join("/").startsWith(prefix + "/")))))
+        || (ROOT_COLLECTIONS.includes(collectionName as typeof ROOT_COLLECTIONS[number])
+          && (parts.length !== 2 || parts[0] !== collectionName))) {
+        throw new Error(`O documento ${candidate.path} não corresponde à coleção declarada no backup.`);
+      }
+      if (typeof candidate.data.ownerUid === "string" && parts[0] === "users" && candidate.data.ownerUid !== parts[1]) {
+        throw new Error(`O proprietário não corresponde ao caminho do documento ${candidate.path}.`);
+      }
+      if (parts[0] === "Expediente"
+        && (!isRecord(candidate.data.assignment)
+          || candidate.data.assignment.uid !== candidate.data.ownerUid)) {
+        throw new Error(`A atribuição do expediente não corresponde ao proprietário em ${candidate.path}.`);
+      }
+      paths.add(candidate.path);
+      documents.push(candidate as unknown as BackupDocument);
+    }
   }
 
   const writeAudit = async (action: string, details: Record<string, unknown>) => {
