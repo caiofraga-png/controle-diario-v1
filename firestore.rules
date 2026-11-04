@@ -56,6 +56,18 @@ service cloud.firestore {
       return activeAdmin() || activeSupervisor();
     }
 
+    function maintenancePublisher() {
+      return approvedUser()
+        && exists(/databases/$(database)/documents/featurePermissions/maintenance)
+        && get(/databases/$(database)/documents/featurePermissions/maintenance).data.enabled == true
+        && ((get(/databases/$(database)/documents/featurePermissions/maintenance).data.wholeSectorIds is list
+            && get(/databases/$(database)/documents/featurePermissions/maintenance).data.wholeSectorIds.hasAny([userRecord(request.auth.uid).data.sectorId]))
+          || (get(/databases/$(database)/documents/featurePermissions/maintenance).data.contactIds is list
+            && get(/databases/$(database)/documents/featurePermissions/maintenance).data.contactIds.hasAny([userRecord(request.auth.uid).data.contactId]))
+          || (get(/databases/$(database)/documents/featurePermissions/maintenance).data.agentIds is list
+            && get(/databases/$(database)/documents/featurePermissions/maintenance).data.agentIds.hasAny([request.auth.uid])));
+    }
+
     function delinquencyPublisher() {
       return approvedUser()
         && exists(/databases/$(database)/documents/featurePermissions/delinquency)
@@ -286,13 +298,60 @@ service cloud.firestore {
       allow create: if (activeManager()
           || (delinquencyPublisher()
             && request.resource.data.category == "cobranca"
-            && request.resource.data.target == "inadimplencia"))
+            && request.resource.data.target == "inadimplencia")
+          || (maintenancePublisher()
+            && request.resource.data.category == "manutencoes"
+            && request.resource.data.target == "manutencoes"))
         && request.resource.data.createdByUid == request.auth.uid
         && request.resource.data.category in ["cobranca", "promocoes", "manutencoes"]
         && request.resource.data.target in ["inadimplencia", "promocoes", "manutencoes"]
         && request.resource.data.message is string
         && request.resource.data.createdAt == request.time;
       allow update, delete: if false;
+    }
+
+    match /externalMaintenances/{maintenanceId} {
+      allow read: if approvedUser();
+      allow create: if (activeManager() || maintenancePublisher())
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.status in ["ongoing", "completed"]
+        && request.resource.data.title is string
+        && request.resource.data.date is string
+        && request.resource.data.location is string
+        && request.resource.data.description is string
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if (activeManager() || maintenancePublisher())
+        && request.resource.data.createdByUid == resource.data.createdByUid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.status in ["ongoing", "completed"];
+      allow delete: if activeManager();
+      match /history/{entryId} {
+        allow read: if approvedUser();
+        allow create: if (activeManager() || maintenancePublisher())
+          && request.resource.data.changedByUid == request.auth.uid
+          && request.resource.data.changedAt == request.time;
+        allow update, delete: if false;
+      }
+    }
+
+    match /featurePermissions/{featureId} {
+      allow read: if approvedUser();
+      allow create, update: if activeManager()
+        && featureId == "maintenance"
+        && request.resource.data.keys().hasOnly(["schemaVersion", "enabled", "sectorIds", "wholeSectorIds", "contactIds", "agentIds", "updatedAt", "updatedByUid"])
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.enabled is bool
+        && request.resource.data.sectorIds is list
+        && request.resource.data.wholeSectorIds is list
+        && request.resource.data.contactIds is list
+        && request.resource.data.agentIds is list
+        && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
     }
 
     // Supervisors and administrators manage scoped permissions for delinquency notices.
