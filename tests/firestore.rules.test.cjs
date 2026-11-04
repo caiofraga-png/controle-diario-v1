@@ -546,7 +546,7 @@ test("manutenção exige gravação atômica do histórico imutável e do aviso"
   });
   batch.set(notification, {
     category: "manutencoes", message: "Atualização de manutenção",
-    target: "manutencoes", createdByUid: "alice", createdAt: serverTimestamp(),
+    target: "manutencoes", maintenanceId: "maintenance-1", createdByUid: "alice", createdAt: serverTimestamp(),
   });
   await assertSucceeds(batch.commit());
 
@@ -568,7 +568,7 @@ test("manutenção exige gravação atômica do histórico imutável e do aviso"
   });
   updateBatch.set(notification2, {
     category: "manutencoes", message: "Atualização de manutenção",
-    target: "manutencoes", createdByUid: "alice", createdAt: serverTimestamp(),
+    target: "manutencoes", maintenanceId: "maintenance-1", createdByUid: "alice", createdAt: serverTimestamp(),
   });
   await assertSucceeds(updateBatch.commit());
 
@@ -592,23 +592,32 @@ test("permissão de manutenção respeita contato e agente individual", async ()
     });
   });
 
-  const contactNotice = doc(dbAs("alice"), "sharedNotifications/maintenance-contact");
-  await assertSucceeds(setDoc(contactNotice, {
-    category: "manutencoes", message: "Atualização de manutenção",
-    target: "manutencoes", createdByUid: "alice", createdAt: serverTimestamp(),
-  }));
+  async function createMaintenance(uid, id, agent) {
+    const db = dbAs(uid);
+    const batch = writeBatch(db);
+    const maintenance = doc(db, "externalMaintenances/" + id);
+    const history = doc(db, "externalMaintenances/" + id + "/history/history-" + id);
+    const notification = doc(db, "sharedNotifications/notice-" + id);
+    const details = { title: "Manutenção " + id, date: "2026-11-04", location: "Centro", description: "Teste", status: "ongoing" };
+    batch.set(maintenance, {
+      ...details, createdByUid: uid, createdAt: serverTimestamp(),
+      updatedByUid: uid, updatedAt: serverTimestamp(),
+      lastHistoryId: "history-" + id, lastNotificationId: "notice-" + id,
+    });
+    batch.set(history, {
+      maintenanceId: id, changedByUid: uid, changedByName: agent,
+      changedAt: serverTimestamp(), before: null, after: details,
+    });
+    batch.set(notification, {
+      category: "manutencoes", message: "Atualização de manutenção",
+      target: "manutencoes", maintenanceId: id, createdByUid: uid, createdAt: serverTimestamp(),
+    });
+    return batch.commit();
+  }
 
-  const agentNotice = doc(dbAs("bob"), "sharedNotifications/maintenance-agent");
-  await assertSucceeds(setDoc(agentNotice, {
-    category: "manutencoes", message: "Atualização de manutenção",
-    target: "manutencoes", createdByUid: "bob", createdAt: serverTimestamp(),
-  }));
-
-  const unauthorizedNotice = doc(dbAs("charlie"), "sharedNotifications/maintenance-denied");
-  await assertFails(setDoc(unauthorizedNotice, {
-    category: "manutencoes", message: "Atualização de manutenção",
-    target: "manutencoes", createdByUid: "charlie", createdAt: serverTimestamp(),
-  }));
+  await assertSucceeds(createMaintenance("alice", "maintenance-contact", "Alice"));
+  await assertSucceeds(createMaintenance("bob", "maintenance-agent", "Bob"));
+  await assertFails(createMaintenance("charlie", "maintenance-denied", "Charlie"));
 });
 
 test("colaborador sem autorização não pode cadastrar manutenção externa", async () => {
