@@ -528,7 +528,7 @@ test("preferências de notificações são privadas por usuário", async () => {
 
 test("somente setor ou contato liberado pode publicar notificação de cobrança", async () => {
   await assertSucceeds(setDoc(doc(dbAs("supervisor"), "featurePermissions/delinquency"), {
-    schemaVersion: 1, enabled: true, sectorIds: ["suporte"], wholeSectorIds: [], contactIds: [], agentIds: [],
+    schemaVersion: 1, enabled: true, sectorIds: ["suporte"], wholeSectorIds: ["suporte"], contactIds: [], agentIds: [],
     updatedAt: serverTimestamp(), updatedByUid: "supervisor",
   }));
   await assertSucceeds(setDoc(doc(dbAs("alice"), "sharedNotifications/cobranca-alice"), {
