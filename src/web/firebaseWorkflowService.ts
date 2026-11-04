@@ -85,6 +85,10 @@ export class FirebaseWorkflowService {
     return this.operational.saveErrata(source, edited);
   }
 
+  async lastUsedProfileId(): Promise<string | null> {
+    return this.operational.lastUsedProfileId();
+  }
+
   async start(input: { data: string; perfilId: string }): Promise<EstadoAtual> {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.data)) throw new Error("A DATA DO EXPEDIENTE É INVÁLIDA.");
     const loaded = await this.workspace.load();
