@@ -12,6 +12,7 @@ export default function NotificationPreferencesPanel({ canManageAccess = false }
   const [agents, setAgents] = useState<AgentItem[]>([]);
   const [enabled, setEnabled] = useState(false);
   const [sectorIds, setSectorIds] = useState<string[]>([]);
+  const [wholeSectorIds, setWholeSectorIds] = useState<string[]>([]);
   const [contactIds, setContactIds] = useState<string[]>([]);
   const [agentIds, setAgentIds] = useState<string[]>([]);
   const [expandedContactIds, setExpandedContactIds] = useState<string[]>([]);
@@ -44,6 +45,7 @@ export default function NotificationPreferencesPanel({ canManageAccess = false }
             const data = permission.data();
             setEnabled(data.enabled === true);
             setSectorIds(Array.isArray(data.sectorIds) ? data.sectorIds : []);
+            setWholeSectorIds(Array.isArray(data.wholeSectorIds) ? data.wholeSectorIds : []);
             setContactIds(Array.isArray(data.contactIds) ? data.contactIds : []);
             setAgentIds(Array.isArray(data.agentIds) ? data.agentIds : []);
           }
@@ -66,7 +68,7 @@ export default function NotificationPreferencesPanel({ canManageAccess = false }
       const { auth, db } = requireFirebase();
       if (!auth.currentUser) throw new Error("FAÇA LOGIN PARA ALTERAR AS PERMISSÕES.");
       await setDoc(doc(db, "featurePermissions", "delinquency"), {
-        schemaVersion: 1, enabled, sectorIds, contactIds, agentIds,
+        schemaVersion: 1, enabled, sectorIds, wholeSectorIds, contactIds, agentIds,
         updatedAt: serverTimestamp(), updatedByUid: auth.currentUser.uid,
       });
       setMessage("PERMISSÕES DE AVISOS DE INADIMPLÊNCIA SALVAS.");
@@ -83,6 +85,7 @@ export default function NotificationPreferencesPanel({ canManageAccess = false }
       setContactIds(current=>current.filter(value=>!removedContacts.includes(value)));
       const removedAgents = agents.filter(item=>item.sectorId===id).map(item=>item.uid);
       setAgentIds(current=>current.filter(value=>!removedAgents.includes(value)));
+      setWholeSectorIds(current=>current.filter(value=>value!==id));
       setExpandedContactIds(current=>current.filter(value=>!removedContacts.includes(value)));
     }
   }
@@ -112,14 +115,19 @@ export default function NotificationPreferencesPanel({ canManageAccess = false }
       <h3>PERMISSÃO PARA PUBLICAR AVISOS DE INADIMPLÊNCIA</h3>
       <p>Selecione um ou mais setores. Depois, se desejar, restrinja a autorização a contatos inteiros ou a agentes específicos.</p>
       <label className="check-line"><input type="checkbox" checked={enabled} onChange={event=>setEnabled(event.target.checked)}/><span><strong>RECURSO HABILITADO</strong><small>Permite publicar avisos dentro dos escopos selecionados.</small></span></label>
-      <h4>SETORES AUTORIZADOS</h4>
+      <h4>SETORES</h4>
       <div className="notification-permission-list">
-        {sectors.map(item=><label className="check-line" key={item.id}><input type="checkbox" checked={sectorIds.includes(item.id)} onChange={event=>toggleSector(item.id,event.target.checked)}/><span>{item.name}</span></label>)}
+        {sectors.map(item=><div className="notification-permission-contact" key={item.id}>
+          <label className="check-line"><input type="checkbox" checked={sectorIds.includes(item.id)} onChange={event=>toggleSector(item.id,event.target.checked)}/><span><strong>{item.name}</strong><small>Selecionar para configurar o acesso</small></span></label>
+          {sectorIds.includes(item.id) && <div className="notification-permission-agents">
+            <label className="check-line"><input type="checkbox" checked={wholeSectorIds.includes(item.id)} onChange={event=>toggle(wholeSectorIds,item.id,event.target.checked,setWholeSectorIds)}/><span><strong>HABILITAR SETOR INTEIRO</strong><small>Todos os contatos e agentes deste setor poderão publicar.</small></span></label>
+          </div>}
+        </div>)}
       </div>
-      {visibleContacts.length>0 && <>
+      {visibleContacts.filter(contact=>!wholeSectorIds.includes(contact.sectorId??"")).length>0 && <>
         <h4>CONTATOS DO(S) SETOR(ES) SELECIONADO(S)</h4>
         <div className="notification-permission-list">
-          {visibleContacts.map(contact=><div className="notification-permission-contact" key={contact.id}>
+          {visibleContacts.filter(contact=>!wholeSectorIds.includes(contact.sectorId??"")).map(contact=><div className="notification-permission-contact" key={contact.id}>
             <label className="check-line"><input type="checkbox" checked={expandedContactIds.includes(contact.id)} onChange={event=>toggle(expandedContactIds,contact.id,event.target.checked,setExpandedContactIds)}/><span><strong>{contact.name}</strong><small>Selecionar para configurar o contato</small></span></label>
             {expandedContactIds.includes(contact.id) && <div className="notification-permission-agents">
               <label className="check-line"><input type="checkbox" checked={contactIds.includes(contact.id)} onChange={event=>toggleWholeContact(contact,event.target.checked)}/><span><strong>HABILITAR CONTATO INTEIRO</strong><small>Todos os agentes deste contato poderão publicar.</small></span></label>
@@ -132,7 +140,7 @@ export default function NotificationPreferencesPanel({ canManageAccess = false }
           </div>)}
         </div>
       </>}
-      <div className="config-actions"><button className="primary" disabled={saving || (!sectorIds.length && !contactIds.length && !agentIds.length && enabled)} onClick={()=>void savePermissions()}>SALVAR PERMISSÕES</button></div>
+      <div className="config-actions"><button className="primary" disabled={saving || (!wholeSectorIds.length && !contactIds.length && !agentIds.length && enabled)} onClick={()=>void savePermissions()}>SALVAR PERMISSÕES</button></div>
     </section>}
     {message && <p role="status" className="system-message">{message}</p>}
   </div>;
