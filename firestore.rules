@@ -56,6 +56,16 @@ service cloud.firestore {
       return activeAdmin() || activeSupervisor();
     }
 
+    function delinquencyPublisher() {
+      return approvedUser()
+        && exists(/databases/$(database)/documents/featurePermissions/delinquency)
+        && get(/databases/$(database)/documents/featurePermissions/delinquency).data.enabled == true
+        && ((get(/databases/$(database)/documents/featurePermissions/delinquency).data.sectorIds is list
+            && get(/databases/$(database)/documents/featurePermissions/delinquency).data.sectorIds.hasAny([userRecord(request.auth.uid).data.sectorId]))
+          || (get(/databases/$(database)/documents/featurePermissions/delinquency).data.contactIds is list
+            && get(/databases/$(database)/documents/featurePermissions/delinquency).data.contactIds.hasAny([userRecord(request.auth.uid).data.contactId])));
+    }
+
     function allowedCorporateDomain() {
       return signedIn()
         && request.auth.token.email_verified == true
@@ -271,7 +281,10 @@ service cloud.firestore {
     // Only administrators and supervisors may publish institutional notices.
     match /sharedNotifications/{notificationId} {
       allow read: if approvedUser();
-      allow create: if activeManager()
+      allow create: if (activeManager()
+          || (delinquencyPublisher()
+            && request.resource.data.category == "cobranca"
+            && request.resource.data.target == "inadimplencia"))
         && request.resource.data.createdByUid == request.auth.uid
         && request.resource.data.category in ["cobranca", "promocoes", "manutencoes"]
         && request.resource.data.target in ["inadimplencia", "promocoes", "manutencoes"]
