@@ -5,6 +5,7 @@ import { FirebaseOperationalService } from "./firebaseOperationalService";
 import { FirebaseWorkspaceRepository } from "./firebaseWorkspaceRepository";
 import { normalizeConfiguration as normalizeFirebaseConfiguration } from "./dataRepository";
 import { FirebaseWorkflowService } from "./firebaseWorkflowService";
+import { loadMaintenanceHistory, saveExternalMaintenance, subscribeExternalMaintenances } from "./firebaseMaintenanceService";
 
 
 const firebasePersonalData = new FirebasePersonalDataService();
@@ -37,6 +38,11 @@ export function installWebBridge(){
    listHistory:(date:string)=>firebaseOperational.listHistory(date),
    readHistory:(historyId:string)=>firebaseOperational.readHistory(historyId),
    saveErrata:(source:any,edited:any)=>firebaseOperational.saveErrata(source,edited),
+   maintenance:{
+    subscribe:subscribeExternalMaintenances,
+    save:saveExternalMaintenance,
+    history:loadMaintenanceHistory,
+   },
    workflow:{
     load:()=>firebaseWorkflow.load(),
     iniciar:(input:any)=>firebaseWorkflow.start(input),
