@@ -1710,6 +1710,11 @@ html[data-theme="midnight-violet"] .config-embedded .config-tabs button.active {
 .notification-popover p { margin:10px 0; font-size:13px; line-height:1.45; }
 .notification-popover ul { margin:8px 0 12px; padding-left:19px; font-size:12px; line-height:1.7; }
 .notification-popover > span { color:var(--texto-suave); font-size:10px; font-weight:800; letter-spacing:.07em; }
+.notification-popover ul { list-style:none; padding:0; max-height:320px; overflow:auto; }
+.notification-popover li { border-top:1px solid var(--verde-borda); padding:7px 0; }
+.notification-entry { width:100%; border:0; padding:8px 6px; border-radius:7px; background:transparent; color:var(--texto); text-align:left; font:inherit; cursor:pointer; }
+.notification-entry:hover { background:var(--surface-soft,rgba(35,115,71,.09)); color:var(--verde-escuro); }
+
 @media(max-width:850px) { .header-notifications { right:14px; } .app-main > .header { padding-right:64px; } }
 @media(max-width:620px) { .header-notifications { top:12px; right:12px; transform:none; } .notification-popover { top:46px; } }
 :is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .notification-popover { background:var(--surface,#1a2a3a); border-color:var(--verde-borda); color:var(--texto); }
