@@ -74,6 +74,20 @@ export class FirebaseOperationalService {
     return collection(db, "users", uid, "operational", "history", "entries");
   }
 
+  async lastUsedProfileId(): Promise<string | null> {
+    const uid = this.uid();
+    const records = await getDocs(query(this.historyCollection(uid), where("ownerUid", "==", uid)));
+    const latest = records.docs
+      .filter(snapshot => snapshot.data().status === "CONCLUIDO" && typeof snapshot.data().data === "string")
+      .sort((a, b) => {
+        const dateOrder = String(b.data().data).localeCompare(String(a.data().data));
+        if (dateOrder !== 0) return dateOrder;
+        return Number(b.data().versao ?? 0) - Number(a.data().versao ?? 0);
+      })[0];
+    const profileId = latest?.data().perfil?.id;
+    return typeof profileId === "string" ? profileId : null;
+  }
+
   async loadCurrentState(): Promise<EstadoAtual | null> {
     const uid = this.uid();
     const snapshot = await getDoc(this.currentRef(uid));
