@@ -670,9 +670,10 @@ test("somente setor ou contato liberado pode publicar aviso de inadimplência co
   }));
 
   const createNoticeBatch = (uid, noticeId) => {
-    const batch = writeBatch(dbAs(uid));
-    const noticeRef = doc(dbAs(uid), "delinquencyNotices", noticeId);
-    const notificationRef = doc(dbAs(uid), "sharedNotifications", `cobranca-${uid}`);
+    const db = dbAs(uid);
+    const batch = writeBatch(db);
+    const noticeRef = doc(db, "delinquencyNotices", noticeId);
+    const notificationRef = doc(db, "sharedNotifications", `cobranca-${uid}`);
     const timestamp = serverTimestamp();
     batch.set(noticeRef, {
       type: "reducao", date: "2026-11-04", title: "Aviso de redução",
