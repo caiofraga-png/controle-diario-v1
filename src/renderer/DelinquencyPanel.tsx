@@ -83,7 +83,7 @@ export default function DelinquencyPanel(){
     finally{setBusy(false);}
   }
   return <section className="maintenance-workspace delinquency-workspace">
-    <div className="workspace-intro maintenance-intro"><div><h2>Alertas de Inadimplência</h2><p>Acompanhe os avisos de redução e suspensão e consulte o histórico de comunicados.</p></div>{canManage&&tab==="ongoing"&&!draft&&<button className="primary maintenance-new-button" onClick={()=>{setDraft(blank());setEditingId(null);setMessage("");}}>＋ NOVO AVISO</button>}</div>
+    <div className="workspace-intro maintenance-intro"><div><h2>Inadimplência</h2><p>Acompanhe os avisos de redução e suspensão e consulte o histórico de comunicados.</p></div>{canManage&&tab==="ongoing"&&!draft&&<button className="primary maintenance-new-button" onClick={()=>{setDraft(blank());setEditingId(null);setMessage("");}}>＋ NOVO AVISO</button>}</div>
     {message&&<p className="system-message" role="status">{message}</p>}
     <div className="maintenance-view-tabs" role="tablist" aria-label="Situação dos avisos">
       <button className={tab==="ongoing"?"active":""} onClick={()=>{setTab("ongoing");setDraft(null);}}>EM ANDAMENTO <span>{classified.ongoing.length}</span></button>
