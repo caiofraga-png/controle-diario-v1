@@ -50,7 +50,7 @@ export default function PromotionPanel({ promotions, message, canManage, onSave 
   }
   const items=tab==="ongoing"?classified.ongoing:classified.completed;
   return <section className="maintenance-workspace promotions-workspace">
-    <div className="workspace-intro maintenance-intro"><div><h2>Promoções ativas</h2><p>Consulte benefícios, produtos elegíveis e condições comerciais das promoções em andamento e concluídas.</p></div>{canManage && !form && tab === "ongoing" && <button className="primary maintenance-new-button" type="button" onClick={()=>{setForm(emptyPromotion());setLocalMessage("");}}>＋ NOVA PROMOÇÃO</button>}</div>
+    <div className="workspace-intro maintenance-intro"><div><h2>Promoções</h2><p>Consulte benefícios, produtos elegíveis e condições comerciais das promoções em andamento e concluídas.</p></div>{canManage && !form && tab === "ongoing" && <button className="primary maintenance-new-button" type="button" onClick={()=>{setForm(emptyPromotion());setLocalMessage("");}}>＋ NOVA PROMOÇÃO</button>}</div>
     {(localMessage||message)&&<p className="system-message">{localMessage||message}</p>}
     <div className="maintenance-view-tabs" role="tablist" aria-label="Situação das promoções">
       <button type="button" className={tab==="ongoing"?"active":""} onClick={()=>{setTab("ongoing");setForm(null);}}>EM ANDAMENTO <span>{classified.ongoing.length}</span></button>
