@@ -66,7 +66,7 @@ export async function saveExternalMaintenance(input: ExternalMaintenanceInput, i
   }
 
   const userProfile = await getDoc(doc(db, "users", user.uid));
-  const changedByName = String(userProfile.data()?.agent || user.displayName || user.email || user.uid);
+  const changedByName = String(userProfile.data()?.agent ?? user.displayName ?? user.email ?? user.uid);
   const batch = writeBatch(db);
   const now = serverTimestamp();
   const notificationRef = doc(collection(db, "sharedNotifications"));
