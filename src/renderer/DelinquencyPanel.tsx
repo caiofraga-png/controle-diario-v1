@@ -109,7 +109,7 @@ export default function DelinquencyPanel(){
     </div>:<div className="delinquency-grid">{visible.map(item=><article className="maintenance-card delinquency-card" key={item.id}>
       <div className="promotion-card-head"><span>{item.type==="reducao"?"REDUÇÃO":"SUSPENSÃO"}</span><strong>{item.title}</strong></div>
       <div className="delinquency-metrics"><div><small>CLIENTES</small><strong>{item.customerCount}</strong></div><div><small>DIAS VENCIDOS</small><strong>{item.overdueDays}</strong></div></div>
-      <div className="promotion-detail"><strong>VENCIMENTO</strong><p>{dateLabel(item.dueDate)}</p></div>
+      <div className="promotion-detail"><strong>DATA DO AVISO</strong><p>{dateLabel(item.date)}</p></div><div className="promotion-detail"><strong>VENCIMENTO</strong><p>{dateLabel(item.dueDate)}</p></div>
       <div className="promotion-validity">AVISO VÁLIDO ATÉ {dateLabel(item.validUntil)}</div>
       {canManage&&<div className="maintenance-card-actions"><button className="secondary" onClick={()=>{setDraft({type:item.type,date:item.date,title:item.title,dueDate:item.dueDate,customerCount:item.customerCount,overdueDays:item.overdueDays,validUntil:item.validUntil,status:item.status});setEditingId(item.id);}}>EDITAR</button>{item.status!=="completed"?<button className="primary" disabled={busy} onClick={()=>void changeStatus(item,"completed")}>CONCLUIR</button>:<button className="primary" disabled={busy} onClick={()=>void changeStatus(item,"ongoing")}>REABRIR</button>}</div>}
     </article>)}{visible.length===0&&<div className="maintenance-empty">{tab==="ongoing"?"NÃO HÁ AVISOS DE INADIMPLÊNCIA EM ANDAMENTO.":"NÃO HÁ AVISOS CONCLUÍDOS NO HISTÓRICO."}</div>}</div>}
