@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { requireFirebase } from "./firebaseClient";
 
 export type PromotionStatus = "active" | "suspended" | "closed";
@@ -70,6 +70,13 @@ export async function savePromotions(promotions: Promotion[]): Promise<void> {
     throw new Error("SOMENTE ADMINISTRADORES E SUPERVISORES PODEM GERENCIAR PROMOÇÕES.");
   }
   const validated = validatePromotions(promotions);
+  const previousSnapshot = await getDoc(promotionsRef());
+  const previousItems = previousSnapshot.exists() && Array.isArray(previousSnapshot.data().promotions)
+    ? validatePromotions(previousSnapshot.data().promotions) : [];
+  const previouslyActive = new Set(previousItems.filter(item => item.status === "active").map(item => item.id));
+  const newlyActive = validated.filter(item => item.status === "active" && !previouslyActive.has(item.id)
+    && (!item.startDate || item.startDate <= new Date().toISOString().slice(0, 10))
+    && (!item.endDate || item.endDate >= new Date().toISOString().slice(0, 10)));
   const ids = new Set<string>();
   for (const item of validated) {
     if (ids.has(item.id)) throw new Error("EXISTE UMA PROMOÇÃO COM ID DUPLICADO.");
@@ -81,4 +88,15 @@ export async function savePromotions(promotions: Promotion[]): Promise<void> {
     updatedAt:serverTimestamp(),
     updatedByUid:user.uid,
   });
+  for (const item of newlyActive) {
+    const notificationRef = doc(collection(db, "sharedNotifications"));
+    await setDoc(notificationRef, {
+      category: "promocoes",
+      message: "Nova promoção ativa",
+      target: "promocoes",
+      referenceId: item.id,
+      createdByUid: user.uid,
+      createdAt: serverTimestamp(),
+    });
+  }
 }
