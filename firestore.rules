@@ -310,9 +310,32 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    function validMaintenanceNotification() {
+      return request.resource.data.lastNotificationId is string
+        && existsAfter(/databases/$(database)/documents/sharedNotifications/$(request.resource.data.lastNotificationId))
+        && getAfter(/databases/$(database)/documents/sharedNotifications/$(request.resource.data.lastNotificationId)).data.category == "manutencoes"
+        && getAfter(/databases/$(database)/documents/sharedNotifications/$(request.resource.data.lastNotificationId)).data.target == "manutencoes"
+        && getAfter(/databases/$(database)/documents/sharedNotifications/$(request.resource.data.lastNotificationId)).data.createdByUid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/sharedNotifications/$(request.resource.data.lastNotificationId)).data.createdAt == request.time;
+    }
+
+    function validMaintenanceHistory(maintenanceId) {
+      return request.resource.data.lastHistoryId is string
+        && existsAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)/history/$(request.resource.data.lastHistoryId))
+        && getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)/history/$(request.resource.data.lastHistoryId)).data.maintenanceId == maintenanceId
+        && getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)/history/$(request.resource.data.lastHistoryId)).data.changedByUid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)/history/$(request.resource.data.lastHistoryId)).data.changedAt == request.time
+        && getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)/history/$(request.resource.data.lastHistoryId)).data.after is map;
+    }
+
     match /externalMaintenances/{maintenanceId} {
       allow read: if approvedUser();
       allow create: if (activeManager() || maintenancePublisher())
+        && request.resource.data.keys().hasOnly([
+          "title", "date", "location", "description", "status",
+          "createdByUid", "createdAt", "updatedByUid", "updatedAt",
+          "lastHistoryId", "lastNotificationId"
+        ])
         && request.resource.data.createdByUid == request.auth.uid
         && request.resource.data.updatedByUid == request.auth.uid
         && request.resource.data.status in ["ongoing", "completed"]
@@ -321,19 +344,36 @@ service cloud.firestore {
         && request.resource.data.location is string
         && request.resource.data.description is string
         && request.resource.data.createdAt == request.time
-        && request.resource.data.updatedAt == request.time;
+        && request.resource.data.updatedAt == request.time
+        && validMaintenanceHistory(maintenanceId)
+        && validMaintenanceNotification();
       allow update: if (activeManager() || maintenancePublisher())
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "title", "date", "location", "description", "status",
+          "updatedByUid", "updatedAt", "lastHistoryId", "lastNotificationId"
+        ])
         && request.resource.data.createdByUid == resource.data.createdByUid
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.updatedByUid == request.auth.uid
         && request.resource.data.updatedAt == request.time
-        && request.resource.data.status in ["ongoing", "completed"];
-      allow delete: if activeManager();
+        && request.resource.data.status in ["ongoing", "completed"]
+        && request.resource.data.title is string
+        && request.resource.data.date is string
+        && request.resource.data.location is string
+        && request.resource.data.description is string
+        && validMaintenanceHistory(maintenanceId)
+        && validMaintenanceNotification();
+      allow delete: if false;
       match /history/{entryId} {
         allow read: if approvedUser();
         allow create: if (activeManager() || maintenancePublisher())
+          && request.resource.data.keys().hasOnly(["maintenanceId", "changedByUid", "changedAt", "before", "after"])
+          && request.resource.data.maintenanceId == maintenanceId
           && request.resource.data.changedByUid == request.auth.uid
-          && request.resource.data.changedAt == request.time;
+          && request.resource.data.changedAt == request.time
+          && (request.resource.data.before == null || request.resource.data.before is map)
+          && request.resource.data.after is map
+          && getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)).data.lastHistoryId == entryId;
         allow update, delete: if false;
       }
     }
