@@ -63,7 +63,9 @@ service cloud.firestore {
         && ((get(/databases/$(database)/documents/featurePermissions/delinquency).data.sectorIds is list
             && get(/databases/$(database)/documents/featurePermissions/delinquency).data.sectorIds.hasAny([userRecord(request.auth.uid).data.sectorId]))
           || (get(/databases/$(database)/documents/featurePermissions/delinquency).data.contactIds is list
-            && get(/databases/$(database)/documents/featurePermissions/delinquency).data.contactIds.hasAny([userRecord(request.auth.uid).data.contactId])));
+            && get(/databases/$(database)/documents/featurePermissions/delinquency).data.contactIds.hasAny([userRecord(request.auth.uid).data.contactId]))
+          || (get(/databases/$(database)/documents/featurePermissions/delinquency).data.agentIds is list
+            && get(/databases/$(database)/documents/featurePermissions/delinquency).data.agentIds.hasAny([request.auth.uid])));
     }
 
     function allowedCorporateDomain() {
@@ -297,11 +299,12 @@ service cloud.firestore {
     match /featurePermissions/{featureId} {
       allow read: if approvedUser();
       allow create: if featureId == "delinquency"
-        && request.resource.data.keys().hasOnly(["schemaVersion", "enabled", "sectorIds", "contactIds", "updatedAt", "updatedByUid"])
+        && request.resource.data.keys().hasOnly(["schemaVersion", "enabled", "sectorIds", "contactIds", "agentIds", "updatedAt", "updatedByUid"])
         && request.resource.data.schemaVersion == 1
         && request.resource.data.enabled is bool
         && request.resource.data.sectorIds is list
         && request.resource.data.contactIds is list
+        && request.resource.data.agentIds is list
         && ((activeManager()
           && request.resource.data.updatedByUid == request.auth.uid
           && request.resource.data.updatedAt == request.time)
@@ -310,11 +313,12 @@ service cloud.firestore {
             && request.resource.data.updatedAt is timestamp));
       allow update: if activeManager()
         && featureId == "delinquency"
-        && request.resource.data.keys().hasOnly(["schemaVersion", "enabled", "sectorIds", "contactIds", "updatedAt", "updatedByUid"])
+        && request.resource.data.keys().hasOnly(["schemaVersion", "enabled", "sectorIds", "contactIds", "agentIds", "updatedAt", "updatedByUid"])
         && request.resource.data.schemaVersion == 1
         && request.resource.data.enabled is bool
         && request.resource.data.sectorIds is list
         && request.resource.data.contactIds is list
+        && request.resource.data.agentIds is list
         && request.resource.data.updatedByUid == request.auth.uid
         && request.resource.data.updatedAt == request.time;
       allow delete: if false;
