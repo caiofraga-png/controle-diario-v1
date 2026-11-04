@@ -392,7 +392,7 @@ service cloud.firestore {
         && request.resource.data.location is string
         && request.resource.data.description is string
         && validMaintenanceHistory(maintenanceId, false)
-        && validMaintenanceNotification();
+        && validMaintenanceNotification(maintenanceId);
       allow delete: if false;
       match /history/{entryId} {
         allow read: if approvedUser();
