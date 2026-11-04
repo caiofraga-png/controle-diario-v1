@@ -23,6 +23,15 @@ O administrador inicial deve ser provisionado por um procedimento confiável e c
 
 Os IDs finais dos documentos e a divisão entre subcoleções precisam ser conferidos com as operações reais do repositório antes de conectar a interface. Históricos grandes devem ser paginados; evite armazenar todo o histórico em um único documento que cresce indefinidamente.
 
+## Manutenções externas
+
+- `externalMaintenances/{maintenanceId}`: cartão compartilhado com título, data, local, descrição, status (`ongoing` ou `completed`), autor e datas de criação/atualização.
+- `externalMaintenances/{maintenanceId}/history/{entryId}`: histórico append-only com responsável, data/hora, valores anteriores e valores posteriores. O nome do responsável é armazenado para leitura amigável, além do UID.
+- `featurePermissions/maintenance`: política de publicação com `enabled`, `wholeSectorIds`, `contactIds` e `agentIds`. Administradores e supervisores mantêm essa política.
+- `sharedNotifications/{notificationId}`: aviso compartilhado **Atualização de manutenção**, filtrado pelas preferências individuais de notificações.
+
+A criação e cada alteração efetiva devem gravar o cartão, o evento de histórico e a notificação no mesmo lote do Firestore. Os campos `lastHistoryId` e `lastNotificationId` vinculam o cartão aos documentos gravados no lote; as regras usam `getAfter/existsAfter` para rejeitar gravações sem esses registros correspondentes. O cliente não pode excluir cartões ou alterar/excluir eventos históricos.
+
 ## Fotografia histórica da lotação
 
 Cada expediente concluído deve preservar uma fotografia da lotação no momento da conclusão (e, se as regras operacionais exigirem, também no início): UID, Login, Agente, ID/nome do Setor e ID/nome do Contato. Uma alteração posterior no cadastro atualiza apenas o perfil atual do colaborador; não deve reescrever os expedientes antigos.
