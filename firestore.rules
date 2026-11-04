@@ -335,6 +335,7 @@ service cloud.firestore {
       let historyPath = /databases/$(database)/documents/externalMaintenances/$(maintenanceId)/history/$(request.resource.data.lastHistoryId);
       return request.resource.data.lastHistoryId is string
         && existsAfter(historyPath)
+        && getAfter(historyPath).data.keys().hasAll(["maintenanceId", "changedByUid", "changedByName", "changedAt", "before", "after"])
         && getAfter(historyPath).data.keys().hasOnly(["maintenanceId", "changedByUid", "changedByName", "changedAt", "before", "after"])
         && getAfter(historyPath).data.maintenanceId == maintenanceId
         && getAfter(historyPath).data.changedByUid == request.auth.uid
@@ -398,6 +399,7 @@ service cloud.firestore {
       match /history/{entryId} {
         allow read: if approvedUser();
         allow create: if (activeManager() || maintenancePublisher())
+          && request.resource.data.keys().hasAll(["maintenanceId", "changedByUid", "changedByName", "changedAt", "before", "after"])
           && request.resource.data.keys().hasOnly(["maintenanceId", "changedByUid", "changedByName", "changedAt", "before", "after"])
           && request.resource.data.maintenanceId == maintenanceId
           && request.resource.data.changedByUid == request.auth.uid
