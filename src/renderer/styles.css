@@ -1862,3 +1862,18 @@ html[data-theme="midnight-violet"] .config-embedded .config-tabs button.active {
   .promotions-workspace .maintenance-form-grid { grid-template-columns:1fr; }
 }
 :is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .promotions-workspace .promotion-card { background:var(--surface,#1a2a3a); }
+
+
+/* ALERTAS DE INADIMPLÊNCIA — identidade visual alinhada aos demais painéis */
+.delinquency-workspace { display:flex; flex-direction:column; gap:18px; }
+.delinquency-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:15px; }
+.delinquency-card { padding:19px; border-radius:13px; box-shadow:0 3px 12px rgba(20,60,40,.055); }
+.delinquency-card .promotion-card-head { gap:7px; padding-bottom:12px; }
+.delinquency-card .promotion-card-head strong { font-size:17px; line-height:1.35; }
+.delinquency-metrics { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:15px 0; }
+.delinquency-metrics > div { display:flex; flex-direction:column; gap:5px; padding:13px; border:1px solid var(--verde-borda,#b9d5c7); border-radius:10px; background:var(--verde-claro,#e8f3ee); }
+.delinquency-metrics small { color:var(--texto-suave,#61736b); font-size:10px; font-weight:800; letter-spacing:.6px; }
+.delinquency-metrics strong { color:var(--verde,#237347); font-size:24px; font-weight:800; }
+.delinquency-workspace .maintenance-form-card { width:100%; }
+.delinquency-workspace .maintenance-form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+@media(max-width:620px) { .delinquency-workspace .maintenance-form-grid { grid-template-columns:1fr; } }
