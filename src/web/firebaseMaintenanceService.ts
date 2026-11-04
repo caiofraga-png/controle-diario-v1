@@ -70,16 +70,11 @@ export async function saveExternalMaintenance(input: ExternalMaintenanceInput, i
   const batch = writeBatch(db);
   const now = serverTimestamp();
   const notificationRef = doc(collection(db, "sharedNotifications"));
-  const notification = {
-    category: "manutencoes",
-    message: "Atualização de manutenção",
-    target: "manutencoes",
-    createdByUid: user.uid,
-    createdAt: now,
-  };
+  let savedMaintenanceId = id ?? "";
 
   if (id) {
     const maintenanceRef = doc(db, "externalMaintenances", id);
+    savedMaintenanceId = id;
     const snapshot = await getDoc(maintenanceRef);
     if (!snapshot.exists()) throw new Error("MANUTENÇÃO NÃO ENCONTRADA.");
     const previous = snapshot.data();
@@ -106,6 +101,7 @@ export async function saveExternalMaintenance(input: ExternalMaintenanceInput, i
     });
   } else {
     const maintenanceRef = doc(collection(db, "externalMaintenances"));
+    savedMaintenanceId = maintenanceRef.id;
     const historyRef = doc(collection(db, "externalMaintenances", maintenanceRef.id, "history"));
     batch.set(maintenanceRef, {
       ...input,
@@ -127,7 +123,14 @@ export async function saveExternalMaintenance(input: ExternalMaintenanceInput, i
   }
 
   // Maintenance data, immutable audit entry and notification are committed together.
-  batch.set(notificationRef, notification);
+  batch.set(notificationRef, {
+    category: "manutencoes",
+    message: "Atualização de manutenção",
+    target: "manutencoes",
+    maintenanceId: savedMaintenanceId,
+    createdByUid: user.uid,
+    createdAt: now,
+  });
   await batch.commit();
 }
 
