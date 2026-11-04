@@ -43,7 +43,8 @@ export async function saveExternalMaintenance(input: Omit<ExternalMaintenance,"i
     const historyRef=doc(collection(db,"externalMaintenances",ref.id,"history"));
     await setDoc(historyRef,{changedByUid:user.uid,changedAt:now,before:null,after:input});
   }
-  await publishSharedNotification({category:"manutencoes",message:"Atualização de manutenção",target:"manutencoes"});
+  const notificationRef=doc(collection(db,"sharedNotifications"));
+  await setDoc(notificationRef,{category:"manutencoes",message:"Atualização de manutenção",target:"manutencoes",createdByUid:user.uid,createdAt:now});
 }
 export function subscribeExternalMaintenances(callback:(items:ExternalMaintenance[])=>void,onError?:(error:Error)=>void):Unsubscribe{
  const {db}=requireFirebase();return onSnapshot(query(collection(db,"externalMaintenances"),orderBy("updatedAt","desc")),s=>callback(s.docs.map(d=>({id:d.id,...d.data()} as ExternalMaintenance))),e=>onError?.(e));
