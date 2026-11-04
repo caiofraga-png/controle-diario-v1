@@ -663,21 +663,33 @@ test("preferências de notificações são privadas por usuário", async () => {
 });
 
 
-test("somente setor ou contato liberado pode publicar notificação de cobrança", async () => {
+test("somente setor ou contato liberado pode publicar aviso de inadimplência com notificação vinculada", async () => {
   await assertSucceeds(setDoc(doc(dbAs("supervisor"), "featurePermissions/delinquency"), {
     schemaVersion: 1, enabled: true, sectorIds: ["suporte"], wholeSectorIds: ["suporte"], contactIds: [], agentIds: [],
     updatedAt: serverTimestamp(), updatedByUid: "supervisor",
   }));
-  await assertSucceeds(setDoc(doc(dbAs("alice"), "sharedNotifications/cobranca-alice"), {
-    category: "cobranca", message: "Novo alerta de inadimplência",
-    target: "inadimplencia", createdByUid: "alice", createdAt: serverTimestamp(),
-  }));
-  await assertFails(setDoc(doc(dbAs("bob"), "sharedNotifications/cobranca-bob"), {
-    category: "cobranca", message: "Novo alerta de inadimplência",
-    target: "inadimplencia", createdByUid: "bob", createdAt: serverTimestamp(),
-  }));
-  await assertFails(setDoc(doc(dbAs("alice"), "sharedNotifications/cobranca-outro-tipo"), {
-    category: "manutencoes", message: "Atualização de manutenção",
-    target: "manutencoes", createdByUid: "alice", createdAt: serverTimestamp(),
-  }));
+
+  const createNoticeBatch = (uid, noticeId) => {
+    const batch = writeBatch(dbAs(uid));
+    const noticeRef = doc(dbAs(uid), "delinquencyNotices", noticeId);
+    const notificationRef = doc(dbAs(uid), "sharedNotifications", `cobranca-${uid}`);
+    const timestamp = serverTimestamp();
+    batch.set(noticeRef, {
+      type: "reducao", date: "2026-11-04", title: "Aviso de redução",
+      dueDate: "2026-10-20", customerCount: 12, overdueDays: 15,
+      validUntil: "2026-11-10", status: "ongoing",
+      notificationId: notificationRef.id,
+      createdByUid: uid, createdAt: timestamp,
+      updatedByUid: uid, updatedAt: timestamp,
+    });
+    batch.set(notificationRef, {
+      category: "cobranca", message: "Novo alerta de inadimplência",
+      target: "inadimplencia", noticeId,
+      createdByUid: uid, createdAt: timestamp,
+    });
+    return batch.commit();
+  };
+
+  await assertSucceeds(createNoticeBatch("alice", "aviso-alice"));
+  await assertFails(createNoticeBatch("bob", "aviso-bob"));
 });
