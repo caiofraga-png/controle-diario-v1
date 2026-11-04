@@ -119,6 +119,7 @@ export async function saveExternalMaintenance(input: ExternalMaintenanceInput, i
     batch.set(historyRef, {
       maintenanceId: maintenanceRef.id,
       changedByUid: user.uid,
+      changedByName,
       changedAt: now,
       before: null,
       after: input,
