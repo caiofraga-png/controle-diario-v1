@@ -175,13 +175,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function allowedBackupPath(path: string): boolean {
   const parts = path.split("/");
   if (parts.some((part) => !part || part === "." || part === "..")) return false;
+  // Firestore document paths always have an even number of segments.
+  if (parts.length % 2 !== 0) return false;
   const root = parts[0];
   if (root === "users") {
     if (parts.length === 2) return true;
-    if (parts.length < 4) return false;
-    const relative = parts.slice(2).join("/");
-    return USER_DOCUMENTS.includes(relative as typeof USER_DOCUMENTS[number])
-      || USER_COLLECTIONS.some((prefix) => relative.startsWith(prefix + "/"));
+    const relativeDocumentPath = parts.slice(2).join("/");
+    if (USER_DOCUMENTS.includes(relativeDocumentPath as typeof USER_DOCUMENTS[number])) return true;
+    const relativeCollectionPath = parts.slice(2, -1).join("/");
+    return USER_COLLECTIONS.includes(relativeCollectionPath as typeof USER_COLLECTIONS[number]);
   }
   if (parts.length !== 2) return false;
   return ROOT_COLLECTIONS.includes(root as typeof ROOT_COLLECTIONS[number]);
