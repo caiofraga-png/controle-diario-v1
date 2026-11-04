@@ -24,6 +24,10 @@ Uma notificação **Nova promoção ativa** é criada quando uma promoção pass
 
 A política fica em `featurePermissions/delinquency`. Supervisores e administradores podem habilitar o recurso e selecionar setores e/ou contatos autorizados. A seleção é cumulativa: pertencer a um setor liberado ou a um contato liberado concede a permissão. O serviço e as regras do Firestore validam esse escopo antes de aceitar a publicação.
 
-## Próxima integração
+## Manutenções externas
 
-O menu de inadimplência deverá criar a notificação **Novo alerta de inadimplência** após a publicação bem-sucedida. O menu Manutenções Externas deverá criar **Atualização de manutenção** após publicar ou atualizar uma manutenção, conforme a regra de evento definida para esse recurso.
+A coleção `externalMaintenances` mantém os cartões de manutenção. Cada cadastro ou alteração efetiva grava, em uma única operação atômica, o documento da manutenção, um registro append-only em `externalMaintenances/{maintenanceId}/history` e a notificação **Atualização de manutenção**. Uma edição sem mudança efetiva não gera histórico nem aviso.
+
+A autorização de cadastro/edição fica em `featurePermissions/maintenance` e pode ser concedida por setor inteiro, contato inteiro ou agente individual. Administradores e supervisores podem gerenciar as permissões e publicar sem depender de uma autorização adicional. Todos os colaboradores aprovados podem consultar os cartões e o histórico.
+
+O status `ongoing` aparece na lista Em andamento; `completed` aparece na visualização Concluídas / Histórico. O cliente não pode excluir cartões nem editar/excluir registros de histórico. As regras do Firestore exigem que o histórico e o aviso correspondentes sejam gravados no mesmo lote da criação/alteração.
