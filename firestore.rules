@@ -291,6 +291,67 @@ service cloud.firestore {
       allow write: if activeManager();
     }
 
+    function validDelinquencyNoticeNotification(notificationId, noticeId) {
+      let path = /databases/$(database)/documents/sharedNotifications/$(notificationId);
+      return existsAfter(path)
+        && getAfter(path).data.category == "cobranca"
+        && getAfter(path).data.target == "inadimplencia"
+        && getAfter(path).data.message == "Novo alerta de inadimplência"
+        && getAfter(path).data.noticeId == noticeId
+        && getAfter(path).data.createdByUid == request.auth.uid
+        && getAfter(path).data.createdAt == request.time;
+    }
+
+    match /delinquencyNotices/{noticeId} {
+      allow read: if approvedUser();
+      allow create: if approvedUser()
+        && (activeManager() || delinquencyPublisher())
+        && request.resource.data.keys().hasAll([
+          "type", "date", "title", "dueDate", "customerCount", "overdueDays",
+          "validUntil", "status", "createdByUid", "createdAt", "updatedByUid", "updatedAt", "notificationId"
+        ])
+        && request.resource.data.keys().hasOnly([
+          "type", "date", "title", "dueDate", "customerCount", "overdueDays",
+          "validUntil", "status", "createdByUid", "createdAt", "updatedByUid", "updatedAt", "notificationId"
+        ])
+        && request.resource.data.type in ["reducao", "suspensao"]
+        && request.resource.data.date is string
+        && request.resource.data.title is string
+        && request.resource.data.dueDate is string
+        && request.resource.data.customerCount is int
+        && request.resource.data.customerCount >= 0
+        && request.resource.data.overdueDays is int
+        && request.resource.data.overdueDays >= 0
+        && request.resource.data.validUntil is string
+        && request.resource.data.status in ["ongoing", "completed"]
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.validUntil >= request.resource.data.date
+        && validDelinquencyNoticeNotification(request.resource.data.notificationId, noticeId);
+      allow update: if approvedUser()
+        && (activeManager() || delinquencyPublisher())
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "type", "date", "title", "dueDate", "customerCount", "overdueDays",
+          "validUntil", "status", "updatedByUid", "updatedAt"
+        ])
+        && request.resource.data.type in ["reducao", "suspensao"]
+        && request.resource.data.date is string
+        && request.resource.data.title is string
+        && request.resource.data.dueDate is string
+        && request.resource.data.customerCount is int
+        && request.resource.data.customerCount >= 0
+        && request.resource.data.overdueDays is int
+        && request.resource.data.overdueDays >= 0
+        && request.resource.data.validUntil is string
+        && request.resource.data.status in ["ongoing", "completed"]
+        && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.validUntil >= request.resource.data.date;
+      allow delete: if false;
+    }
+
     // Shared notifications are visible to every approved collaborator.
     // Only administrators and supervisors may publish institutional notices.
     function validMaintenanceNotificationLink(notificationId) {
