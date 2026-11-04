@@ -1843,3 +1843,22 @@ html[data-theme="midnight-violet"] .config-embedded .config-tabs button.active {
 :is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-card,
 :is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-form-card,
 :is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-history-card { background:var(--surface,#1a2a3a); }
+
+
+/* PROMOÇÕES — padronização visual com Manutenções Externas */
+.promotions-workspace { display:flex; flex-direction:column; gap:18px; }
+.promotions-workspace .promotions-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:15px; }
+.promotions-workspace .promotion-card { padding:19px; border-radius:13px; box-shadow:0 3px 12px rgba(20,60,40,.055); }
+.promotions-workspace .promotion-card-head { gap:7px; padding-bottom:12px; }
+.promotions-workspace .promotion-card-head strong { font-size:17px; line-height:1.3; }
+.promotions-workspace .promotion-benefit { margin:13px 0; font-size:17px; line-height:1.45; }
+.promotions-workspace .promotion-detail { margin-top:12px; }
+.promotions-workspace .promotion-detail p { font-size:13px; }
+.promotions-workspace .promotion-validity { margin-top:14px; padding-top:11px; }
+.promotions-workspace .promotion-status { display:inline-flex; width:max-content; margin-top:10px; }
+.promotions-workspace .maintenance-form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.promotions-workspace .maintenance-form-card { width:100%; }
+@media(max-width:620px) {
+  .promotions-workspace .maintenance-form-grid { grid-template-columns:1fr; }
+}
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .promotions-workspace .promotion-card { background:var(--surface,#1a2a3a); }
