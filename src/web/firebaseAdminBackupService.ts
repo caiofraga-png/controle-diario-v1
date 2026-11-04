@@ -14,7 +14,7 @@ export type BackupPayload = {
 
 const ROOT_COLLECTIONS = [
   "accessRequests", "adminAudit", "organizationContacts", "organizationSectors",
-  "Expediente", "settings", "sharedPromotions", "sharedTaskCatalog", "sharedNotifications", "featurePermissions",
+  "Expediente", "settings", "sharedPromotions", "sharedTaskCatalog", "featurePermissions",
 ] as const;
 
 // Firestore Web SDK não lista subcoleções dinamicamente. Manter esta relação
