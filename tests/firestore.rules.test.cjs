@@ -12,6 +12,7 @@ const {
   updateDoc,
   deleteDoc,
   serverTimestamp,
+  writeBatch,
 } = require("firebase/firestore");
 
 const PROJECT_ID = "leste-controle-diario-rules-test";
@@ -513,6 +514,75 @@ test("permissão de publicação de inadimplência é gerenciada por supervisão
   await assertFails(setDoc(doc(dbAs("alice"), "featurePermissions/delinquency"), {
     ...permission, updatedByUid: "alice",
   }));
+});
+
+
+test("manutenção exige gravação atômica do histórico imutável e do aviso", async () => {
+  await assertSucceeds(setDoc(doc(dbAs("supervisor"), "featurePermissions/maintenance"), {
+    schemaVersion: 1, enabled: true, sectorIds: ["suporte"], wholeSectorIds: ["suporte"],
+    contactIds: [], agentIds: [], updatedAt: serverTimestamp(), updatedByUid: "supervisor",
+  }));
+
+  const db = dbAs("alice");
+  const batch = writeBatch(db);
+  const maintenance = doc(db, "externalMaintenances/maintenance-1");
+  const history = doc(db, "externalMaintenances/maintenance-1/history/history-1");
+  const notification = doc(db, "sharedNotifications/maintenance-notice-1");
+  const details = {
+    title: "Manutenção de rede",
+    date: "2026-11-04",
+    location: "Centro",
+    description: "Reparo preventivo",
+    status: "ongoing",
+  };
+  batch.set(maintenance, {
+    ...details, createdByUid: "alice", createdAt: serverTimestamp(),
+    updatedByUid: "alice", updatedAt: serverTimestamp(),
+    lastHistoryId: "history-1", lastNotificationId: "maintenance-notice-1",
+  });
+  batch.set(history, {
+    maintenanceId: "maintenance-1", changedByUid: "alice",
+    changedAt: serverTimestamp(), before: null, after: details,
+  });
+  batch.set(notification, {
+    category: "manutencoes", message: "Atualização de manutenção",
+    target: "manutencoes", createdByUid: "alice", createdAt: serverTimestamp(),
+  });
+  await assertSucceeds(batch.commit());
+
+  await assertSucceeds(getDoc(maintenance));
+  await assertSucceeds(getDoc(history));
+  await assertSucceeds(getDoc(notification));
+  await assertFails(updateDoc(history, { after: { ...details, title: "Alterado" } }));
+  await assertFails(deleteDoc(history));
+  await assertFails(deleteDoc(maintenance));
+});
+
+test("colaborador sem autorização não pode cadastrar manutenção externa", async () => {
+  await assertSucceeds(setDoc(doc(dbAs("supervisor"), "featurePermissions/maintenance"), {
+    schemaVersion: 1, enabled: true, sectorIds: ["suporte"], wholeSectorIds: ["suporte"],
+    contactIds: [], agentIds: [], updatedAt: serverTimestamp(), updatedByUid: "supervisor",
+  }));
+  const db = dbAs("bob");
+  const batch = writeBatch(db);
+  const maintenance = doc(db, "externalMaintenances/maintenance-bob");
+  const history = doc(db, "externalMaintenances/maintenance-bob/history/history-bob");
+  const notification = doc(db, "sharedNotifications/maintenance-notice-bob");
+  const details = { title: "Manutenção", date: "2026-11-04", location: "Centro", description: "Teste", status: "ongoing" };
+  batch.set(maintenance, {
+    ...details, createdByUid: "bob", createdAt: serverTimestamp(),
+    updatedByUid: "bob", updatedAt: serverTimestamp(),
+    lastHistoryId: "history-bob", lastNotificationId: "maintenance-notice-bob",
+  });
+  batch.set(history, {
+    maintenanceId: "maintenance-bob", changedByUid: "bob",
+    changedAt: serverTimestamp(), before: null, after: details,
+  });
+  batch.set(notification, {
+    category: "manutencoes", message: "Atualização de manutenção",
+    target: "manutencoes", createdByUid: "bob", createdAt: serverTimestamp(),
+  });
+  await assertFails(batch.commit());
 });
 
 test("preferências de notificações são privadas por usuário", async () => {
