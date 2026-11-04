@@ -364,9 +364,11 @@ service cloud.firestore {
       allow read: if approvedUser();
       allow create: if (
           (activeManager() && request.resource.data.category != "manutencoes")
-          || (delinquencyPublisher()
+          || ((activeManager() || delinquencyPublisher())
             && request.resource.data.category == "cobranca"
-            && request.resource.data.target == "inadimplencia")
+            && request.resource.data.target == "inadimplencia"
+            && request.resource.data.noticeId is string
+            && existsAfter(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.noticeId)))
           || ((activeManager() || maintenancePublisher())
             && request.resource.data.category == "manutencoes"
             && request.resource.data.target == "manutencoes"
