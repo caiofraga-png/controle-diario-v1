@@ -505,7 +505,7 @@ test("notificações institucionais podem ser publicadas por supervisores e lida
 
 test("permissão de publicação de inadimplência é gerenciada por supervisão e administração", async () => {
   const permission = {
-    schemaVersion: 1, enabled: true, sectorIds: ["suporte"],
+    schemaVersion: 1, enabled: true, sectorIds: ["suporte"], wholeSectorIds: [],
     contactIds: ["equipe-a"], agentIds: [], updatedAt: serverTimestamp(), updatedByUid: "supervisor",
   };
   await assertSucceeds(setDoc(doc(dbAs("supervisor"), "featurePermissions/delinquency"), permission));
