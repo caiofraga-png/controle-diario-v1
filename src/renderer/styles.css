@@ -1877,3 +1877,49 @@ html[data-theme="midnight-violet"] .config-embedded .config-tabs button.active {
 .delinquency-workspace .maintenance-form-card { width:100%; }
 .delinquency-workspace .maintenance-form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
 @media(max-width:620px) { .delinquency-workspace .maintenance-form-grid { grid-template-columns:1fr; } }
+
+
+/* CONTROLES DE MANUTENÇÕES E PROMOÇÕES — contraste nos temas escuros */
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-view-tabs {
+  border-bottom-color:rgba(170,195,210,.22);
+}
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-view-tabs button,
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-card-actions .secondary,
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-form-actions .secondary,
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-section-heading .secondary {
+  color:#e6edf3;
+  background:rgba(255,255,255,.07);
+  border-color:rgba(180,205,220,.28);
+}
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-view-tabs button:hover,
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-card-actions .secondary:hover,
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-form-actions .secondary:hover,
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-section-heading .secondary:hover {
+  background:rgba(255,255,255,.13);
+  border-color:rgba(180,205,220,.48);
+}
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-view-tabs button.active,
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-card-actions .primary,
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-form-actions .primary,
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-new-button {
+  color:#ffffff;
+  background:#238b5a;
+  border-color:#39a875;
+}
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-view-tabs button.active:hover,
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-card-actions .primary:hover,
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-form-actions .primary:hover,
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-new-button:hover {
+  background:#2b9c6a;
+  border-color:#55c18b;
+}
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-section-heading h3 {
+  color:#78c99c;
+}
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-card-actions button:focus-visible,
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-form-actions button:focus-visible,
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-new-button:focus-visible,
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .maintenance-view-tabs button:focus-visible {
+  outline:2px solid #8bd8ae;
+  outline-offset:2px;
+}
