@@ -578,6 +578,39 @@ test("manutenção exige gravação atômica do histórico imutável e do aviso"
   await assertFails(deleteDoc(maintenance));
 });
 
+test("permissão de manutenção respeita contato e agente individual", async () => {
+  await assertSucceeds(setDoc(doc(dbAs("supervisor"), "featurePermissions/maintenance"), {
+    schemaVersion: 1, enabled: true, sectorIds: ["suporte", "financeiro"],
+    wholeSectorIds: [], contactIds: ["equipe-a"], agentIds: ["bob"],
+    updatedAt: serverTimestamp(), updatedByUid: "supervisor",
+  }));
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "users/charlie"), {
+      uid: "charlie", email: "charlie@lestetelecom.net.br", login: "charlie",
+      agent: "Charlie", sectorId: "financeiro", contactId: "equipe-b",
+      role: "employee", status: "approved", isSupervisor: false,
+    });
+  });
+
+  const contactNotice = doc(dbAs("alice"), "sharedNotifications/maintenance-contact");
+  await assertSucceeds(setDoc(contactNotice, {
+    category: "manutencoes", message: "Atualização de manutenção",
+    target: "manutencoes", createdByUid: "alice", createdAt: serverTimestamp(),
+  }));
+
+  const agentNotice = doc(dbAs("bob"), "sharedNotifications/maintenance-agent");
+  await assertSucceeds(setDoc(agentNotice, {
+    category: "manutencoes", message: "Atualização de manutenção",
+    target: "manutencoes", createdByUid: "bob", createdAt: serverTimestamp(),
+  }));
+
+  const unauthorizedNotice = doc(dbAs("charlie"), "sharedNotifications/maintenance-denied");
+  await assertFails(setDoc(unauthorizedNotice, {
+    category: "manutencoes", message: "Atualização de manutenção",
+    target: "manutencoes", createdByUid: "charlie", createdAt: serverTimestamp(),
+  }));
+});
+
 test("colaborador sem autorização não pode cadastrar manutenção externa", async () => {
   await assertSucceeds(setDoc(doc(dbAs("supervisor"), "featurePermissions/maintenance"), {
     schemaVersion: 1, enabled: true, sectorIds: ["suporte"], wholeSectorIds: ["suporte"],
