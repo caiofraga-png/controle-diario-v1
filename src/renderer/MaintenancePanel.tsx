@@ -160,7 +160,7 @@ export default function MaintenancePanel() {
       </div>
       {historyLoading ? <p>CARREGANDO HISTÓRICO…</p> : history.length === 0 ? <p>NENHUMA ALTERAÇÃO REGISTRADA.</p> :
         <ol className="maintenance-history-list">{history.map(entry=><li key={entry.id}>
-          <div className="maintenance-history-meta"><strong>{timestampLabel(entry.changedAt)}</strong><span>Usuário: {entry.changedByUid}</span></div>
+          <div className="maintenance-history-meta"><strong>{timestampLabel(entry.changedAt)}</strong><span>Responsável: {entry.changedByName || entry.changedByUid}</span></div>
           {entry.before === null ? <p>Cadastro inicial da manutenção.</p> : <div className="maintenance-history-diff">
             {(["title","date","location","description","status"] as const).filter(key=>entry.before?.[key]!==entry.after?.[key]).map(key=><div key={key}>
               <strong>{{title:"Título",date:"Data",location:"Local",description:"Descrição",status:"Status"}[key]}</strong>
