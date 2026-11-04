@@ -22,7 +22,7 @@ Uma notificação **Nova promoção ativa** é criada quando uma promoção pass
 
 ## Permissões de inadimplência
 
-A política fica em `featurePermissions/delinquency`. Supervisores e administradores podem habilitar o recurso e selecionar setores e/ou contatos autorizados. A seleção é cumulativa: pertencer a um setor liberado ou a um contato liberado concede a permissão. A validação no serviço de domínio deve ser chamada novamente ao implementar a criação/publicação dos avisos, além das regras do Firestore.
+A política fica em `featurePermissions/delinquency`. Supervisores e administradores podem habilitar o recurso e selecionar setores e/ou contatos autorizados. A seleção é cumulativa: pertencer a um setor liberado ou a um contato liberado concede a permissão. O serviço e as regras do Firestore validam esse escopo antes de aceitar a publicação.
 
 ## Próxima integração
 
