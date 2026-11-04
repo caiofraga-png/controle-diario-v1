@@ -57,6 +57,21 @@ export async function canCurrentUserPublishDelinquency(): Promise<boolean> {
   const contacts = Array.isArray(permission.contactIds) ? permission.contactIds : [];
   return sectors.includes(profile.sectorId) || contacts.includes(profile.contactId);
 }
+export async function publishDelinquencyNotification(message = "Novo alerta de inadimplência"): Promise<void> {
+  const { auth, db } = requireFirebase();
+  const user = auth.currentUser;
+  if (!user || !(await canCurrentUserPublishDelinquency())) {
+    throw new Error("SEU SETOR OU CONTATO NÃO POSSUI PERMISSÃO PARA PUBLICAR AVISOS DE INADIMPLÊNCIA.");
+  }
+  const ref = doc(collection(db, "sharedNotifications"));
+  await setDoc(ref, {
+    category: "cobranca",
+    message,
+    target: "inadimplencia",
+    createdByUid: user.uid,
+    createdAt: serverTimestamp(),
+  });
+}
 export function subscribeSharedNotifications(callback: (items: SharedNotification[]) => void, onError?: (error: Error) => void): Unsubscribe {
   const { db } = requireFirebase();
   const q = query(collection(db, "sharedNotifications"), orderBy("createdAt", "desc"), limit(30));
