@@ -92,8 +92,9 @@ export async function saveExternalMaintenance(input: ExternalMaintenanceInput, i
     if (!changed) return;
 
     const historyRef = doc(collection(db, "externalMaintenances", id, "history"));
-    batch.update(maintenanceRef, { ...input, updatedByUid: user.uid, updatedAt: now });
+    batch.update(maintenanceRef, { ...input, updatedByUid: user.uid, updatedAt: now, lastHistoryId: historyRef.id, lastNotificationId: notificationRef.id });
     batch.set(historyRef, {
+      maintenanceId: id,
       changedByUid: user.uid,
       changedAt: now,
       before,
@@ -108,8 +109,11 @@ export async function saveExternalMaintenance(input: ExternalMaintenanceInput, i
       createdAt: now,
       updatedByUid: user.uid,
       updatedAt: now,
+      lastHistoryId: historyRef.id,
+      lastNotificationId: notificationRef.id,
     });
     batch.set(historyRef, {
+      maintenanceId: maintenanceRef.id,
       changedByUid: user.uid,
       changedAt: now,
       before: null,
