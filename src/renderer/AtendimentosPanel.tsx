@@ -44,13 +44,9 @@ export default function AtendimentosPanel() {
 
   async function copyRow() {
     if (!parsed) return;
-    // Ordem dos cabeçalhos informados: LEGENDAS, DATA, TICKET, CANAL, CÓDIGO, NOME,
-    // TIPO, RESOLVIDO?, SUBTIPO, MOTIVO..., ROUTETHIS, SOLUÇÃO, DIFERENÇA, RETIDO?,
-    // AGENDAMENTO, DIA DA RETIRADA, RETIRADO?
-    const cells = Array(17).fill("");
-    cells[2] = parsed.link;
-    cells[4] = parsed.codigo;
-    cells[5] = parsed.nome;
+    // A pessoa seleciona a coluna C (TICKET). A saída cobre C:F:
+    // TICKET, CANAL (célula vazia), CÓDIGO e NOME.
+    const cells = [parsed.link, "", parsed.codigo, parsed.nome];
     try {
       await navigator.clipboard.writeText(cells.join("\t"));
       setCopied(true);
@@ -67,12 +63,12 @@ export default function AtendimentosPanel() {
     </div>
     <div className="attendance-form-card">
       <label className="attendance-field">
-        <span>LINK DO TICKET <b>OBRIGATÓRIO</b></span>
+        <span>LINK DO TICKET</span>
         <input value={ticketLink} onChange={e => { setTicketLink(e.target.value); setParsed(null); setCopied(false); }} placeholder="Cole o link do ticket do SOS Beta" />
       </label>
       <label className="attendance-field">
-        <span>CONTEÚDO COPIADO DO SOS BETA</span>
-        <textarea value={ticketText} onChange={e => { setTicketText(e.target.value); setParsed(null); setCopied(false); }} rows={12} placeholder="Copie as informações do ticket no SOS Beta e cole todo o conteúdo aqui." />
+        <span>CONTEÚDO COPIADO</span>
+        <textarea value={ticketText} onChange={e => { setTicketText(e.target.value); setParsed(null); setCopied(false); }} rows={12} placeholder="Cole o conteúdo do ticket aqui" />
       </label>
       <div className="attendance-actions">
         <button className="attendance-primary" onClick={processTicket} disabled={!ticketText.trim() || !ticketLink.trim()}>PROCESSAR TICKET</button>
@@ -87,9 +83,9 @@ export default function AtendimentosPanel() {
         <div><dt>CÓDIGO</dt><dd>{parsed.codigo || "— (SEM CÓDIGO)"}</dd></div>
         <div><dt>NOME</dt><dd>{parsed.nome}</dd></div>
       </dl>
-      <p className="attendance-note">A cópia respeita a ordem dos 17 cabeçalhos informados. Somente TICKET, CÓDIGO e NOME recebem valores; as demais posições ficam vazias. Cole o resultado na primeira célula de uma nova linha vazia da planilha.</p>
-      <button className="attendance-primary" onClick={() => void copyRow()}>{copied ? "✓ LINHA COPIADA" : "COPIAR LINHA PARA PLANILHA"}</button>
-      {copied && <p className="attendance-success">LINHA COPIADA. Agora cole na primeira célula de uma nova linha vazia do Google Planilhas.</p>}
+      
+      <button className="attendance-primary" onClick={() => void copyRow()}>{copied ? "✓ COPIADO" : "COPIAR PARA A PLANILHA"}</button>
+      {copied && <p className="attendance-success">COPIADO. Selecione a célula C (TICKET) da nova linha e cole.</p>}
     </div>}
   </section>;
 }
