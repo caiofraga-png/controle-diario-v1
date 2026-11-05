@@ -249,7 +249,7 @@ export async function inspectAdministrativeBackup(file: File, password: string):
   let payload: unknown;
   try { payload = JSON.parse(new TextDecoder().decode(plaintext)); }
   catch { throw new Error("O conteúdo descriptografado não é um backup válido."); }
-  if (!isRecord(payload) || payload.format !== "controle-diario-admin-backup" || payload.schemaVersion !== 1
+  if (!isRecord(payload) || payload.format !== "controle-diario-admin-backup" || ![1, 2].includes(Number(payload.schemaVersion))
     || typeof payload.projectId !== "string" || typeof payload.createdAt !== "string"
     || !isRecord(payload.createdBy) || !isRecord(payload.collections)) {
     throw new Error("O conteúdo do backup não corresponde ao formato esperado.");
