@@ -59,12 +59,12 @@ export default function AtendimentosPanel() {
   return <section className="attendances-workspace">
     <div className="workspace-intro">
       <h2>Atendimentos</h2>
-      <p>Organize os dados principais do ticket para copiar e inserir na planilha diária.</p>
+      <p>Organize os dados principais do ticket.</p>
     </div>
     <div className="attendance-form-card">
       <label className="attendance-field">
         <span>LINK DO TICKET</span>
-        <input value={ticketLink} onChange={e => { setTicketLink(e.target.value); setParsed(null); setCopied(false); }} placeholder="Cole o link do ticket do SOS Beta" />
+        <input value={ticketLink} onChange={e => { setTicketLink(e.target.value); setParsed(null); setCopied(false); }} />
       </label>
       <label className="attendance-field">
         <span>CONTEÚDO COPIADO</span>
