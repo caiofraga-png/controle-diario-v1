@@ -105,7 +105,7 @@ export default function ConfigurationPanel({ initial, onSave, onSaveLayout, onCl
   function toggleProfileTask(id:string){ setForm((f:any)=>({...f,tarefas:(f.tarefas??[]).includes(id)?(f.tarefas??[]).filter((x:string)=>x!==id):[...(f.tarefas??[]),id]})); }
 
   function renderShortcuts(){
-    const builtIns=[{id:"email",label:"EMAIL"},{id:"chat",label:"CHAT"},{id:"keep",label:"KEEP"},{id:"wiki",label:"WIKI"},{id:"calendario",label:"CALENDÁRIO"},{id:"flit",label:"FLIT"},{id:"youk",label:"YOUK"}];
+    const builtIns=[{id:"sosbeta",label:"SOS BETA"},{id:"email",label:"EMAIL"},{id:"chat",label:"CHAT"},{id:"keep",label:"KEEP"},{id:"wiki",label:"WIKI"},{id:"calendario",label:"CALENDÁRIO"},{id:"flit",label:"FLIT"},{id:"youk",label:"YOUK"}];
     const custom=draft.layout.atalhosPersonalizados??[];
     function patchLayout(patch:any){setDraft((d:any)=>({...d,layout:{...d.layout,...patch}}));}
     function addShortcut(){
@@ -119,7 +119,7 @@ export default function ConfigurationPanel({ initial, onSave, onSaveLayout, onCl
     }
     return <div className="layout-editor shortcut-editor">
       <h3>ATALHOS PADRÃO</h3><p>Ative ou desative individualmente os atalhos corporativos exibidos no cabeçalho.</p>
-      <div className="inline-checks">{builtIns.map(item=><label key={item.id}><input type="checkbox" checked={draft.layout.atalhosCabecalho?.[item.id]!==false} onChange={e=>setDraft((d:any)=>({...d,layout:{...d.layout,atalhosCabecalho:{email:true,chat:true,keep:true,wiki:true,calendario:true,flit:true,youk:true,...d.layout.atalhosCabecalho,[item.id]:e.target.checked}}}))}/>{item.label}</label>)}</div>
+      <div className="inline-checks">{builtIns.map(item=><label key={item.id}><input type="checkbox" checked={draft.layout.atalhosCabecalho?.[item.id]!==false} onChange={e=>setDraft((d:any)=>({...d,layout:{...d.layout,atalhosCabecalho:{sosbeta:true,email:true,chat:true,keep:true,wiki:true,calendario:true,flit:true,youk:true,...d.layout.atalhosCabecalho,[item.id]:e.target.checked}}}))}/>{item.label}</label>)}</div>
       <h3>MEUS ATALHOS</h3><p>Crie links personalizados para os sistemas e páginas que utiliza. Eles ficam salvos na sua configuração individual.</p>
       {custom.length>0?<div className="custom-shortcut-list">{custom.map((item:any)=><div className="custom-shortcut-row" key={item.id}><label className="check-line"><input type="checkbox" checked={item.ativo!==false} onChange={e=>patchLayout({atalhosPersonalizados:custom.map((x:any)=>x.id===item.id?{...x,ativo:e.target.checked}:x)})}/><span><strong>{item.nome}</strong><small>{item.url}</small></span></label><button type="button" onClick={()=>patchLayout({atalhosPersonalizados:custom.filter((x:any)=>x.id!==item.id)})}>REMOVER</button></div>)}</div>:<p className="id-note">NENHUM ATALHO PERSONALIZADO CADASTRADO.</p>}
       <div className="custom-shortcut-form"><label>NOME DO ATALHO<input value={shortcutName} maxLength={32} placeholder="Ex.: Intranet" onChange={e=>setShortcutName(e.target.value)}/></label><label>LINK / ENDEREÇO<input type="url" value={shortcutUrl} placeholder="https://exemplo.com.br" onChange={e=>setShortcutUrl(e.target.value)}/></label><button type="button" onClick={addShortcut}>ADICIONAR ATALHO</button></div>
