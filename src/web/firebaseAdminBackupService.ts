@@ -15,7 +15,9 @@ export type BackupPayload = {
 const ROOT_COLLECTIONS = [
   "accessRequests", "adminAudit", "organizationContacts", "organizationSectors",
   "Expediente", "settings", "sharedPromotions", "sharedTaskCatalog", "featurePermissions",
+  "externalMaintenances", "delinquencyNotices", "sharedNotifications",
 ] as const;
+const INSTITUTIONAL_SUBCOLLECTIONS = ["externalMaintenances/*/history"] as const;
 
 // Firestore Web SDK não lista subcoleções dinamicamente. Manter esta relação
 // sincronizada com os caminhos efetivamente utilizados pela aplicação.
@@ -109,6 +111,11 @@ export async function exportAdministrativeBackup(password: string): Promise<{ fi
   };
   const rootData = await Promise.all(ROOT_COLLECTIONS.map(async (name) => [name, await readCollection(name)] as const));
   for (const [name, records] of rootData) collections[name] = records;
+  const maintenanceHistory: BackupDocument[] = [];
+  for (const maintenance of collections.externalMaintenances) {
+    maintenanceHistory.push(...await readCollection(`externalMaintenances/${maintenance.id}/history`));
+  }
+  collections["externalMaintenances/*/history"] = maintenanceHistory;
 
   const payload: BackupPayload = {
     format: "controle-diario-admin-backup",
@@ -117,7 +124,8 @@ export async function exportAdministrativeBackup(password: string): Promise<{ fi
     projectId: app.options.projectId ?? "desconhecido",
     createdBy: { uid: actor.uid, email: actor.email ?? "" },
     scope: [
-      "Coleções institucionais listadas no arquivo",
+      "Coleções institucionais, incluindo manutenções, avisos de inadimplência e notificações compartilhadas",
+      "Históricos subordinados às manutenções externas",
       "Documentos e subcoleções privadas atualmente conhecidos de todos os usuários",
       "Expedientes em andamento e históricos individuais",
     ],
@@ -185,6 +193,7 @@ function allowedBackupPath(path: string): boolean {
     const relativeCollectionPath = parts.slice(2, -1).join("/");
     return USER_COLLECTIONS.includes(relativeCollectionPath as typeof USER_COLLECTIONS[number]);
   }
+  if (root === "externalMaintenances" && parts.length === 4 && parts[2] === "history") return true;
   if (parts.length !== 2) return false;
   return ROOT_COLLECTIONS.includes(root as typeof ROOT_COLLECTIONS[number]);
 }
@@ -249,7 +258,7 @@ export async function inspectAdministrativeBackup(file: File, password: string):
     throw new Error("Este backup pertence a outro projeto Firebase. A restauração foi bloqueada.");
   }
   const collections = payload.collections as Record<string, unknown>;
-  const expectedCollections = ["users", "users/*/private-data", ...ROOT_COLLECTIONS];
+  const expectedCollections = ["users", "users/*/private-data", ...ROOT_COLLECTIONS, ...INSTITUTIONAL_SUBCOLLECTIONS];
   if (Object.keys(collections).length !== expectedCollections.length
     || expectedCollections.some((name) => !Object.prototype.hasOwnProperty.call(collections, name))) {
     throw new Error("O backup está incompleto: faltam coleções obrigatórias ou há coleções desconhecidas.");
@@ -278,6 +287,10 @@ export async function inspectAdministrativeBackup(file: File, password: string):
       if (ROOT_COLLECTIONS.includes(collectionName as typeof ROOT_COLLECTIONS[number])
         && (parts.length !== 2 || parts[0] !== collectionName)) {
         throw new Error(`O documento não corresponde à coleção ${collectionName}.`);
+      }
+      if (collectionName === "externalMaintenances/*/history"
+        && (parts.length !== 4 || parts[0] !== "externalMaintenances" || parts[2] !== "history")) {
+        throw new Error("O documento não corresponde ao histórico de manutenção externa.");
       }
       if (typeof entry.data.ownerUid === "string" && parts[0] === "users" && entry.data.ownerUid !== parts[1]) {
         throw new Error(`O proprietário não corresponde ao caminho do documento ${entry.path}.`);
@@ -375,7 +388,9 @@ export async function restoreAdministrativeBackup(
             || !(USER_DOCUMENTS.includes(parts.slice(2).join("/") as typeof USER_DOCUMENTS[number])
               || USER_COLLECTIONS.some((prefix) => parts.slice(2).join("/").startsWith(prefix + "/")))))
         || (ROOT_COLLECTIONS.includes(collectionName as typeof ROOT_COLLECTIONS[number])
-          && (parts.length !== 2 || parts[0] !== collectionName))) {
+          && (parts.length !== 2 || parts[0] !== collectionName))
+        || (collectionName === "externalMaintenances/*/history"
+          && (parts.length !== 4 || parts[0] !== "externalMaintenances" || parts[2] !== "history"))) {
         throw new Error(`O documento ${candidate.path} não corresponde à coleção declarada no backup.`);
       }
       if (typeof candidate.data.ownerUid === "string" && parts[0] === "users" && candidate.data.ownerUid !== parts[1]) {
