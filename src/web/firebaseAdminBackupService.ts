@@ -4,7 +4,7 @@ import { requireFirebase } from "./firebaseClient";
 type BackupDocument = { id: string; path: string; data: Record<string, unknown> };
 export type BackupPayload = {
   format: "controle-diario-admin-backup";
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   createdAt: string;
   projectId: string;
   createdBy: { uid: string; email: string };
@@ -119,7 +119,7 @@ export async function exportAdministrativeBackup(password: string): Promise<{ fi
 
   const payload: BackupPayload = {
     format: "controle-diario-admin-backup",
-    schemaVersion: 1,
+    schemaVersion: 2,
     createdAt: new Date().toISOString(),
     projectId: app.options.projectId ?? "desconhecido",
     createdBy: { uid: actor.uid, email: actor.email ?? "" },
@@ -258,8 +258,9 @@ export async function inspectAdministrativeBackup(file: File, password: string):
     throw new Error("Este backup pertence a outro projeto Firebase. A restauração foi bloqueada.");
   }
   const collections = payload.collections as Record<string, unknown>;
-  const expectedCollections = ["users", "users/*/private-data", ...ROOT_COLLECTIONS, ...INSTITUTIONAL_SUBCOLLECTIONS];
-  if (Object.keys(collections).length !== expectedCollections.length
+  const legacyCollections = ["users", "users/*/private-data", "accessRequests", "adminAudit", "organizationContacts", "organizationSectors", "Expediente", "settings", "sharedPromotions", "sharedTaskCatalog", "featurePermissions"];
+  const expectedCollections = payload.schemaVersion === 1 ? legacyCollections : ["users", "users/*/private-data", ...ROOT_COLLECTIONS, ...INSTITUTIONAL_SUBCOLLECTIONS];
+  if (![1, 2].includes(Number(payload.schemaVersion)) || Object.keys(collections).length !== expectedCollections.length
     || expectedCollections.some((name) => !Object.prototype.hasOwnProperty.call(collections, name))) {
     throw new Error("O backup está incompleto: faltam coleções obrigatórias ou há coleções desconhecidas.");
   }
@@ -354,11 +355,12 @@ export async function restoreAdministrativeBackup(
   if (!inspection?.payload || inspection.projectId !== (app.options.projectId ?? "")
     || inspection.payload.projectId !== inspection.projectId
     || inspection.payload.format !== "controle-diario-admin-backup"
-    || inspection.payload.schemaVersion !== 1) {
+    || ![1, 2].includes(Number(inspection.payload.schemaVersion))) {
     throw new Error("A prévia não corresponde a um backup validado deste projeto. Faça a conferência novamente.");
   }
   const backupCollections = inspection.payload.collections;
-  const expectedCollections = ["users", "users/*/private-data", ...ROOT_COLLECTIONS];
+  const legacyCollections = ["users", "users/*/private-data", "accessRequests", "adminAudit", "organizationContacts", "organizationSectors", "Expediente", "settings", "sharedPromotions", "sharedTaskCatalog", "featurePermissions"];
+  const expectedCollections = inspection.payload.schemaVersion === 1 ? legacyCollections : ["users", "users/*/private-data", ...ROOT_COLLECTIONS, ...INSTITUTIONAL_SUBCOLLECTIONS];
   if (!isRecord(backupCollections)
     || Object.keys(backupCollections).length !== expectedCollections.length
     || expectedCollections.some((name) => !Object.prototype.hasOwnProperty.call(backupCollections, name))
