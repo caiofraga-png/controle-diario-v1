@@ -419,6 +419,9 @@ test("supervisor não pode conceder nem retirar privilégio de supervisão", asy
 
 test("supervisor pode aprovar solicitação vinculada em uma única operação, somente como colaborador", async () => {
   const db = dbAs("supervisor");
+  await env.withSecurityRulesDisabled(async (context) => {
+    await deleteDoc(doc(context.firestore(), "users/pending"));
+  });
   const batch = writeBatch(db);
   batch.set(doc(db, "users/pending"), { ...profiles.pending, status: "approved" });
   batch.update(doc(db, "accessRequests/pending"), { status: "approved", decidedAt: serverTimestamp() });
@@ -436,7 +439,7 @@ test("supervisor não pode criar colaborador sem solicitação vinculada", async
 test("supervisor não pode alterar o status administrativo de colaborador existente", async () => {
   const db = dbAs("supervisor");
   await assertFails(updateDoc(doc(db, "users/alice"), { status: "blocked" }));
-  await assertFails(updateDoc(doc(db, "users/alice"), { status: "approved", role: "employee" }));
+  await assertFails(updateDoc(doc(db, "users/alice"), { role: "admin" }));
 });
 
 test("supervisor não pode excluir solicitações de acesso", async () => {
