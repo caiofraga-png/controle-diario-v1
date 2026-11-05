@@ -417,12 +417,30 @@ test("supervisor não pode conceder nem retirar privilégio de supervisão", asy
   await assertFails(updateDoc(doc(db, "users/supervisor"), { isSupervisor: false }));
 });
 
-test("supervisor pode aprovar solicitação, mas só como colaborador", async () => {
+test("supervisor pode aprovar solicitação vinculada em uma única operação, somente como colaborador", async () => {
   const db = dbAs("supervisor");
-  await assertSucceeds(setDoc(doc(db, "users/pending"), {
-    ...profiles.pending, status: "approved",
+  const batch = writeBatch(db);
+  batch.set(doc(db, "users/pending"), { ...profiles.pending, status: "approved" });
+  batch.update(doc(db, "accessRequests/pending"), { status: "approved", decidedAt: serverTimestamp() });
+  await assertSucceeds(batch.commit());
+});
+
+test("supervisor não pode criar colaborador sem solicitação vinculada", async () => {
+  const db = dbAs("supervisor");
+  await assertFails(setDoc(doc(db, "users/unrequested"), {
+    uid: "unrequested", email: "unrequested@lestetelecom.net.br",
+    role: "employee", status: "approved", isSupervisor: false,
   }));
-  await assertSucceeds(updateDoc(doc(db, "accessRequests/pending"), { status: "approved" }));
+});
+
+test("supervisor não pode alterar o status administrativo de colaborador existente", async () => {
+  const db = dbAs("supervisor");
+  await assertFails(updateDoc(doc(db, "users/alice"), { status: "blocked" }));
+  await assertFails(updateDoc(doc(db, "users/alice"), { status: "approved", role: "employee" }));
+});
+
+test("supervisor não pode excluir solicitações de acesso", async () => {
+  await assertFails(deleteDoc(doc(dbAs("supervisor"), "accessRequests/pending")));
 });
 
 test("domínio corporativo não verificado não pode abrir solicitação de acesso", async () => {
