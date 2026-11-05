@@ -1,6 +1,7 @@
 import { collection, doc, getDoc, getDocs, runTransaction, serverTimestamp, Timestamp, type DocumentData, type QueryDocumentSnapshot } from "firebase/firestore";
 import { requireFirebase } from "./firebaseClient";
 import { encryptBackupPayload, decryptBackupEnvelope, assertBackupProject, type EncryptedBackupEnvelope } from "./backupCrypto";
+import { restoreMissingDocuments } from "./backupRestoreCore";
 
 type BackupDocument = { id: string; path: string; data: Record<string, unknown> };
 export type BackupPayload = {
@@ -358,17 +359,24 @@ export async function restoreAdministrativeBackup(
   let restoredCount = 0;
   let skippedCount = 0;
   try {
-    for (const item of documents) {
-      const reference = doc(db, item.path);
-      const created = await runTransaction(db, async (transaction) => {
-        const current = await transaction.get(reference);
-        if (current.exists()) return false;
-        transaction.set(reference, reviveBackupValue(item.data) as DocumentData);
-        return true;
-      });
-      if (created) restoredCount += 1;
-      else skippedCount += 1;
-    }
+    const result = await restoreMissingDocuments(
+      documents,
+      async (item) => {
+        const reference = doc(db, item.path);
+        return runTransaction(db, async (transaction) => {
+          const current = await transaction.get(reference);
+          if (current.exists()) return false;
+          transaction.set(reference, reviveBackupValue(item.data) as DocumentData);
+          return true;
+        });
+      },
+      (progress) => {
+        restoredCount = progress.restoredCount;
+        skippedCount = progress.skippedCount;
+      },
+    );
+    restoredCount = result.restoredCount;
+    skippedCount = result.skippedCount;
     await writeAudit("ADMIN_BACKUP_RESTORED", {
       ...baseDetails, restoredCount, skippedCount, result: "completed",
     });
