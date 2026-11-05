@@ -1,5 +1,6 @@
 import { collection, doc, getDoc, getDocs, runTransaction, serverTimestamp, Timestamp, type DocumentData, type QueryDocumentSnapshot } from "firebase/firestore";
 import { requireFirebase } from "./firebaseClient";
+import { encryptBackupPayload, decryptBackupEnvelope, assertBackupProject, type EncryptedBackupEnvelope } from "./backupCrypto";
 
 type BackupDocument = { id: string; path: string; data: Record<string, unknown> };
 export type BackupPayload = {
@@ -62,33 +63,7 @@ async function readUserData(uid: string): Promise<BackupDocument[]> {
   }
   return result;
 }
-function toBase64(bytes: Uint8Array): string {
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary);
-}
-async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
-  const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
-  return crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt: salt.buffer as ArrayBuffer, iterations: 310000, hash: "SHA-256" },
-    material, { name: "AES-GCM", length: 256 }, false, ["encrypt"],
-  );
-}
-async function encryptBackup(payload: BackupPayload, password: string) {
-  const plainText = new TextEncoder().encode(JSON.stringify(payload));
-  const digest = await crypto.subtle.digest("SHA-256", plainText);
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const key = await deriveKey(password, salt);
-  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plainText);
-  return {
-    format: "controle-diario-encrypted-backup", schemaVersion: 1,
-    algorithm: "AES-256-GCM", keyDerivation: "PBKDF2-SHA256", iterations: 310000,
-    salt: toBase64(salt), iv: toBase64(iv),
-    integrity: { algorithm: "SHA-256", digest: toBase64(new Uint8Array(digest)) },
-    ciphertext: toBase64(new Uint8Array(ciphertext)),
-  };
-}
+
 
 export async function exportAdministrativeBackup(password: string): Promise<{ fileName: string; documentCount: number; userCount: number }> {
   const { auth, db, app } = requireFirebase();
@@ -131,7 +106,7 @@ export async function exportAdministrativeBackup(password: string): Promise<{ fi
     ],
     collections,
   };
-  const encrypted = await encryptBackup(payload, password);
+  const encrypted = await encryptBackupPayload(payload, password);
   const blob = new Blob([JSON.stringify(encrypted, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const fileName = `controle-diario-backup-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
@@ -173,10 +148,6 @@ export type BackupInspection = {
   payload: BackupPayload;
 };
 
-function fromBase64(value: string): Uint8Array {
-  const binary = atob(value);
-  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
-}
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -197,38 +168,6 @@ function allowedBackupPath(path: string): boolean {
   if (parts.length !== 2) return false;
   return ROOT_COLLECTIONS.includes(root as typeof ROOT_COLLECTIONS[number]);
 }
-async function decryptEnvelope(envelope: EncryptedBackupEnvelope, password: string): Promise<Uint8Array> {
-  if (envelope.format !== "controle-diario-encrypted-backup" || envelope.schemaVersion !== 1
-    || envelope.algorithm !== "AES-256-GCM" || envelope.keyDerivation !== "PBKDF2-SHA256"
-    || envelope.iterations !== 310000 || envelope.integrity?.algorithm !== "SHA-256") {
-    throw new Error("Formato, versão ou algoritmo do backup não reconhecido.");
-  }
-  const salt = fromBase64(envelope.salt);
-  const iv = fromBase64(envelope.iv);
-  const ciphertext = fromBase64(envelope.ciphertext);
-  if (salt.length !== 16 || iv.length !== 12 || ciphertext.length < 17) {
-    throw new Error("O arquivo de backup possui estrutura criptográfica inválida.");
-  }
-  const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
-  const key = await crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt: salt.buffer as ArrayBuffer, iterations: 310000, hash: "SHA-256" },
-    material, { name: "AES-GCM", length: 256 }, false, ["decrypt"],
-  );
-  let plaintext: ArrayBuffer;
-  try {
-    plaintext = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv.buffer as ArrayBuffer }, key, ciphertext.buffer as ArrayBuffer);
-  } catch {
-    throw new Error("Não foi possível abrir o backup. Verifique a senha e se o arquivo está íntegro.");
-  }
-  const digest = await crypto.subtle.digest("SHA-256", plaintext);
-  const expected = fromBase64(envelope.integrity.digest);
-  const actual = new Uint8Array(digest);
-  if (expected.length !== actual.length || actual.some((byte, index) => byte !== expected[index])) {
-    throw new Error("A verificação de integridade do backup falhou.");
-  }
-  return new Uint8Array(plaintext);
-}
-
 export async function inspectAdministrativeBackup(file: File, password: string): Promise<BackupInspection> {
   const { auth, db, app } = requireFirebase();
   const actor = auth.currentUser;
@@ -245,7 +184,7 @@ export async function inspectAdministrativeBackup(file: File, password: string):
   try { envelope = JSON.parse(await file.text()); }
   catch { throw new Error("O arquivo selecionado não contém um JSON válido."); }
   if (!isRecord(envelope)) throw new Error("Estrutura do arquivo de backup inválida.");
-  const plaintext = await decryptEnvelope(envelope as unknown as EncryptedBackupEnvelope, password);
+  const plaintext = await decryptBackupEnvelope(envelope as unknown as EncryptedBackupEnvelope, password);
   let payload: unknown;
   try { payload = JSON.parse(new TextDecoder().decode(plaintext)); }
   catch { throw new Error("O conteúdo descriptografado não é um backup válido."); }
@@ -254,9 +193,7 @@ export async function inspectAdministrativeBackup(file: File, password: string):
     || !isRecord(payload.createdBy) || !isRecord(payload.collections)) {
     throw new Error("O conteúdo do backup não corresponde ao formato esperado.");
   }
-  if (payload.projectId !== (app.options.projectId ?? "")) {
-    throw new Error("Este backup pertence a outro projeto Firebase. A restauração foi bloqueada.");
-  }
+  assertBackupProject(payload, app.options.projectId ?? "");
   const collections = payload.collections as Record<string, unknown>;
   const legacyCollections = ["users", "users/*/private-data", "accessRequests", "adminAudit", "organizationContacts", "organizationSectors", "Expediente", "settings", "sharedPromotions", "sharedTaskCatalog", "featurePermissions"];
   const expectedCollections = payload.schemaVersion === 1 ? legacyCollections : ["users", "users/*/private-data", ...ROOT_COLLECTIONS, ...INSTITUTIONAL_SUBCOLLECTIONS];
