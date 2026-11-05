@@ -1,106 +1,75 @@
 # Plano de backup e recuperação — Controle Diário
 
-**Ambiente inicial:** homologação  
+**Ambiente:** homologação  
 **Projeto Firebase:** `controle-diario-510808`  
-**Branch:** `feature/leste-firebase-multusuario`
+**Região confirmada pelo responsável:** `southamerica-east1` (São Paulo)  
+**Restrição obrigatória:** orçamento adicional de R$ 0,00.
 
-Este documento define a arquitetura e o procedimento de implantação. A inclusão deste documento no repositório **não ativa serviços, não cria buckets, não altera o Firestore e não gera custos**.
+## 1. Decisão de arquitetura
 
-## 1. Arquitetura proposta
+Não serão habilitados recursos que possam gerar cobrança. Portanto, ficam **descartados neste projeto, enquanto a regra de custo zero permanecer**:
 
-1. **Backups gerenciados do Firestore:** rotina diária, retenção de 14 semanas (98 dias), usando o recurso nativo de agendamento de backups do Firestore.
-2. **PITR:** habilitar recuperação pontual com janela de até 7 dias.
-3. **Cópia independente no Cloud Storage:** exportação semanal do Firestore para um bucket exclusivo, fora do banco e fora do Hosting.
-4. **Retenção do bucket:** política de ciclo de vida para expirar objetos após 98 dias, após validar a política e a primeira exportação.
-5. **Restauração:** sempre restaurar primeiro em projeto/banco isolado; nunca sobrescrever produção durante testes.
+- backups gerenciados agendados do Firestore;
+- Point-in-Time Recovery (PITR);
+- buckets novos ou armazenamento adicional no Cloud Storage;
+- Cloud Scheduler, Cloud Functions ou outros serviços pagos/que exijam faturamento para automatizar exportações.
 
-A cópia semanal no Cloud Storage é uma camada independente dos backups gerenciados do Firestore. O backup criptografado manual do aplicativo continua sendo uma proteção complementar, mas não substitui estas rotinas.
+A região do banco está confirmada como `southamerica-east1`. A localização, por si só, não altera a decisão de custo zero.
 
-## 2. Separação dos ambientes
+**Consequência importante:** não é correto prometer backup automático diário em nuvem e retenção de 98 dias sem verificar e assumir custos. A solução sem custo adicional será um procedimento de exportação manual criptografada, usando a funcionalidade administrativa já existente no Controle Diário.
 
-- Começar somente na homologação do projeto `controle-diario-510808`.
-- Não apontar rotinas para produção nem executar restauração no banco operacional.
-- Antes da implantação oficial, criar/confirmar projeto e bucket de produção separados, com permissões próprias.
-- O bucket deve ser dedicado aos backups, sem acesso público e sem uso para arquivos do site.
+## 2. Procedimento de backup sem custo adicional
 
-## 3. Preparação do Cloud Storage
+1. Ao encerrar o expediente, um administrador aprovado acessa a função de backup administrativo do Controle Diário.
+2. Gera o arquivo de backup criptografado com senha forte (mínimo de 12 caracteres; recomenda-se uma frase-senha exclusiva).
+3. Confere se o arquivo foi baixado e registra a data.
+4. Guarda uma cópia em local aprovado pela empresa, fora do computador de uso diário, se já houver armazenamento corporativo disponível sem custo adicional.
+5. Mantém também uma segunda cópia em outro local aprovado, quando isso puder ser feito sem contratar serviço ou consumir orçamento.
+6. Não envia o arquivo nem a senha em canais públicos ou junto do próprio arquivo.
 
-Criar um bucket regional dedicado, por exemplo `controle-diario-backups-homologacao`, na mesma região do banco Firestore, após confirmar a localização real do banco e estimar custos.
+O arquivo contém dados administrativos e pessoais. Deve ser tratado como informação corporativa confidencial. A senha deve ser guardada separadamente do arquivo.
 
-Requisitos:
-- acesso público bloqueado;
-- acesso uniforme no nível do bucket;
-- versionamento apenas se houver justificativa de recuperação, pois pode aumentar custos;
-- criptografia padrão gerenciada pelo Google inicialmente;
-- permissões mínimas para a identidade que executará exportações;
-- prefixos separados por ambiente e data, por exemplo `homologacao/firestore/AAAA/MM/DD/`.
+## 3. Frequência e retenção
 
-**Não criar o bucket antes de confirmar região, nome disponível, orçamento e permissões.** O nome acima é apenas uma sugestão.
+- **Frequência desejada:** diária, ao final do expediente.
+- **Retenção-alvo:** 98 dias (14 semanas), desde que exista espaço em armazenamento já disponível e autorizado.
+- Se o espaço disponível for limitado, não apagar a única cópia recente para abrir espaço. Priorizar manter a cópia mais recente e cópias periódicas mais antigas, registrando claramente a limitação.
+- Não existe expiração automática garantida neste procedimento manual. A revisão e eliminação de cópias antigas devem seguir a política corporativa.
 
-## 4. Agendamentos e retenção
+## 4. O que já está coberto pelo backup administrativo
 
-### Backups gerenciados do Firestore
-- Frequência: diária.
-- Retenção: 14 semanas.
-- Confirmar no Console Google Cloud que o agendamento está ativo e registrar o identificador e o horário.
-- Verificar o custo estimado de armazenamento e operações antes de ativar.
+A exportação administrativa criptografada existente inclui as coleções institucionais configuradas no código, documentos privados conhecidos dos usuários, expedientes e históricos operacionais, além dos históricos de manutenções externas.
 
-### PITR
-- Janela desejada: até 7 dias.
-- Confirmar elegibilidade, região, cobrança e preço no projeto antes de habilitar.
-- PITR não substitui backups independentes: ele protege contra erros recentes, mas não é uma cópia externa.
+A lista de coleções é mantida explicitamente no código. Quando novas coleções ou subcoleções forem adicionadas ao sistema, a rotina de backup deverá ser revisada para incluí-las. A exportação só deve ser considerada completa depois dessa conferência.
 
-### Exportação semanal para Cloud Storage
-- Frequência: semanal, em horário de baixa utilização.
-- Destino: bucket exclusivo, prefixo por ambiente/data.
-- A identidade de execução deve ter apenas as permissões necessárias para ler/exportar o Firestore e gravar no bucket.
-- Não reutilizar automaticamente a credencial ampla usada pelo deploy do Firebase Hosting.
-- Registrar início, fim, resultado, quantidade/tamanho quando disponível e URI do objeto exportado.
-- Alertar em caso de falha ou ausência de exportação dentro da janela esperada.
+O backup manual do aplicativo é uma exportação lógica feita pela aplicação; não é um backup gerenciado nativo do Google Cloud e não oferece PITR.
 
-### Retenção no bucket
-Aplicar regra de expiração de 98 dias somente depois de verificar que:
-1. a exportação semanal foi concluída;
-2. a restauração de teste foi bem-sucedida;
-3. a regra atinge somente o prefixo de backups deste ambiente;
-4. não existe obrigação de retenção maior.
+## 5. Restauração segura
 
-## 5. Identidade e segurança
+- Não selecionar um backup para restauração sem confirmar a data, o projeto de origem e a senha.
+- A restauração pode alterar dados existentes. Não executar testes sobre o banco ativo nem sobre produção.
+- O teste de restauração deverá ser planejado separadamente. Como não será criado outro projeto/serviço pago, primeiro avaliar se é possível validar o arquivo e o processo usando ferramentas locais gratuitas, sem credenciais ou dados reais expostos.
+- Até existir um teste isolado e documentado, considerar a restauração como **não validada**.
+- Em caso de incidente real, interromper alterações no sistema e realizar a recuperação somente com acompanhamento do responsável técnico.
 
-Criar uma identidade de serviço exclusiva para backup, sem chaves JSON permanentes no repositório. Preferir identidade gerenciada/Workload Identity Federation quando a rotina for executada fora do Google Cloud.
+## 6. Controles operacionais
 
-Separar permissões:
-- leitura/exportação do banco;
-- criação de objetos no bucket;
-- leitura dos objetos para restauração de teste;
-- administração de políticas e retenção somente para responsáveis autorizados.
-
-Não conceder Owner/Editor por conveniência. Não incluir segredos, chaves ou tokens neste repositório.
-
-## 6. Teste obrigatório de restauração
-
-Antes de considerar a proteção concluída:
-1. gerar uma exportação semanal de homologação;
-2. confirmar que os arquivos/metadados esperados existem no bucket;
-3. criar um destino isolado de teste;
-4. restaurar a exportação nesse destino;
-5. conferir documentos e subcoleções importantes: usuários, configurações privadas, expedientes, histórico operacional, setores, contatos, catálogo de tarefas, promoções, manutenções, histórico de manutenções, avisos e notificações;
-6. registrar data, origem, destino, resultado e divergências;
-7. excluir o ambiente temporário somente após validação e autorização.
-
-Não testar restauração sobre o banco de homologação ativo nem sobre produção.
+- Usar senha forte e exclusiva para cada política/arquivo, guardada em gerenciador de senhas corporativo já disponível.
+- Manter arquivo e senha separados.
+- Restringir o acesso às cópias a administradores autorizados.
+- Conferir diariamente se o arquivo foi gerado e armazenado corretamente.
+- Fazer uma revisão mensal da lista de coleções incluídas no backup.
+- Não armazenar credenciais de serviço, chaves privadas ou senhas no GitHub.
 
 ## 7. Critérios de conclusão
 
-- [ ] Localização do Firestore e custos estimados confirmados.
-- [ ] Bucket privado e exclusivo criado.
-- [ ] Identidade de backup com permissões mínimas configurada.
-- [ ] Backup gerenciado diário ativo com retenção de 14 semanas.
-- [ ] PITR configurado para até 7 dias.
-- [ ] Exportação semanal independente ativa no bucket.
-- [ ] Política de retenção de 98 dias validada.
-- [ ] Alertas de falha e ausência de backup configurados.
-- [ ] Restauração de teste concluída em ambiente isolado.
-- [ ] Procedimento de recuperação documentado e responsável definido.
+- [x] Região do Firestore confirmada: `southamerica-east1`.
+- [x] Restrição de orçamento adicional igual a R$ 0,00 registrada.
+- [x] Recursos pagos/que possam gerar cobrança descartados enquanto a restrição permanecer.
+- [x] Exportação administrativa criptografada existente identificada como mecanismo manual.
+- [ ] Procedimento diário adotado na operação.
+- [ ] Local corporativo sem custo adicional confirmado para guardar as cópias.
+- [ ] Teste de restauração em ambiente local/isolado gratuito concluído.
+- [ ] Revisão da cobertura de coleções e subcoleções concluída.
 
-**Status atual:** planejamento documentado; nenhum serviço de backup em nuvem foi ativado por este commit.
+**Status:** estratégia de backup sem custo adicional documentada. Não foram ativados serviços, criados buckets, alteradas configurações do Firebase ou executadas restaurações.
