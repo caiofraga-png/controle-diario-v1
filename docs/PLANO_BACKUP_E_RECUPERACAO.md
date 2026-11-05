@@ -48,8 +48,10 @@ O backup manual do aplicativo é uma exportação lógica feita pela aplicação
 
 - Não selecionar um backup para restauração sem confirmar a data, o projeto de origem e a senha.
 - A restauração pode alterar dados existentes. Não executar testes sobre o banco ativo nem sobre produção.
-- O teste de restauração deverá ser planejado separadamente. Como não será criado outro projeto/serviço pago, primeiro avaliar se é possível validar o arquivo e o processo usando ferramentas locais gratuitas, sem credenciais ou dados reais expostos.
-- Até existir um teste isolado e documentado, considerar a restauração como **não validada**.
+- A camada criptográfica e a lógica central de restauração foram testadas automaticamente no GitHub Actions com dados fictícios, sem conexão ao Firebase. Os testes verificam senha incorreta, adulteração, envelope inválido, projeto diferente, senha mínima, criação de documentos ausentes, preservação de documentos existentes, repetição segura e interrupção simulada.
+- A execução de homologação `41995049608` (commit `b1541e42c2594779d19e428c5fac167f4b017c13`, 05/11/2026) concluiu com sucesso: compilação, regras Firestore, testes de criptografia/restauração fictícia e publicação no canal de homologação.
+- Essa validação **não equivale** a uma restauração integral do banco nem comprova a recuperação de todas as coleções e subcoleções em um ambiente Firebase isolado. Não foram usados dados reais ou credenciais de produção.
+- Antes de considerar a recuperação integral validada, ainda será necessário planejar um ensaio ponta a ponta isolado e gratuito, sem restaurar sobre o banco ativo.
 - Em caso de incidente real, interromper alterações no sistema e realizar a recuperação somente com acompanhamento do responsável técnico.
 
 ## 6. Controles operacionais
@@ -69,7 +71,8 @@ O backup manual do aplicativo é uma exportação lógica feita pela aplicação
 - [x] Exportação administrativa criptografada existente identificada como mecanismo manual.
 - [ ] Procedimento diário adotado na operação.
 - [ ] Local corporativo sem custo adicional confirmado para guardar as cópias.
-- [ ] Teste de restauração em ambiente local/isolado gratuito concluído.
+- [x] Testes automatizados isolados da criptografia e da lógica central de restauração com dados fictícios concluídos no GitHub Actions.
+- [ ] Ensaio ponta a ponta da restauração integral em ambiente local/isolado gratuito concluído.
 - [ ] Revisão da cobertura de coleções e subcoleções concluída.
 
-**Status:** estratégia de backup sem custo adicional documentada. Não foram ativados serviços, criados buckets, alteradas configurações do Firebase ou executadas restaurações.
+**Status:** estratégia de backup sem custo adicional documentada; criptografia e lógica central de restauração passaram nos testes automatizados com dados fictícios. Não foram ativados serviços pagos, criados buckets ou restaurados dados reais. A restauração integral ponta a ponta continua pendente.
