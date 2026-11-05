@@ -52,6 +52,26 @@ export default function FirebaseAdminPanel() {
   const [restorePassword, setRestorePassword] = useState("");
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [restorePreview, setRestorePreview] = useState<BackupInspection | null>(null);
+  const [lastBackupExport, setLastBackupExport] = useState<{ fileName: string; createdAt: string } | null>(null);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("controle-diario:last-admin-backup-export");
+      if (!saved) return;
+      const parsed = JSON.parse(saved) as { fileName?: unknown; createdAt?: unknown };
+      if (typeof parsed.fileName === "string" && typeof parsed.createdAt === "string"
+        && Number.isFinite(Date.parse(parsed.createdAt))) {
+        setLastBackupExport({ fileName: parsed.fileName, createdAt: parsed.createdAt });
+      }
+    } catch {
+      // O lembrete é apenas local; a indisponibilidade do armazenamento não bloqueia a administração.
+    }
+  }, []);
+
+  const backupExportedToday = lastBackupExport
+    ? new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date(lastBackupExport.createdAt))
+      === new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date())
+    : false;
 
   async function refresh() {
     setBusy(true);
@@ -342,7 +362,14 @@ export default function FirebaseAdminPanel() {
     setMessage("");
     try {
       const result = await exportAdministrativeBackup(backupPassword);
-      setMessage(`Backup criptografado gerado: ${result.fileName}. ${result.documentCount} documentos de ${result.userCount} usuários incluídos.`);
+      const exportRecord = { fileName: result.fileName, createdAt: new Date().toISOString() };
+      setLastBackupExport(exportRecord);
+      try {
+        window.localStorage.setItem("controle-diario:last-admin-backup-export", JSON.stringify(exportRecord));
+      } catch {
+        // A exportação foi gerada; apenas o lembrete local não pôde ser salvo.
+      }
+      setMessage(`Arquivo criptografado gerado: ${result.fileName}. ${result.documentCount} documentos de ${result.userCount} usuários incluídos. Guarde o arquivo em local corporativo autorizado.`);
       setBackupPassword("");
       setBackupPasswordConfirm("");
     } catch (error) {
@@ -541,6 +568,14 @@ export default function FirebaseAdminPanel() {
     {isAdministrator && <section>
       <h3>Backup administrativo</h3>
       <p>Gera um arquivo JSON criptografado com os cadastros institucionais e os dados privados de todos os colaboradores, incluindo expedientes em andamento, históricos, configurações, preferências e personalizações. A exportação é somente leitura e não altera o Firestore.</p>
+      <div role="status" style={{ border: "1px solid #cbd8ce", borderRadius: 8, padding: 12, display: "grid", gap: 6 }}>
+        <strong>Rotina diária de backup</strong>
+        {lastBackupExport
+          ? <span>Última exportação gerada neste navegador: {new Date(lastBackupExport.createdAt).toLocaleString("pt-BR")} · {lastBackupExport.fileName}</span>
+          : <span>Nenhuma exportação foi registrada neste navegador.</span>}
+        <strong>{backupExportedToday ? "Uma exportação foi gerada hoje." : "A exportação de hoje ainda não foi registrada neste navegador."}</strong>
+        <small>Este lembrete é local a este navegador e dispositivo. Ele registra apenas a geração do arquivo, não confirma que o download terminou nem que a cópia foi guardada fora do computador. Após gerar, confira o arquivo e armazene-o em local corporativo autorizado, sem custo adicional. A senha deve ficar separada.</small>
+      </div>
       <label style={{ display: "grid", gap: 6, maxWidth: 420 }}>Senha de criptografia (mínimo de 12 caracteres)
         <input type="password" autoComplete="new-password" value={backupPassword} onChange={(event) => setBackupPassword(event.target.value)} />
       </label>
