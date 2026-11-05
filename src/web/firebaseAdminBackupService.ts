@@ -124,17 +124,6 @@ export async function exportAdministrativeBackup(password: string): Promise<{ fi
 }
 
 
-type EncryptedBackupEnvelope = {
-  format: "controle-diario-encrypted-backup";
-  schemaVersion: 1;
-  algorithm: "AES-256-GCM";
-  keyDerivation: "PBKDF2-SHA256";
-  iterations: 310000;
-  salt: string;
-  iv: string;
-  integrity: { algorithm: "SHA-256"; digest: string };
-  ciphertext: string;
-};
 export type BackupInspection = {
   createdAt: string;
   createdBy: string;
