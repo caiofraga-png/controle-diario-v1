@@ -54,7 +54,7 @@ jobs:
           VITE_FIREBASE_APP_ID: "1:694384996130:web:af87189c4b04cdd3857f7b"
         run: npm run build
       - name: Testar regras do Firestore no emulador
-        run: npx firebase emulators:exec --only firestore --project leste-controle-diario-rules-test "npm run test:rules"
+        run: npx firebase emulators:exec --only firestore --project leste-controle-diario-rules-test "npm run test:rules && npm run test:backup:firestore"
       - name: Testar criptografia e recuperação de backup fictício
         run: npm run test:backup
 
