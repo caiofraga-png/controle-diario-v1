@@ -541,10 +541,14 @@ service cloud.firestore {
     // Task attachments are shared with every approved collaborator; only managers upload/remove.
     match /sharedAttachments/{attachmentId} {
       allow read: if approvedUser();
-      allow create: if activeManager()
+      allow create: if (
+          (request.resource.data.targetType in ["task-creation", "task-roteiro", "promotion"] && activeManager())
+          || (request.resource.data.targetType == "maintenance" && (activeManager() || maintenancePublisher()))
+          || (request.resource.data.targetType == "delinquency" && (activeManager() || delinquencyPublisher()))
+        )
         && request.resource.data.keys().hasAll(["targetType","targetId","name","mimeType","size","data","createdByUid","createdAt"])
         && request.resource.data.keys().hasOnly(["targetType","targetId","name","mimeType","size","data","createdByUid","createdAt"])
-        && request.resource.data.targetType in ["task-creation","task-roteiro"]
+        && request.resource.data.targetType in ["task-creation","task-roteiro","maintenance","promotion","delinquency"]
         && request.resource.data.targetId is string
         && request.resource.data.targetId.size() > 0
         && request.resource.data.name is string
@@ -558,7 +562,9 @@ service cloud.firestore {
         && request.resource.data.createdByUid == request.auth.uid
         && request.resource.data.createdAt == request.time;
       allow update: if false;
-      allow delete: if activeManager();
+      allow delete: if (resource.data.targetType in ["task-creation", "task-roteiro", "promotion"] && activeManager())
+        || (resource.data.targetType == "maintenance" && (activeManager() || maintenancePublisher()))
+        || (resource.data.targetType == "delinquency" && (activeManager() || delinquencyPublisher()));
     }
 
     match /settings/allowedDomains {
