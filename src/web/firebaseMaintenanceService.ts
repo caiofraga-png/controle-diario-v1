@@ -57,7 +57,7 @@ export async function canCurrentUserManageMaintenances(): Promise<boolean> {
   return currentUserCanManage();
 }
 
-export async function saveExternalMaintenance(input: ExternalMaintenanceInput, id?: string): Promise<void> {
+export async function saveExternalMaintenance(input: ExternalMaintenanceInput, id?: string, createId?: string): Promise<void> {
   validateInput(input);
   const { auth, db } = requireFirebase();
   const user = auth.currentUser;
@@ -100,7 +100,7 @@ export async function saveExternalMaintenance(input: ExternalMaintenanceInput, i
       after: input,
     });
   } else {
-    const maintenanceRef = doc(collection(db, "externalMaintenances"));
+    const maintenanceRef = createId ? doc(db, "externalMaintenances", createId) : doc(collection(db, "externalMaintenances"));
     savedMaintenanceId = maintenanceRef.id;
     const historyRef = doc(collection(db, "externalMaintenances", maintenanceRef.id, "history"));
     batch.set(maintenanceRef, {
