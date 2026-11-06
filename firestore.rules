@@ -559,7 +559,8 @@ service cloud.firestore {
         && request.resource.data.size <= 512000
         && request.resource.data.data is string
         && request.resource.data.data.size() <= 700000
-        && request.resource.data.createdByUid == request.auth.uid
+        && (request.resource.data.createdByUid == request.auth.uid
+          || (activeAdmin() && request.resource.data.createdByUid is string))
         && (request.resource.data.createdAt == request.time
           || (activeAdmin() && request.resource.data.createdAt is timestamp));
       allow update: if false;
