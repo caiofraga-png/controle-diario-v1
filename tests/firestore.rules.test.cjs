@@ -705,7 +705,7 @@ test("somente setor ou contato liberado pode publicar aviso de inadimplência co
       updatedByUid: uid, updatedAt: timestamp,
     });
     batch.set(notificationRef, {
-      category: "cobranca", message: "Novo alerta de inadimplência",
+      category: "cobranca", message: "Inadimplência - Aviso de redução",
       target: "inadimplencia", noticeId,
       createdByUid: uid, createdAt: timestamp,
     });
