@@ -125,7 +125,7 @@ export async function saveExternalMaintenance(input: ExternalMaintenanceInput, i
   // Maintenance data, immutable audit entry and notification are committed together.
   batch.set(notificationRef, {
     category: "manutencoes",
-    message: "Atualização de manutenção",
+    message: input.title,
     target: "manutencoes",
     maintenanceId: savedMaintenanceId,
     createdByUid: user.uid,
