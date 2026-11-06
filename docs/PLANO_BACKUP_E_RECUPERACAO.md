@@ -40,7 +40,7 @@ O arquivo contém dados administrativos e pessoais. Deve ser tratado como inform
 
 A exportação administrativa criptografada existente inclui as coleções institucionais configuradas no código, documentos privados conhecidos dos usuários, expedientes e históricos operacionais, além dos históricos de manutenções externas.
 
-A lista de coleções é mantida explicitamente no código. Quando novas coleções ou subcoleções forem adicionadas ao sistema, a rotina de backup deverá ser revisada para incluí-las. A exportação só deve ser considerada completa depois dessa conferência.
+A lista de coleções é mantida explicitamente no código. A coleção `sharedAttachments` foi incorporada à exportação nesta revisão. Quando novas coleções ou subcoleções forem adicionadas ao sistema, a rotina de backup deverá ser revisada para incluí-las. A exportação só deve ser considerada completa depois dessa conferência.
 
 O backup manual do aplicativo é uma exportação lógica feita pela aplicação; não é um backup gerenciado nativo do Google Cloud e não oferece PITR.
 
