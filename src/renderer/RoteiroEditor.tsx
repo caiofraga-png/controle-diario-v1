@@ -1,4 +1,5 @@
 import { useState } from "react";
+import AttachmentPanel from "./AttachmentPanel";
 
 type Roteiro = {
   linhas: number;
@@ -16,6 +17,8 @@ type Props = {
   onReset?: () => void;
   presentation?: "popup" | "side";
   sidePosition?: "esquerda" | "direita";
+  taskId?: string;
+  canUploadAttachments?: boolean;
 };
 
 function extractText(r: Roteiro) {
@@ -23,8 +26,8 @@ function extractText(r: Roteiro) {
   const keys = Object.keys(cells);
   if (!keys.length) return "";
   const sorted = keys.sort((a, b) => {
-    const ma = a.match(/^[A-Z]+(\d+)$/);
-    const mb = b.match(/^[A-Z]+(\d+)$/);
+    const ma = a.match(/^[A-Z]+(\\d+)$/);
+    const mb = b.match(/^[A-Z]+(\\d+)$/);
     return Number(ma?.[1] ?? 999999) - Number(mb?.[1] ?? 999999);
   });
   return sorted
@@ -41,7 +44,9 @@ export default function RoteiroEditor({
   onSave,
   onReset,
   presentation = "popup",
-  sidePosition = "direita"
+  sidePosition = "direita",
+  taskId,
+  canUploadAttachments = false
 }: Props) {
   const [text, setText] = useState(() => extractText(initial));
 
@@ -72,6 +77,8 @@ export default function RoteiroEditor({
             spellCheck={false}
           />
         </div>
+
+        {taskId && <AttachmentPanel targetType="task-roteiro" targetId={taskId} canUpload={canUploadAttachments} />}
 
         <div className="config-actions">
           <button onClick={onCancel}>CANCELAR</button>
