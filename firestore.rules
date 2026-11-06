@@ -308,7 +308,7 @@ service cloud.firestore {
       return existsAfter(path)
         && getAfter(path).data.category == "cobranca"
         && getAfter(path).data.target == "inadimplencia"
-        && getAfter(path).data.message == "Novo alerta de inadimplência"
+        && getAfter(path).data.message == "Inadimplência - " + getAfter(/databases/$(database)/documents/delinquencyNotices/$(noticeId)).data.title
         && getAfter(path).data.noticeId == noticeId
         && getAfter(path).data.createdByUid == request.auth.uid
         && getAfter(path).data.createdAt == request.time;
