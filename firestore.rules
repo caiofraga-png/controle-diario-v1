@@ -389,7 +389,8 @@ service cloud.firestore {
         && request.resource.data.category in ["cobranca", "promocoes", "manutencoes"]
         && request.resource.data.target in ["inadimplencia", "promocoes", "manutencoes"]
         && request.resource.data.message is string
-        && request.resource.data.createdAt == request.time;
+        && (request.resource.data.createdAt == request.time
+          || (activeAdmin() && request.resource.data.createdAt is timestamp));
       allow update, delete: if false;
     }
 
