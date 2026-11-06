@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import AttachmentPanel from "./AttachmentPanel";
 import {
   canCurrentUserManageMaintenances,
   loadMaintenanceHistory,
@@ -44,6 +45,7 @@ export default function MaintenancePanel() {
   const [historyItem, setHistoryItem] = useState<ExternalMaintenance | null>(null);
   const [history, setHistory] = useState<MaintenanceHistory[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [newAttachmentId, setNewAttachmentId] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -65,6 +67,7 @@ export default function MaintenancePanel() {
   function openCreate() {
     setEditing(null);
     setForm({ ...EMPTY_FORM });
+    setNewAttachmentId(crypto.randomUUID());
     setCreating(true);
     setMessage("");
   }
@@ -98,7 +101,7 @@ export default function MaintenancePanel() {
         location: form.location.trim(),
         description: form.description.trim(),
         status: form.status,
-      }, editing?.id);
+      }, editing?.id, editing ? undefined : newAttachmentId);
       closeForm();
       setView(form.status);
       setMessage(editing ? "MANUTENÇÃO ATUALIZADA COM SUCESSO." : "MANUTENÇÃO CADASTRADA COM SUCESSO.");
@@ -145,6 +148,7 @@ export default function MaintenancePanel() {
           <label>LOCAL<input value={form.location} maxLength={160} required onChange={event=>setForm(current=>({...current,location:event.target.value}))} placeholder="Bairro, endereço ou referência"/></label>
         </div>
         <label>DESCRIÇÃO<textarea value={form.description} maxLength={2000} rows={4} required onChange={event=>setForm(current=>({...current,description:event.target.value}))} placeholder="Descreva o serviço, impacto e informações relevantes."/></label>
+        <AttachmentPanel targetType="maintenance" targetId={editing?.id ?? newAttachmentId} canUpload={canManage} />
         <label>STATUS<select value={form.status} onChange={event=>setForm(current=>({...current,status:event.target.value as ExternalMaintenanceInput["status"]}))}>
           <option value="ongoing">Em andamento</option><option value="completed">Concluída</option>
         </select></label>
@@ -182,6 +186,7 @@ export default function MaintenancePanel() {
           <p className="maintenance-location">⌖ {item.location}</p>
           <p className="maintenance-description">{item.description}</p>
           <div className="maintenance-card-meta">Atualizada em {timestampLabel(item.updatedAt)}</div>
+          <AttachmentPanel targetType="maintenance" targetId={item.id} canUpload={canManage} />
           <div className="maintenance-card-actions">
             <button className="secondary" onClick={()=>void openHistory(item)}>HISTÓRICO</button>
             {canManage && <button className="primary" onClick={()=>openEdit(item)}>EDITAR</button>}
