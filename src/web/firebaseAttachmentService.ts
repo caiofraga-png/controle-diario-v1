@@ -1,4 +1,4 @@
-import { collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, type Unsubscribe } from "firebase/firestore";
+import { collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, setDoc, where, type Unsubscribe } from "firebase/firestore";
 import { requireFirebase } from "./firebaseClient";
 
 export type AttachmentTarget = "task-creation" | "task-roteiro";
@@ -12,8 +12,8 @@ export function validateAttachmentFile(file:File){
 }
 export function subscribeAttachments(targetType:AttachmentTarget,targetId:string,callback:(items:SharedAttachment[])=>void,onError?:(error:Error)=>void):Unsubscribe{
   const {db}=requireFirebase();
-  const q=query(collection(db,"sharedAttachments"),where("targetType","==",targetType),where("targetId","==",targetId),orderBy("createdAt","desc"));
-  return onSnapshot(q,s=>callback(s.docs.map(d=>({id:d.id,...d.data()} as SharedAttachment))),e=>onError?.(e));
+  const q=query(collection(db,"sharedAttachments"),where("targetType","==",targetType),where("targetId","==",targetId));
+  return onSnapshot(q,s=>callback(s.docs.map(d=>({id:d.id,...d.data()} as SharedAttachment)).sort((a,b)=>{const at=(a.createdAt as any)?.seconds??0;const bt=(b.createdAt as any)?.seconds??0;return bt-at;})),e=>onError?.(e));
 }
 export async function uploadAttachment(targetType:AttachmentTarget,targetId:string,file:File){
   validateAttachmentFile(file);
