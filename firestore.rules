@@ -538,6 +538,29 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Task attachments are shared with every approved collaborator; only managers upload/remove.
+    match /sharedAttachments/{attachmentId} {
+      allow read: if approvedUser();
+      allow create: if activeManager()
+        && request.resource.data.keys().hasAll(["targetType","targetId","name","mimeType","size","data","createdByUid","createdAt"])
+        && request.resource.data.keys().hasOnly(["targetType","targetId","name","mimeType","size","data","createdByUid","createdAt"])
+        && request.resource.data.targetType in ["task-creation","task-roteiro"]
+        && request.resource.data.targetId is string
+        && request.resource.data.targetId.size() > 0
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 180
+        && request.resource.data.mimeType is string
+        && request.resource.data.size is int
+        && request.resource.data.size > 0
+        && request.resource.data.size <= 512000
+        && request.resource.data.data is string
+        && request.resource.data.data.size() <= 700000
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+      allow update: if false;
+      allow delete: if activeManager();
+    }
+
     match /settings/allowedDomains {
       allow read: if signedIn();
       allow write: if activeAdmin();
