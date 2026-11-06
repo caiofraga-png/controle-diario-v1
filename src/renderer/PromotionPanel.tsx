@@ -77,7 +77,6 @@ export default function PromotionPanel({ promotions, message, canManage, onSave 
         {item.eligible&&<div className="promotion-detail"><strong>PRODUTOS / PLANOS ELEGÍVEIS</strong><p>{item.eligible}</p></div>}
         {item.conditions&&<div className="promotion-detail"><strong>CONDIÇÕES</strong><p>{item.conditions}</p></div>}
         <div className="promotion-validity">{dateLabel(item.endDate)}</div>
-        <AttachmentPanel targetType="promotion" targetId={item.id} canUpload={canManage} />
         {item.status==="suspended"&&<div className="promotion-status suspended">SUSPENSA</div>}
         {item.status==="closed"&&<div className="promotion-status closed">CONCLUÍDA</div>}
         {canManage&&<div className="maintenance-card-actions"><button type="button" className="secondary" onClick={()=>{setForm({...item});setLocalMessage("");}}>EDITAR</button>{item.status!=="closed"?<button type="button" className="primary" disabled={busy} onClick={()=>void changeStatus(item,"closed")}>CONCLUIR</button>:<button type="button" className="primary" disabled={busy} onClick={()=>void changeStatus(item,"active")}>REABRIR</button>}</div>}
