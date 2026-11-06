@@ -255,7 +255,7 @@ function App() {
     return () => { active = false; };
   }, [profiles, selectedStartProfile, geralHasTasks]);
   const allowedMenuTabs = new Set<string>(["sistema", "atendimentos", ...(config?.layout?.abas ?? ["tarefas","calendario","manutencoes","promocoes","meta","inadimplencia","supervisao","configuracao"])]);
-  const showMenu = (id:string) => allowedMenuTabs.has(id) && (id !== "administracao" || firebaseAccess?.user?.role === "admin") && (id !== "promocoes" || firebaseAccess?.status === "approved") && (id !== "supervisao" || firebaseAccess?.user?.role === "admin" || firebaseAccess?.user?.isSupervisor === true);
+  const showMenu = (id:string) => (id === "administracao" || allowedMenuTabs.has(id)) && (id !== "administracao" || firebaseAccess?.user?.role === "admin") && (id !== "promocoes" || firebaseAccess?.status === "approved") && (id !== "supervisao" || firebaseAccess?.user?.role === "admin" || firebaseAccess?.user?.isSupervisor === true);
   useEffect(() => { if (firebaseAccess?.status === "approved" && tab !== "sistema" && !showMenu(tab)) setTab("sistema"); }, [firebaseAccess?.status, firebaseAccess?.user?.role, config?.layout?.abas?.join("|"), tab]);
   const expansionMode = config?.layout?.criacaoRoteiro?.modo ?? "POPUP";
   const expansionPosition = config?.layout?.expansaoLateral?.posicao ?? "direita";
