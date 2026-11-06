@@ -74,9 +74,11 @@ export async function savePromotions(promotions: Promotion[]): Promise<void> {
   const previousItems = previousSnapshot.exists() && Array.isArray(previousSnapshot.data().promotions)
     ? validatePromotions(previousSnapshot.data().promotions) : [];
   const previouslyActive = new Set(previousItems.filter(item => item.status === "active").map(item => item.id));
-  const newlyActive = (previousSnapshot.exists() ? validated : []).filter(item => item.status === "active" && !previouslyActive.has(item.id)
-    && (!item.startDate || item.startDate <= new Date().toISOString().slice(0, 10))
-    && (!item.endDate || item.endDate >= new Date().toISOString().slice(0, 10)));
+  const previousById = new Map(previousItems.map(item => [item.id, item]));
+  const eligibleToday = (item:Promotion) => (!item.startDate || item.startDate <= new Date().toISOString().slice(0, 10))
+    && (!item.endDate || item.endDate >= new Date().toISOString().slice(0, 10));
+  const newlyActive = (previousSnapshot.exists() ? validated : []).filter(item => item.status === "active" && !previouslyActive.has(item.id) && eligibleToday(item));
+  const newlyClosed = validated.filter(item => item.status === "closed" && previousById.get(item.id)?.status !== "closed");
   const ids = new Set<string>();
   for (const item of validated) {
     if (ids.has(item.id)) throw new Error("EXISTE UMA PROMOÇÃO COM ID DUPLICADO.");
@@ -92,7 +94,18 @@ export async function savePromotions(promotions: Promotion[]): Promise<void> {
     const notificationRef = doc(collection(db, "sharedNotifications"));
     await setDoc(notificationRef, {
       category: "promocoes",
-      message: "Nova promoção ativa",
+      message: `Promoção - ${item.name} - Em Andamento`,
+      target: "promocoes",
+      referenceId: item.id,
+      createdByUid: user.uid,
+      createdAt: serverTimestamp(),
+    });
+  }
+  for (const item of newlyClosed) {
+    const notificationRef = doc(collection(db, "sharedNotifications"));
+    await setDoc(notificationRef, {
+      category: "promocoes",
+      message: `Promoção - ${item.name} - Encerrado`,
       target: "promocoes",
       referenceId: item.id,
       createdByUid: user.uid,
