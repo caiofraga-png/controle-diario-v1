@@ -164,7 +164,13 @@ function App() {
     if (!notificationUserId) { setDismissedNotificationIds([]); return; }
     try {
       const stored = JSON.parse(window.localStorage.getItem(`controle-diario:avisos-dispensados:${notificationUserId}`) ?? "[]");
-      setDismissedNotificationIds(Array.isArray(stored) ? stored.filter((id): id is string => typeof id === "string").slice(-500) : []);
+      const previouslySeen = JSON.parse(window.localStorage.getItem(`controle-diario:avisos-lidos:${notificationUserId}`) ?? "[]");
+      const dismissed = [...new Set([
+        ...(Array.isArray(stored) ? stored : []),
+        ...(Array.isArray(previouslySeen) ? previouslySeen : []),
+      ].filter((id): id is string => typeof id === "string"))].slice(-500);
+      setDismissedNotificationIds(dismissed);
+      window.localStorage.setItem(`controle-diario:avisos-dispensados:${notificationUserId}`, JSON.stringify(dismissed));
     } catch { setDismissedNotificationIds([]); }
   }, [notificationUserId]);
 
