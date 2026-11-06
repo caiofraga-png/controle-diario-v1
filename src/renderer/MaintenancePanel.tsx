@@ -186,7 +186,6 @@ export default function MaintenancePanel() {
           <p className="maintenance-location">⌖ {item.location}</p>
           <p className="maintenance-description">{item.description}</p>
           <div className="maintenance-card-meta">Atualizada em {timestampLabel(item.updatedAt)}</div>
-          <AttachmentPanel targetType="maintenance" targetId={item.id} canUpload={canManage} />
           <div className="maintenance-card-actions">
             <button className="secondary" onClick={()=>void openHistory(item)}>HISTÓRICO</button>
             {canManage && <button className="primary" onClick={()=>openEdit(item)}>EDITAR</button>}
