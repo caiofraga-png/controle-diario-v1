@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import AttachmentPanel from "./AttachmentPanel";
 
 type Promotion = {
   id: string; name?: string; category?: string; benefit?: string; eligible?: string;
@@ -66,6 +67,7 @@ export default function PromotionPanel({ promotions, message, canManage, onSave 
         <label>DATA INICIAL<input type="date" value={String(form.startDate??"")} onChange={e=>update("startDate",e.target.value)}/></label>
         <label>DATA FINAL<input type="date" value={String(form.endDate??"")} onChange={e=>update("endDate",e.target.value)}/></label>
       </div>
+      <AttachmentPanel targetType="promotion" targetId={form.id} canUpload={canManage} />
       <label>STATUS<select value={String(form.status??"active")} onChange={e=>update("status",e.target.value)}><option value="active">EM ANDAMENTO</option><option value="suspended">SUSPENSA</option><option value="closed">CONCLUÍDA</option></select></label>
       <div className="maintenance-form-actions"><button type="button" className="secondary" onClick={()=>setForm(null)}>CANCELAR</button><button type="button" className="primary" disabled={busy} onClick={()=>void save()}>SALVAR PROMOÇÃO</button></div>
     </div></div>:<>
@@ -75,6 +77,7 @@ export default function PromotionPanel({ promotions, message, canManage, onSave 
         {item.eligible&&<div className="promotion-detail"><strong>PRODUTOS / PLANOS ELEGÍVEIS</strong><p>{item.eligible}</p></div>}
         {item.conditions&&<div className="promotion-detail"><strong>CONDIÇÕES</strong><p>{item.conditions}</p></div>}
         <div className="promotion-validity">{dateLabel(item.endDate)}</div>
+        <AttachmentPanel targetType="promotion" targetId={item.id} canUpload={canManage} />
         {item.status==="suspended"&&<div className="promotion-status suspended">SUSPENSA</div>}
         {item.status==="closed"&&<div className="promotion-status closed">CONCLUÍDA</div>}
         {canManage&&<div className="maintenance-card-actions"><button type="button" className="secondary" onClick={()=>{setForm({...item});setLocalMessage("");}}>EDITAR</button>{item.status!=="closed"?<button type="button" className="primary" disabled={busy} onClick={()=>void changeStatus(item,"closed")}>CONCLUIR</button>:<button type="button" className="primary" disabled={busy} onClick={()=>void changeStatus(item,"active")}>REABRIR</button>}</div>}
