@@ -20,7 +20,7 @@ A exportação contempla os documentos encontrados nos caminhos conhecidos pela 
 - documentos de perfil em `users`;
 - documentos privados conhecidos por usuário: `configuration/tarefas`, `configuration/perfis`, `configuration/email`, `configuration/layout`, `preferences/appearance`, `preferences/workSchedule`, `preferences/notifications`, `calendar/dados` e `operational/currentState`;
 - subcoleções privadas conhecidas: `taskCustomizations`, `usefulLinks` e `operational/history/entries`;
-- coleções institucionais: `accessRequests`, `adminAudit`, `organizationContacts`, `organizationSectors`, `Expediente`, `settings`, `sharedPromotions`, `sharedTaskCatalog` e `featurePermissions`.
+- coleções institucionais: `accessRequests`, `adminAudit`, `organizationContacts`, `organizationSectors`, `Expediente`, `settings`, `sharedPromotions`, `sharedTaskCatalog`, `featurePermissions`, `externalMaintenances`, `delinquencyNotices`, `sharedNotifications` e `sharedAttachments`.
 
 **Limite importante:** o Firestore Web SDK não permite enumerar automaticamente subcoleções desconhecidas. Este arquivo não é uma cópia genérica de todo o banco. Quando a aplicação ganhar novos caminhos de dados, a lista do serviço de backup, os testes e esta documentação deverão ser atualizados juntos.
 
