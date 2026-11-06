@@ -1,5 +1,5 @@
 import { useEffect,useRef,useState } from "react";
-import { downloadAttachment,removeAttachment,subscribeAttachments,uploadAttachment,MAX_ATTACHMENT_BYTES,type AttachmentTarget,type SharedAttachment } from "../web/firebaseAttachmentService";
+import { downloadAttachment,removeAttachment,subscribeAttachments,uploadAttachment,type AttachmentTarget,type SharedAttachment } from "../web/firebaseAttachmentService";
 type Props={targetType:AttachmentTarget;targetId:string;canUpload:boolean};
 export default function AttachmentPanel({targetType,targetId,canUpload}:Props){
  const [items,setItems]=useState<SharedAttachment[]>([]);const [busy,setBusy]=useState(false);const [message,setMessage]=useState("");const input=useRef<HTMLInputElement>(null);
