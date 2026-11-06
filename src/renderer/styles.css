@@ -1700,6 +1700,11 @@ html[data-theme="midnight-violet"] .config-embedded .config-tabs button.active {
   font-size:21px; line-height:1; box-shadow:0 2px 6px rgba(20,60,40,.18);
 }
 .notification-bell:hover { background:#185d39; }
+.notification-bell.has-unread { box-shadow:0 0 0 3px rgba(54,176,105,.22),0 2px 8px rgba(20,60,40,.24); animation:notification-pulse 2s ease-in-out infinite; }
+.notification-unread-count { position:absolute; top:-6px; right:-7px; min-width:19px; height:19px; padding:0 5px; display:grid; place-items:center; border:2px solid var(--surface,#fff); border-radius:999px; background:#d83b3b; color:#fff; font-size:10px; font-weight:800; line-height:1; }
+.notification-bell { position:relative; }
+@keyframes notification-pulse { 0%,100% { box-shadow:0 0 0 2px rgba(54,176,105,.18),0 2px 6px rgba(20,60,40,.18); } 50% { box-shadow:0 0 0 5px rgba(54,176,105,.28),0 2px 8px rgba(20,60,40,.24); } }
+@media (prefers-reduced-motion:reduce) { .notification-bell.has-unread { animation:none; } }
 .notification-bell:focus-visible { outline:2px solid #69b98a; outline-offset:3px; }
 .notification-popover {
   position:absolute; top:50px; right:0; width:min(320px,calc(100vw - 32px));
