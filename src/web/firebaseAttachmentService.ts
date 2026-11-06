@@ -1,7 +1,7 @@
 import { collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, setDoc, where, type Unsubscribe } from "firebase/firestore";
 import { requireFirebase } from "./firebaseClient";
 
-export type AttachmentTarget = "task-creation" | "task-roteiro";
+export type AttachmentTarget = "task-creation" | "task-roteiro" | "maintenance" | "promotion" | "delinquency";
 export type SharedAttachment = { id:string; targetType:AttachmentTarget; targetId:string; name:string; mimeType:string; size:number; data:string; createdByUid:string; createdAt?:unknown };
 export const MAX_ATTACHMENT_BYTES = 500 * 1024;
 const ALLOWED_EXTENSIONS = new Set(["doc","docx","xlsx","pdf","png","jpg","jpeg","gif","webp"]);
