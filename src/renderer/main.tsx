@@ -92,16 +92,23 @@ function App() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [sharedNotifications, setSharedNotifications] = useState<SharedNotification[]>([]);
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>({cobranca:true,promocoes:true,manutencoes:true});
-  const [seenNotificationIds, setSeenNotificationIds] = useState<string[]>([]);
+  const [dismissedNotificationIds, setDismissedNotificationIds] = useState<string[]>([]);
   const notificationUserId = firebaseAccess?.status === "approved" ? String(firebaseAccess.user?.uid ?? "") : "";
   const visibleNotifications = sharedNotifications.filter(item => notificationPreferences[item.category]);
-  const unreadNotificationCount = visibleNotifications.filter(item => !seenNotificationIds.includes(item.id)).length;
+  const unreadNotificationCount = visibleNotifications.filter(item => !dismissedNotificationIds.includes(item.id)).length;
 
-  function markNotificationsAsSeen(items: SharedNotification[] = visibleNotifications) {
-    if (!notificationUserId || items.length === 0) return;
-    const next = [...new Set([...seenNotificationIds, ...items.map(item => item.id)])].slice(-500);
-    setSeenNotificationIds(next);
-    try { window.localStorage.setItem(`controle-diario:avisos-lidos:${notificationUserId}`, JSON.stringify(next)); } catch { /* O indicador continua funcionando durante a sessão. */ }
+  function dismissNotification(notificationId: string) {
+    if (!notificationUserId) return;
+    const next = [...new Set([...dismissedNotificationIds, notificationId])].slice(-500);
+    setDismissedNotificationIds(next);
+    try { window.localStorage.setItem(`controle-diario:avisos-dispensados:${notificationUserId}`, JSON.stringify(next)); } catch { /* A remoção permanece ativa durante a sessão. */ }
+  }
+
+  function clearNotifications() {
+    if (!notificationUserId) return;
+    const next = [...new Set([...dismissedNotificationIds, ...visibleNotifications.map(item => item.id)])].slice(-500);
+    setDismissedNotificationIds(next);
+    try { window.localStorage.setItem(`controle-diario:avisos-dispensados:${notificationUserId}`, JSON.stringify(next)); } catch { /* A limpeza permanece ativa durante a sessão. */ }
   }
 
   async function loadData() { try { const result = await window.controleDiario.firebase.workflow.load(); setData(result); if (result.estado) { setObservation(result.estado.observacao ?? ""); setSelectedDate(result.estado.data); } else { setSelectedDate(today()); } } catch (e) { setData({ erro: e instanceof Error ? e.message : "NÃO FOI POSSÍVEL CARREGAR OS DADOS." }); } }
@@ -154,16 +161,12 @@ function App() {
   }
   useEffect(() => { if (firebaseAccess?.status === "approved") { void loadData(); void window.controleDiario.firebase.workflow.carregarPromocoes().then(setPromotions).catch((e:any)=>setPromotionsMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL CARREGAR AS PROMOÇÕES.")); } else { setData(null); setCalendarData(null); setPromotions([]); } }, [firebaseAccess?.status]);
   useEffect(() => {
-    if (!notificationUserId) { setSeenNotificationIds([]); return; }
+    if (!notificationUserId) { setDismissedNotificationIds([]); return; }
     try {
-      const stored = JSON.parse(window.localStorage.getItem(`controle-diario:avisos-lidos:${notificationUserId}`) ?? "[]");
-      setSeenNotificationIds(Array.isArray(stored) ? stored.filter((id): id is string => typeof id === "string").slice(-500) : []);
-    } catch { setSeenNotificationIds([]); }
+      const stored = JSON.parse(window.localStorage.getItem(`controle-diario:avisos-dispensados:${notificationUserId}`) ?? "[]");
+      setDismissedNotificationIds(Array.isArray(stored) ? stored.filter((id): id is string => typeof id === "string").slice(-500) : []);
+    } catch { setDismissedNotificationIds([]); }
   }, [notificationUserId]);
-
-  useEffect(() => {
-    if (notificationsOpen) markNotificationsAsSeen();
-  }, [notificationsOpen, sharedNotifications, notificationPreferences, notificationUserId]);
 
   useEffect(() => {
     if (firebaseAccess?.status !== "approved") {
@@ -340,7 +343,7 @@ function App() {
       <div className="sidebar-footer"><span className={firebaseAccess?.status==="approved"?"connection-dot connected":"connection-dot"}></span><span>{firebaseAccess?.status==="approved"?"Conectado":"Não conectado"}</span></div>
     </aside>
     <div className="app-main">
-    <header className="header"><div className="header-page-title"><div className="page-eyebrow">CONTROLE DIÁRIO</div><strong>{{tarefas:"Tarefas do expediente",atendimentos:"Atendimentos",calendario:"Calendário de trabalho",promocoes:"Promoções",inadimplencia:"Inadimplência",manutencoes:"Área Falha",configuracao:"Configuração",sistema:"Sistema",administracao:"Administração",supervisao:"Supervisão"}[tab]}</strong></div><div className="header-center-tools"><nav className="quick-links" aria-label="Atalhos corporativos">{[...([{id:"sosbeta",label:"SOS Beta",url:"https://sosbeta.lestetelecom.com.br/"},{id:"email",label:"Email",url:"https://mail.google.com/mail/u/0/#inbox"},{id:"chat",label:"Chat",url:"https://chat.google.com/app/chat/"},{id:"keep",label:"Keep",url:"https://keep.google.com/#home"},{id:"wiki",label:"Wiki",url:"https://wikileste.lestetelecom.com.br/home"},{id:"calendario",label:"Calendário",url:"https://calendar.google.com/calendar/u/0/r"},{id:"flit",label:"Flit",url:"https://web2.flitapp.com.br/"},{id:"youk",label:"Youk",url:"https://web.youk.com.br/"}] as const).filter(item=>firebaseAccess?.status!=="approved" || config?.layout?.atalhosCabecalho?.[item.id]!==false),...(firebaseAccess?.status==="approved"?(config?.layout?.atalhosPersonalizados??[]).filter((item:any)=>item.ativo!==false&&(item.url.startsWith("https://") || item.url.startsWith("http://"))).map((item:any)=>({id:item.id,label:item.nome,url:item.url})):[])].map(item=><a key={item.id} href={item.url} target="_blank" rel="noopener noreferrer">{item.label}</a>)}</nav></div><div className="header-status">{busy?"Salvando alterações…":"Organização do expediente"}</div><div className="header-notifications"><button type="button" className={`notification-bell${unreadNotificationCount>0?" has-unread":""}`} aria-label={unreadNotificationCount>0?`Abrir central de alertas: ${unreadNotificationCount} aviso(s) não lido(s)`:"Abrir central de alertas"} aria-expanded={notificationsOpen} onClick={()=>{if(!notificationsOpen) markNotificationsAsSeen();setNotificationsOpen(open=>!open);}} title={unreadNotificationCount>0?`${unreadNotificationCount} aviso(s) não lido(s)`:"Central de alertas"}><span aria-hidden="true">🔔</span>{unreadNotificationCount>0&&<span className="notification-unread-count" aria-hidden="true">{unreadNotificationCount>99?"99+":unreadNotificationCount}</span>}</button>{notificationsOpen&&<div className="notification-popover" role="dialog" aria-label="Central de alertas"><strong>CENTRAL DE ALERTAS</strong>{visibleNotifications.length===0?<p>NÃO HÁ AVISOS NOVOS PARA AS CATEGORIAS ATIVADAS.</p>:<ul>{visibleNotifications.map(item=><li key={item.id}><button type="button" className="notification-entry" onClick={()=>{setNotificationsOpen(false);setTab(item.target as any);}}>{item.message}</button></li>)}</ul>}</div>}</div></header>
+    <header className="header"><div className="header-page-title"><div className="page-eyebrow">CONTROLE DIÁRIO</div><strong>{{tarefas:"Tarefas do expediente",atendimentos:"Atendimentos",calendario:"Calendário de trabalho",promocoes:"Promoções",inadimplencia:"Inadimplência",manutencoes:"Área Falha",configuracao:"Configuração",sistema:"Sistema",administracao:"Administração",supervisao:"Supervisão"}[tab]}</strong></div><div className="header-center-tools"><nav className="quick-links" aria-label="Atalhos corporativos">{[...([{id:"sosbeta",label:"SOS Beta",url:"https://sosbeta.lestetelecom.com.br/"},{id:"email",label:"Email",url:"https://mail.google.com/mail/u/0/#inbox"},{id:"chat",label:"Chat",url:"https://chat.google.com/app/chat/"},{id:"keep",label:"Keep",url:"https://keep.google.com/#home"},{id:"wiki",label:"Wiki",url:"https://wikileste.lestetelecom.com.br/home"},{id:"calendario",label:"Calendário",url:"https://calendar.google.com/calendar/u/0/r"},{id:"flit",label:"Flit",url:"https://web2.flitapp.com.br/"},{id:"youk",label:"Youk",url:"https://web.youk.com.br/"}] as const).filter(item=>firebaseAccess?.status!=="approved" || config?.layout?.atalhosCabecalho?.[item.id]!==false),...(firebaseAccess?.status==="approved"?(config?.layout?.atalhosPersonalizados??[]).filter((item:any)=>item.ativo!==false&&(item.url.startsWith("https://") || item.url.startsWith("http://"))).map((item:any)=>({id:item.id,label:item.nome,url:item.url})):[])].map(item=><a key={item.id} href={item.url} target="_blank" rel="noopener noreferrer">{item.label}</a>)}</nav></div><div className="header-status">{busy?"Salvando alterações…":"Organização do expediente"}</div><div className="header-notifications"><button type="button" className={`notification-bell${unreadNotificationCount>0?" has-unread":""}`} aria-label={unreadNotificationCount>0?`Abrir central de alertas: ${unreadNotificationCount} aviso(s) não lido(s)`:"Abrir central de alertas"} aria-expanded={notificationsOpen} onClick={()=>setNotificationsOpen(open=>!open)} title={unreadNotificationCount>0?`${unreadNotificationCount} aviso(s) não lido(s)`:"Central de alertas"}><span aria-hidden="true">🔔</span>{unreadNotificationCount>0&&<span className="notification-unread-count" aria-hidden="true">{unreadNotificationCount>99?"99+":unreadNotificationCount}</span>}</button>{notificationsOpen&&<div className="notification-popover" role="dialog" aria-label="Central de alertas"><strong>CENTRAL DE ALERTAS</strong>{visibleNotifications.filter(item=>!dismissedNotificationIds.includes(item.id)).length===0?<p>NÃO HÁ NOTIFICAÇÕES PENDENTES.</p>:<ul>{visibleNotifications.filter(item=>!dismissedNotificationIds.includes(item.id)).map(item=><li key={item.id}><button type="button" className="notification-entry" onClick={()=>{dismissNotification(item.id);setNotificationsOpen(false);setTab(item.target as any);}}>{item.message}</button></li>)}</ul>}{visibleNotifications.some(item=>!dismissedNotificationIds.includes(item.id))&&<button type="button" className="notification-clear-button" onClick={clearNotifications}>LIMPAR NOTIFICAÇÕES</button>}</div>}</div></header>
     <main className="content">
       {tab==="configuracao" ? (data?.configuracao ? <ConfigurationPanel initial={data.configuracao} onSave={saveConfig} onSaveLayout={savePersonalLayout} onClose={()=>setTab("tarefas")} busy={busy} embedded canManageCatalog={firebaseAccess?.user?.role==="admin" || firebaseAccess?.user?.isSupervisor===true} canAdmin={firebaseAccess?.user?.role==="admin"} themePreference={themePreference} onThemeChange={changeThemePreference} themeSaving={themeSaving} promotions={promotions} onSavePromotions={savePromotions}/> : <section className="card"><div className="profile">CARREGANDO CONFIGURAÇÃO…</div></section>)
       : tab==="atendimentos" && firebaseAccess?.status==="approved" ? <AtendimentosPanel />
