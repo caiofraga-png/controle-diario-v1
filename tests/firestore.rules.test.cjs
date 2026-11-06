@@ -715,3 +715,60 @@ test("somente setor ou contato liberado pode publicar aviso de inadimplência co
   await assertSucceeds(createNoticeBatch("alice", "aviso-alice"));
   await assertFails(createNoticeBatch("bob", "aviso-bob"));
 });
+
+test("anexos compartilhados aceitam os cinco destinos por administrador e supervisor", async () => {
+  for (const uid of ["admin", "supervisor"]) {
+    const db = dbAs(uid);
+    for (const targetType of ["task-creation", "task-roteiro", "maintenance", "promotion", "delinquency"]) {
+      await assertSucceeds(setDoc(doc(db, "sharedAttachments", `${uid}-${targetType}`), {
+        targetType, targetId: "registro-1", name: "arquivo.pdf",
+        mimeType: "application/pdf", size: 4, data: "JVBERg==",
+        createdByUid: uid, createdAt: serverTimestamp(),
+      }));
+    }
+  }
+});
+
+test("anexos de manutenção e inadimplência respeitam as permissões específicas de publicação", async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await setDoc(doc(db, "featurePermissions/maintenance"), {
+      enabled: true, wholeSectorIds: ["suporte"], contactIds: [], agentIds: [],
+    });
+    await setDoc(doc(db, "featurePermissions/delinquency"), {
+      enabled: true, wholeSectorIds: ["suporte"], contactIds: [], agentIds: [],
+    });
+  });
+  const alice = dbAs("alice");
+  for (const targetType of ["maintenance", "delinquency"]) {
+    await assertSucceeds(setDoc(doc(alice, `sharedAttachments/alice-${targetType}`), {
+      targetType, targetId: "registro-1", name: "arquivo.pdf",
+      mimeType: "application/pdf", size: 4, data: "JVBERg==",
+      createdByUid: "alice", createdAt: serverTimestamp(),
+    }));
+  }
+  await assertFails(setDoc(doc(alice, "sharedAttachments/alice-promotion"), {
+    targetType: "promotion", targetId: "promo-1", name: "arquivo.pdf",
+    mimeType: "application/pdf", size: 4, data: "JVBERg==",
+    createdByUid: "alice", createdAt: serverTimestamp(),
+  }));
+});
+
+test("colaborador aprovado pode visualizar anexos, mas não anexar ou remover", async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "sharedAttachments/existing"), {
+      targetType: "promotion", targetId: "promo-1", name: "arquivo.pdf",
+      mimeType: "application/pdf", size: 4, data: "JVBERg==",
+      createdByUid: "admin", createdAt: new Date(),
+    });
+  });
+  const alice = dbAs("alice");
+  await assertSucceeds(getDoc(doc(alice, "sharedAttachments/existing")));
+  await assertFails(setDoc(doc(alice, "sharedAttachments/new"), {
+    targetType: "promotion", targetId: "promo-1", name: "arquivo.pdf",
+    mimeType: "application/pdf", size: 4, data: "JVBERg==",
+    createdByUid: "alice", createdAt: serverTimestamp(),
+  }));
+  await assertFails(deleteDoc(doc(alice, "sharedAttachments/existing")));
+});
+
