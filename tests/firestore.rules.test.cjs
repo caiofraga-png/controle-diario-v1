@@ -593,7 +593,7 @@ test("manutenção exige gravação atômica do histórico imutável e do aviso"
     changedAt: serverTimestamp(), before: details, after: updatedDetails,
   });
   updateBatch.set(notification2, {
-    category: "manutencoes", message: "Manutenção de rede",
+    category: "manutencoes", message: "Manutenção de rede atualizada",
     target: "manutencoes", maintenanceId: "maintenance-1", createdByUid: "alice", createdAt: serverTimestamp(),
   });
   await assertSucceeds(updateBatch.commit());
@@ -635,7 +635,7 @@ test("permissão de manutenção respeita contato e agente individual", async ()
       changedAt: serverTimestamp(), before: null, after: details,
     });
     batch.set(notification, {
-      category: "manutencoes", message: "Manutenção de rede",
+      category: "manutencoes", message: details.title,
       target: "manutencoes", maintenanceId: id, createdByUid: uid, createdAt: serverTimestamp(),
     });
     return batch.commit();
