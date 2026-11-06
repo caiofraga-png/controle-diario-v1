@@ -232,10 +232,10 @@ export default function FirebaseAdminPanel() {
     if (!sectorName.trim()) return;
     setBusy(true);
     try {
-      const editId = selected.startsWith("sector:") ? selected.slice(7) : "";
+      const editId = managedSectorId;
       await saveSector({ id: editId, name: sectorName.trim(), active: true });
       setSectorName("");
-      setSelected("");
+      setManagedSectorId("");
       await refresh();
     } catch (error) { setMessage(error instanceof Error ? error.message : "Falha ao salvar setor."); }
     finally { setBusy(false); }
@@ -245,10 +245,10 @@ export default function FirebaseAdminPanel() {
     if (!contactName.trim() || !contactSector) return;
     setBusy(true);
     try {
-      const editId = selected.startsWith("contact:") ? selected.slice(8) : "";
+      const editId = managedContactId;
       await saveContact({ id: editId, name: contactName.trim(), sectorId: contactSector, active: true });
       setContactName("");
-      setSelected("");
+      setManagedContactId("");
       await refresh();
     } catch (error) { setMessage(error instanceof Error ? error.message : "Falha ao salvar contato."); }
     finally { setBusy(false); }
