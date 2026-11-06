@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { collection, doc, onSnapshot, orderBy, query, serverTimestamp, writeBatch, type Unsubscribe } from "firebase/firestore";
 import { requireFirebase } from "../web/firebaseClient";
+import AttachmentPanel from "./AttachmentPanel";
 
 type Notice = {
   id:string; type:"reducao"|"suspensao"; date:string; title:string;
@@ -16,6 +17,7 @@ export default function DelinquencyPanel(){
   const [tab,setTab]=useState<"ongoing"|"completed">("ongoing");
   const [draft,setDraft]=useState<Draft|null>(null);
   const [editingId,setEditingId]=useState<string|null>(null);
+  const [draftAttachmentId,setDraftAttachmentId]=useState("");
   const [canManage,setCanManage]=useState(false);
   const [busy,setBusy]=useState(false);
   const [loading,setLoading]=useState(true);
@@ -64,7 +66,7 @@ export default function DelinquencyPanel(){
     setBusy(true);setMessage("");
     try{
       const batch=writeBatch(db);
-      const noticeRef=editingId?doc(db,"delinquencyNotices",editingId):doc(collection(db,"delinquencyNotices"));
+      const noticeRef=doc(db,"delinquencyNotices",draftAttachmentId);
       const notificationRef=doc(collection(db,"sharedNotifications"));
       const payload={...draft,updatedByUid:auth.currentUser.uid,updatedAt:serverTimestamp()};
       if(editingId)batch.update(noticeRef,payload);
@@ -83,7 +85,7 @@ export default function DelinquencyPanel(){
     finally{setBusy(false);}
   }
   return <section className="maintenance-workspace delinquency-workspace">
-    <div className="workspace-intro maintenance-intro"><div><h2>Inadimplência</h2><p>Acompanhe os avisos de redução e suspensão e consulte o histórico de comunicados.</p></div>{canManage&&tab==="ongoing"&&!draft&&<button className="primary maintenance-new-button" onClick={()=>{setDraft(blank());setEditingId(null);setMessage("");}}>＋ NOVO AVISO</button>}</div>
+    <div className="workspace-intro maintenance-intro"><div><h2>Inadimplência</h2><p>Acompanhe os avisos de redução e suspensão e consulte o histórico de comunicados.</p></div>{canManage&&tab==="ongoing"&&!draft&&<button className="primary maintenance-new-button" onClick={()=>{setDraft(blank());setEditingId(null);setDraftAttachmentId(crypto.randomUUID());setMessage("");}}>＋ NOVO AVISO</button>}</div>
     {message&&<p className="system-message" role="status">{message}</p>}
     <div className="maintenance-view-tabs" role="tablist" aria-label="Situação dos avisos">
       <button className={tab==="ongoing"?"active":""} onClick={()=>{setTab("ongoing");setDraft(null);}}>EM ANDAMENTO <span>{classified.ongoing.length}</span></button>
@@ -103,6 +105,7 @@ export default function DelinquencyPanel(){
           <label>DIAS VENCIDOS<input type="number" min="0" step="1" value={draft.overdueDays} onChange={e=>update("overdueDays",Number(e.target.value))}/></label>
         </div>
         <label>PRAZO DO AVISO<input type="date" value={draft.validUntil} onChange={e=>update("validUntil",e.target.value)}/></label>
+        <AttachmentPanel targetType="delinquency" targetId={draftAttachmentId} canUpload={canManage} />
         <label>SITUAÇÃO<select value={draft.status} onChange={e=>update("status",e.target.value as Draft["status"])}><option value="ongoing">EM ANDAMENTO</option><option value="completed">CONCLUÍDO</option></select></label>
         <div className="maintenance-form-actions"><button className="secondary" type="button" onClick={()=>{setDraft(null);setEditingId(null);}}>CANCELAR</button><button className="primary" type="button" disabled={busy} onClick={()=>void save()}>PUBLICAR AVISO</button></div>
       </div>
@@ -111,7 +114,8 @@ export default function DelinquencyPanel(){
       <div className="delinquency-metrics"><div><small>CLIENTES</small><strong>{item.customerCount}</strong></div><div><small>DIAS VENCIDOS</small><strong>{item.overdueDays}</strong></div></div>
       <div className="promotion-detail"><strong>DATA DO AVISO</strong><p>{dateLabel(item.date)}</p></div><div className="promotion-detail"><strong>VENCIMENTO</strong><p>{dateLabel(item.dueDate)}</p></div>
       <div className="promotion-validity">AVISO VÁLIDO ATÉ {dateLabel(item.validUntil)}</div>
-      {canManage&&<div className="maintenance-card-actions"><button className="secondary" onClick={()=>{setDraft({type:item.type,date:item.date,title:item.title,dueDate:item.dueDate,customerCount:item.customerCount,overdueDays:item.overdueDays,validUntil:item.validUntil,status:item.status});setEditingId(item.id);}}>EDITAR</button>{item.status!=="completed"?<button className="primary" disabled={busy} onClick={()=>void changeStatus(item,"completed")}>CONCLUIR</button>:<button className="primary" disabled={busy} onClick={()=>void changeStatus(item,"ongoing")}>REABRIR</button>}</div>}
+      <AttachmentPanel targetType="delinquency" targetId={item.id} canUpload={canManage} />
+      {canManage&&<div className="maintenance-card-actions"><button className="secondary" onClick={()=>{setDraft({type:item.type,date:item.date,title:item.title,dueDate:item.dueDate,customerCount:item.customerCount,overdueDays:item.overdueDays,validUntil:item.validUntil,status:item.status});setEditingId(item.id);setDraftAttachmentId(item.id);}}>EDITAR</button>{item.status!=="completed"?<button className="primary" disabled={busy} onClick={()=>void changeStatus(item,"completed")}>CONCLUIR</button>:<button className="primary" disabled={busy} onClick={()=>void changeStatus(item,"ongoing")}>REABRIR</button>}</div>}
     </article>)}{visible.length===0&&<div className="maintenance-empty">{tab==="ongoing"?"NÃO HÁ AVISOS DE INADIMPLÊNCIA EM ANDAMENTO.":"NÃO HÁ AVISOS CONCLUÍDOS NO HISTÓRICO."}</div>}</div>}
   </section>;
 }
