@@ -1719,6 +1719,9 @@ html[data-theme="midnight-violet"] .config-embedded .config-tabs button.active {
 .notification-popover li { border-top:1px solid var(--verde-borda); padding:7px 0; }
 .notification-entry { width:100%; border:0; padding:8px 6px; border-radius:7px; background:transparent; color:var(--texto); text-align:left; font:inherit; cursor:pointer; }
 .notification-entry:hover { background:var(--surface-soft,rgba(35,115,71,.09)); color:var(--verde-escuro); }
+.notification-clear-button { width:100%; margin-top:10px; padding:9px 12px; border:1px solid var(--verde-borda); border-radius:8px; background:var(--surface-soft,rgba(35,115,71,.08)); color:var(--verde-escuro); font-size:11px; font-weight:800; letter-spacing:.04em; cursor:pointer; }
+.notification-clear-button:hover { background:rgba(35,115,71,.16); }
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .notification-clear-button { color:var(--texto); }
 
 @media(max-width:850px) { .header-notifications { right:14px; } .app-main > .header { padding-right:64px; } }
 @media(max-width:620px) { .header-notifications { top:12px; right:12px; transform:none; } .notification-popover { top:46px; } }
