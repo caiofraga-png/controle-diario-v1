@@ -100,7 +100,7 @@ export async function exportAdministrativeBackup(password: string): Promise<{ fi
     projectId: app.options.projectId ?? "desconhecido",
     createdBy: { uid: actor.uid, email: actor.email ?? "" },
     scope: [
-      "Coleções institucionais, incluindo manutenções, avisos de inadimplência e notificações compartilhadas",
+      "Coleções institucionais, incluindo manutenções, avisos de inadimplência, notificações e anexos compartilhados",
       "Históricos subordinados às manutenções externas",
       "Documentos e subcoleções privadas atualmente conhecidos de todos os usuários",
       "Expedientes em andamento e históricos individuais",
