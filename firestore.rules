@@ -400,7 +400,7 @@ service cloud.firestore {
         && getAfter(notificationPath).data.keys().hasOnly(["category", "message", "target", "maintenanceId", "createdByUid", "createdAt"])
         && getAfter(notificationPath).data.category == "manutencoes"
         && getAfter(notificationPath).data.target == "manutencoes"
-        && getAfter(notificationPath).data.message == "Atualização de manutenção"
+        && getAfter(notificationPath).data.message == getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)).data.title
         && getAfter(notificationPath).data.maintenanceId == maintenanceId
         && getAfter(notificationPath).data.createdByUid == request.auth.uid
         && getAfter(notificationPath).data.createdAt == request.time;
