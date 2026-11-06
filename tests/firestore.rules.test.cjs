@@ -566,7 +566,7 @@ test("manutenção exige gravação atômica do histórico imutável e do aviso"
     changedAt: serverTimestamp(), before: null, after: details,
   });
   batch.set(notification, {
-    category: "manutencoes", message: "Atualização de manutenção",
+    category: "manutencoes", message: "Manutenção de rede",
     target: "manutencoes", maintenanceId: "maintenance-1", createdByUid: "alice", createdAt: serverTimestamp(),
   });
   await assertSucceeds(batch.commit());
@@ -575,7 +575,7 @@ test("manutenção exige gravação atômica do histórico imutável e do aviso"
   await assertSucceeds(getDoc(history));
   await assertSucceeds(getDoc(notification));
   await assertFails(setDoc(doc(dbAs("supervisor"), "sharedNotifications/orphan-maintenance"), {
-    category: "manutencoes", message: "Atualização de manutenção",
+    category: "manutencoes", message: "Manutenção de rede",
     target: "manutencoes", maintenanceId: "missing-maintenance",
     createdByUid: "supervisor", createdAt: serverTimestamp(),
   }));
@@ -593,7 +593,7 @@ test("manutenção exige gravação atômica do histórico imutável e do aviso"
     changedAt: serverTimestamp(), before: details, after: updatedDetails,
   });
   updateBatch.set(notification2, {
-    category: "manutencoes", message: "Atualização de manutenção",
+    category: "manutencoes", message: "Manutenção de rede",
     target: "manutencoes", maintenanceId: "maintenance-1", createdByUid: "alice", createdAt: serverTimestamp(),
   });
   await assertSucceeds(updateBatch.commit());
@@ -635,7 +635,7 @@ test("permissão de manutenção respeita contato e agente individual", async ()
       changedAt: serverTimestamp(), before: null, after: details,
     });
     batch.set(notification, {
-      category: "manutencoes", message: "Atualização de manutenção",
+      category: "manutencoes", message: "Manutenção de rede",
       target: "manutencoes", maintenanceId: id, createdByUid: uid, createdAt: serverTimestamp(),
     });
     return batch.commit();
@@ -667,7 +667,7 @@ test("colaborador sem autorização não pode cadastrar manutenção externa", a
     changedAt: serverTimestamp(), before: null, after: details,
   });
   batch.set(notification, {
-    category: "manutencoes", message: "Atualização de manutenção",
+    category: "manutencoes", message: "Manutenção de rede",
     target: "manutencoes", createdByUid: "bob", createdAt: serverTimestamp(),
   });
   await assertFails(batch.commit());
