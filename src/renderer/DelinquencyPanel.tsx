@@ -69,7 +69,7 @@ export default function DelinquencyPanel(){
       const payload={...draft,updatedByUid:auth.currentUser.uid,updatedAt:serverTimestamp()};
       if(editingId)batch.update(noticeRef,payload);
       else batch.set(noticeRef,{...payload,notificationId:notificationRef.id,createdByUid:auth.currentUser.uid,createdAt:serverTimestamp()});
-      if(!editingId)batch.set(notificationRef,{category:"cobranca",message:"Novo alerta de inadimplência",target:"inadimplencia",noticeId:noticeRef.id,createdByUid:auth.currentUser.uid,createdAt:serverTimestamp()});
+      if(!editingId)batch.set(notificationRef,{category:"cobranca",message:`Inadimplência - ${draft.title.trim()}`,target:"inadimplencia",noticeId:noticeRef.id,createdByUid:auth.currentUser.uid,createdAt:serverTimestamp()});
       await batch.commit();
       setDraft(null);setEditingId(null);setTab(draft.status==="completed"?"completed":"ongoing");setMessage(editingId?"AVISO ATUALIZADO.":"AVISO PUBLICADO E NOTIFICAÇÃO ENVIADA.");
     }catch(error){setMessage(error instanceof Error?error.message:"NÃO FOI POSSÍVEL SALVAR O AVISO.");}
