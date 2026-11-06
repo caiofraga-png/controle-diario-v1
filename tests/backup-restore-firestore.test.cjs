@@ -1,7 +1,7 @@
 const { before, after, beforeEach, test } = require("node:test");
 const assert = require("node:assert/strict");
 const { initializeTestEnvironment } = require("@firebase/rules-unit-testing");
-const { doc, getDoc, runTransaction, setDoc } = require("firebase/firestore");
+const { doc, getDoc, runTransaction, setDoc, Timestamp } = require("firebase/firestore");
 const { restoreMissingDocuments } = require("../src/web/backupRestoreCore.ts");
 const fs = require("node:fs");
 
@@ -61,6 +61,7 @@ test("restaura dados fictícios no Firestore Emulator e preserva documentos exis
       targetType: "maintenance", targetId: "manutencao_teste",
       name: "comprovante-ficticio.pdf", mimeType: "application/pdf",
       size: 128, data: "ZmljdGljaW8=", createdByUid: "alice",
+      createdAt: Timestamp.fromDate(new Date("2026-11-05T12:00:00.000Z")),
     } },
   ];
 
