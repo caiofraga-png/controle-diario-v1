@@ -42,6 +42,9 @@ export default function FirebaseAdminPanel() {
   const [sectorName, setSectorName] = useState("");
   const [contactName, setContactName] = useState("");
   const [contactSector, setContactSector] = useState("");
+  const [managedUserId, setManagedUserId] = useState("");
+  const [managedSectorId, setManagedSectorId] = useState("");
+  const [managedContactId, setManagedContactId] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [catalogProfiles, setCatalogProfiles] = useState<Array<{ id: string; nome: string; ativo: boolean }>>([]);
@@ -488,9 +491,16 @@ export default function FirebaseAdminPanel() {
 
     <section>
       <h3>Colaboradores</h3>
-      {users.map((user) => <div key={user.uid} style={{ borderTop: "1px solid #ddd", padding: 12, display: "grid", gap: 8 }}>
-        <strong>{user.agent || user.email} · {user.email}</strong>
-        <span>Login: {user.login} · Status: {user.status} · Perfil: {user.role} · {user.isSupervisor ? "Supervisor" : "Não supervisor"}</span>
+      <p>Selecione um colaborador para consultar ou editar o cadastro.</p>
+      <label style={{ display: "grid", gap: 6, maxWidth: 560 }}>Selecionar colaborador
+        <select value={managedUserId} onChange={(event) => setManagedUserId(event.target.value)}>
+          <option value="">Escolha um colaborador…</option>
+          {users.map((user) => <option key={user.uid} value={user.uid}>{user.agent || user.email} · {user.email} · {user.status === "blocked" ? "Bloqueado" : "Ativo"}</option>)}
+        </select>
+      </label>
+      {(() => { const user = users.find((item) => item.uid === managedUserId); return user ? <div style={{ border: "1px solid var(--border-color, #cbd5ce)", borderRadius: 10, padding: 16, marginTop: 12, display: "grid", gap: 10, maxWidth: 680 }}>
+        <strong>{user.agent || user.email}</strong>
+        <small>{user.email} · {user.status} · {user.role}</small>
         <label>Login <input value={user.login} onChange={(event) => setUsers((items) => items.map((item) => item.uid === user.uid ? { ...item, login: event.target.value } : item))} /></label>
         <label>Agente <input value={user.agent} onChange={(event) => setUsers((items) => items.map((item) => item.uid === user.uid ? { ...item, agent: event.target.value } : item))} /></label>
         <label>Setor <select value={user.sectorId} onChange={(event) => setUsers((items) => items.map((item) => item.uid === user.uid ? { ...item, sectorId: event.target.value, contactId: "" } : item))}>
@@ -518,7 +528,7 @@ export default function FirebaseAdminPanel() {
             ? <button type="button" disabled={busy} onClick={() => void changeStatus(user, "approved")}>Reativar conta</button>
             : <button type="button" disabled={busy || user.role === "admin"} onClick={() => void changeStatus(user, "blocked")}>Bloquear conta</button>}
         </div>
-      </div>)}
+      </div> : <p>Nenhum colaborador selecionado.</p>; })()}
     </section>
 
     <section>
@@ -536,26 +546,38 @@ export default function FirebaseAdminPanel() {
 
     <section>
       <h3>Setores</h3>
-      <p>Cadastre a estrutura organizacional inicial com os setores e contatos já definidos. A carga adiciona somente itens ausentes e preserva os registros existentes.</p>
-      <button type="button" disabled={busy} onClick={() => void initializeOrganizationStructure()}>Cadastrar lista inicial de setores e contatos</button>
-      <p>{sectors.length} setores e {contacts.length} contatos cadastrados atualmente.</p>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <input aria-label="Novo setor" placeholder="Nome do setor" value={sectorName} onChange={(event) => setSectorName(event.target.value)} />
-        <button type="button" disabled={busy} onClick={() => void addSector()}>Adicionar setor</button>
+      <p>{sectors.length} setores cadastrados.</p>
+      <button type="button" disabled={busy} onClick={() => void initializeOrganizationStructure()}>Conferir / cadastrar lista inicial de setores e contatos</button>
+      <label style={{ display: "grid", gap: 6, maxWidth: 560, marginTop: 12 }}>Selecionar setor
+        <select value={managedSectorId} onChange={(event) => { setManagedSectorId(event.target.value); const item = sectors.find((sector) => sector.id === event.target.value); setSectorName(item?.name ?? ""); }}>
+          <option value="">Escolha um setor…</option>{sectors.map((sector) => <option key={sector.id} value={sector.id}>{sector.name}{sector.active ? "" : " (inativo)"}</option>)}
+        </select>
+      </label>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+        <input aria-label="Nome do setor" placeholder="Nome do novo setor ou edição" value={sectorName} onChange={(event) => setSectorName(event.target.value)} />
+        <button type="button" disabled={busy || !sectorName.trim()} onClick={() => void addSector()}>{managedSectorId ? "Salvar setor" : "Adicionar setor"}</button>
+        {managedSectorId && <button type="button" disabled={busy} onClick={() => { if (window.confirm("Excluir este setor?")) void deleteSector(managedSectorId).then(() => { setManagedSectorId(""); setSectorName(""); return refresh(); }).catch(e => setMessage(e instanceof Error ? e.message : "Falha ao excluir setor.")); }}>Excluir setor</button>}
+        {managedSectorId && <button type="button" disabled={busy} onClick={() => { setManagedSectorId(""); setSectorName(""); }}>Cancelar</button>}
       </div>
-      <ul>{sectors.map((sector) => <li key={sector.id}>{sector.name} {sector.active ? "" : "(inativo)"} <button type="button" disabled={busy} onClick={() => { setSectorName(sector.name); setSelected("sector:"+sector.id); }}>Editar</button> <button type="button" disabled={busy} onClick={() => { if (window.confirm("Excluir este setor?")) void deleteSector(sector.id).then(refresh).catch(e => setMessage(e instanceof Error ? e.message : "Falha ao excluir setor.")); }}>Excluir</button></li>)}</ul>
     </section>
 
     <section>
       <h3>Contatos</h3>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <select aria-label="Setor do novo contato" value={contactSector} onChange={(event) => setContactSector(event.target.value)}>
+      <p>{contacts.length} contatos cadastrados.</p>
+      <label style={{ display: "grid", gap: 6, maxWidth: 560 }}>Selecionar contato
+        <select value={managedContactId} onChange={(event) => { setManagedContactId(event.target.value); const item = contacts.find((contact) => contact.id === event.target.value); setContactName(item?.name ?? ""); setContactSector(item?.sectorId ?? ""); }}>
+          <option value="">Escolha um contato…</option>{contacts.map((contact) => <option key={contact.id} value={contact.id}>{contact.name} — {sectors.find((sector) => sector.id === contact.sectorId)?.name ?? "Setor não encontrado"}</option>)}
+        </select>
+      </label>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+        <select aria-label="Setor do contato" value={contactSector} onChange={(event) => setContactSector(event.target.value)}>
           <option value="">Setor do contato</option>{sectors.filter((sector) => sector.active).map((sector) => <option key={sector.id} value={sector.id}>{sector.name}</option>)}
         </select>
-        <input aria-label="Novo contato" placeholder="Nome do contato" value={contactName} onChange={(event) => setContactName(event.target.value)} />
-        <button type="button" disabled={busy} onClick={() => void addContact()}>Adicionar contato</button>
+        <input aria-label="Nome do contato" placeholder="Nome do novo contato ou edição" value={contactName} onChange={(event) => setContactName(event.target.value)} />
+        <button type="button" disabled={busy || !contactName.trim() || !contactSector} onClick={() => void addContact()}>{managedContactId ? "Salvar contato" : "Adicionar contato"}</button>
+        {managedContactId && <button type="button" disabled={busy} onClick={() => { if (window.confirm("Excluir este contato?")) void deleteContact(managedContactId).then(() => { setManagedContactId(""); setContactName(""); setContactSector(""); return refresh(); }).catch(e => setMessage(e instanceof Error ? e.message : "Falha ao excluir contato.")); }}>Excluir contato</button>}
+        {managedContactId && <button type="button" disabled={busy} onClick={() => { setManagedContactId(""); setContactName(""); setContactSector(""); }}>Cancelar</button>}
       </div>
-      <ul>{contacts.map((contact) => <li key={contact.id}>{contact.name} — {sectors.find((sector) => sector.id === contact.sectorId)?.name ?? "Setor não encontrado"} <button type="button" disabled={busy} onClick={() => { setContactName(contact.name); setContactSector(contact.sectorId); setSelected("contact:"+contact.id); }}>Editar</button> <button type="button" disabled={busy} onClick={() => { if (window.confirm("Excluir este contato?")) void deleteContact(contact.id).then(refresh).catch(e => setMessage(e instanceof Error ? e.message : "Falha ao excluir contato.")); }}>Excluir</button></li>)}</ul>
     </section>
 
     <section>
