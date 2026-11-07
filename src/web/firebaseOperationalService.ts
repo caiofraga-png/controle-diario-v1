@@ -2,7 +2,7 @@ import {
   collection, doc, getDoc, getDocs, query, runTransaction,
   serverTimestamp, setDoc, where, type DocumentData,
 } from "firebase/firestore";
-import type { EstadoAtual, RegistroHistorico, TarefaSnapshot } from "../shared/types/state";
+import type { AttendanceRecord, EstadoAtual, RegistroHistorico, TarefaSnapshot } from "../shared/types/state";
 import { requireFirebase } from "./firebaseClient";
 
 type HistoryEntry = RegistroHistorico & { ownerUid: string };
@@ -150,6 +150,34 @@ export class FirebaseOperationalService {
     return record;
   }
 
+  async appendAttendance(input: AttendanceRecord): Promise<EstadoAtual> {
+    const uid = this.uid();
+    const { db } = requireFirebase();
+    const currentRef = this.currentRef(uid);
+    const required = ["ticket", "canal", "codigo", "nome", "tipo", "resolvido", "subtipo", "motivoResolucao"] as const;
+    for (const key of required) {
+      if (typeof input[key] !== "string") throw new Error("OS CAMPOS DO ATENDIMENTO SÃO INVÁLIDOS.");
+    }
+    if (!input.id || input.id.length > 100 || !input.ticket.trim() || !input.nome.trim()) {
+      throw new Error("INFORME AO MENOS O TICKET E O NOME DO CLIENTE.");
+    }
+    const saved = await runTransaction(db, async transaction => {
+      const snapshot = await transaction.get(currentRef);
+      if (!snapshot.exists()) throw new Error("NÃO HÁ EXPEDIENTE EM ANDAMENTO. INICIE O EXPEDIENTE ANTES DE SALVAR TICKETS.");
+      const envelope = snapshot.data();
+      if (envelope.ownerUid !== uid) throw new Error("O EXPEDIENTE NÃO PERTENCE AO USUÁRIO AUTENTICADO.");
+      const state = assertCurrentState(envelope);
+      if (!state) throw new Error("NÃO HÁ EXPEDIENTE EM ANDAMENTO.");
+      const record: AttendanceRecord = { ...input, criadoEm: new Date().toISOString() };
+      const next: EstadoAtual = { ...state, atendimentos: [...(state.atendimentos ?? []), record], ultimaAlteracao: record.criadoEm };
+      const size = new TextEncoder().encode(JSON.stringify({ schemaVersion: 1, ownerUid: uid, estado: next })).length;
+      if (size > 800 * 1024) throw new Error("O EXPEDIENTE ESTÁ PRÓXIMO DO LIMITE DE ARMAZENAMENTO. Não foi possível acrescentar este ticket.");
+      transaction.set(currentRef, { schemaVersion: 1, ownerUid: uid, estado: next, updatedAt: serverTimestamp() });
+      return next;
+    });
+    return saved;
+  }
+
   async completeState(state: EstadoAtual, concluidoEm = new Date().toISOString()): Promise<RegistroHistorico> {
     const uid = this.uid();
     const tally = progress(state);
@@ -217,6 +245,7 @@ export class FirebaseOperationalService {
         tarefas: clone(persistedState.tarefas),
         emailsGlobais: clone(persistedState.emailsGlobais),
         observacao: persistedState.observacao,
+        atendimentos: clone(persistedState.atendimentos ?? []),
         status: "CONCLUIDO",
         criadoEm: persistedState.criadoEm,
         concluidoEm,
