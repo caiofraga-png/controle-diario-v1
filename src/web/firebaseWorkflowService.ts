@@ -154,6 +154,7 @@ export class FirebaseWorkflowService {
     }
     for (const email of next.emailsGlobais) if (doneEmails.has(email.id)) email.concluido = Boolean(doneEmails.get(email.id));
     next.observacao = loaded.estado.observacao;
+    next.atendimentos = JSON.parse(JSON.stringify(loaded.estado.atendimentos ?? []));
     next.criadoEm = loaded.estado.criadoEm;
     next.ultimaAlteracao = new Date().toISOString();
     await this.workspace.saveCurrentState(next);
@@ -176,6 +177,10 @@ export class FirebaseWorkflowService {
     const state = setObservation(loaded.estado, value);
     await this.workspace.saveCurrentState(state);
     return state;
+  }
+
+  async saveAttendance(input: import("../shared/types/state").AttendanceRecord): Promise<EstadoAtual> {
+    return this.operational.appendAttendance(input);
   }
 
   async complete(): Promise<RegistroHistorico> {
