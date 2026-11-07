@@ -69,7 +69,7 @@ export default function AtendimentosPanel({ onSave, hasExpediente }: { onSave: (
 
   async function copyRow() {
     if (!draft || saving) return;
-    setSaving(true); setError(""); setCopied(false);
+    setSaving(true); setError("");
     try {
       if (!hasExpediente) throw new Error("INICIE UM EXPEDIENTE ANTES DE COPIAR O TICKET.");
       if (copied && !window.confirm("Este ticket já foi salvo neste expediente. Deseja adicioná-lo novamente à lista?")) return;
