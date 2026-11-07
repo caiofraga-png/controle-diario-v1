@@ -25,11 +25,12 @@ export default function SupervisaoPanel() {
   const [data, setData] = useState<Overview | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const [section, setSection] = useState<"expedientes" | "atendimentos" | "estrutura">("expedientes");
+  const [section, setSection] = useState<"expedientes" | "atendimentos" | "estrutura" | "historico">("expedientes");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [status, setStatus] = useState("TODOS");
   const [expFilters, setExpFilters] = useState({ colaborador:"", setor:"", contato:"", agente:"", perfil:"", data:"" });
   const [attFilters, setAttFilters] = useState({ canal:"", codigo:"", nome:"", tipo:"", resolvido:"", subtipo:"", colaborador:"", setor:"", contato:"", data:"" });
+  const [historyFilters, setHistoryFilters] = useState({ colaborador:"", setor:"", contato:"", agente:"", perfil:"", data:"" });
 
   async function refresh() {
     setBusy(true); setMessage("");
@@ -52,6 +53,16 @@ export default function SupervisaoPanel() {
     (!expFilters.data || row.data === expFilters.data)
   ), [data, status, expFilters]);
 
+  const historico = useMemo(() => (data?.expedientes ?? []).filter(row =>
+    row.status === "CONCLUIDO" &&
+    (!historyFilters.colaborador || row.colaborador === historyFilters.colaborador) &&
+    (!historyFilters.setor || row.setor === historyFilters.setor) &&
+    (!historyFilters.contato || row.contato === historyFilters.contato) &&
+    (!historyFilters.agente || row.agente === historyFilters.agente) &&
+    (!historyFilters.perfil || row.perfil === historyFilters.perfil) &&
+    (!historyFilters.data || row.data === historyFilters.data)
+  ), [data, historyFilters]);
+
   const atendimentos = useMemo(() => (data?.atendimentos ?? []).filter(row =>
     (!attFilters.canal || row.canal === attFilters.canal) &&
     (!attFilters.codigo || String(row.codigo ?? "").toLowerCase().includes(attFilters.codigo.toLowerCase())) &&
@@ -67,6 +78,7 @@ export default function SupervisaoPanel() {
 
   const setExp = (key: string, value: string) => setExpFilters(current => ({...current,[key]:value}));
   const setAtt = (key: string, value: string) => setAttFilters(current => ({...current,[key]:value}));
+  const setHistory = (key: string, value: string) => setHistoryFilters(current => ({...current,[key]:value}));
   const options = (key: string) => unique(data?.expedientes ?? [], key);
   const attOptions = (key: string) => unique(data?.atendimentos ?? [], key);
   const select = (label: string, value: string, values: string[], onChange: (value:string)=>void) => <label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>{label}<select style={selectStyle} value={value} onChange={event=>onChange(event.target.value)}><option value="">Todos</option>{values.map(item=><option key={item} value={item}>{item}</option>)}</select></label>;
@@ -82,6 +94,7 @@ export default function SupervisaoPanel() {
       <button type="button" className={section==="expedientes"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("expedientes")}>EXPEDIENTES</button>
       <button type="button" className={section==="atendimentos"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("atendimentos")}>ATENDIMENTOS</button>
       <button type="button" className={section==="estrutura"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("estrutura")}>ESTRUTURA</button>
+      <button type="button" className={section==="historico"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("historico")}>HISTÓRICO</button>
     </div>
     {!data ? <p>Clique em ATUALIZAR DADOS para consultar os registros.</p> : section==="expedientes" ? <>
       <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><h3 style={{margin:0}}>Expedientes ({expedientes.length})</h3><button type="button" disabled={!expedientes.length} onClick={()=>exportCsv("expedientes-controle-diario.csv",["Colaborador","Setor","Contato","Agente","Perfil","Data","Situação"],expedientes,["colaborador","setor","contato","agente","perfil","data","situacao"])}>EXPORTAR PARA EXCEL (CSV)</button></div>
@@ -110,11 +123,23 @@ export default function SupervisaoPanel() {
         <label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>Data do expediente<input style={inputStyle} type="date" value={attFilters.data} onChange={e=>setAtt("data",e.target.value)}/></label>
       </div>
       <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><thead><tr>{["Ticket","Canal","Código","Nome","Tipo","Resolvido","Subtipo","Colaborador","Setor","Contato","Data"].map(x=><th key={x} style={{textAlign:"left",padding:9,borderBottom:"1px solid var(--border, #ccd8d0)"}}>{x}</th>)}</tr></thead><tbody>{atendimentos.map((row,index)=><tr key={row.id||index}>{[row.ticket,row.canal,row.codigo,row.nome,row.tipo,row.resolvido,row.subtipo,row.colaborador,row.setor,row.contato,row.data].map((value,i)=><td key={i} style={{padding:9,borderBottom:"1px solid var(--border, #e1e8e3)"}}>{String(value||"—")}</td>)}</tr>)}</tbody></table></div>
-    </> : <>
+    </> : section==="estrutura" ? <>
       <h3>Estrutura organizacional</h3>
       <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><strong>Colaboradores ({data.estrutura.colaboradores.length})</strong><button type="button" onClick={()=>exportCsv("estrutura-colaboradores.csv",["Colaborador","E-mail","Agente","Setor","Contato","Perfis vinculados","Status"],data.estrutura.colaboradores,["colaborador","email","agente","setor","contato","perfis","status"])}>EXPORTAR PARA EXCEL (CSV)</button></div>
       <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><thead><tr>{["Colaborador","Agente","Setor","Contato","Perfis vinculados","Status"].map(x=><th key={x} style={{textAlign:"left",padding:9,borderBottom:"1px solid var(--border, #ccd8d0)"}}>{x}</th>)}</tr></thead><tbody>{data.estrutura.colaboradores.map(row=><tr key={row.uid}>{[row.colaborador,row.agente,row.setor,row.contato,row.perfis,row.status].map((value,i)=><td key={i} style={{padding:9,borderBottom:"1px solid var(--border, #e1e8e3)"}}>{String(value||"—")}</td>)}</tr>)}</tbody></table></div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16}}><div><strong>Setores ({data.estrutura.setores.length})</strong><ul>{data.estrutura.setores.map(row=><li key={row.id}>{row.nome} · {row.ativo?"Ativo":"Inativo"}</li>)}</ul></div><div><strong>Contatos ({data.estrutura.contatos.length})</strong><ul>{data.estrutura.contatos.map(row=><li key={row.id}>{row.nome} — {row.setor} · {row.ativo?"Ativo":"Inativo"}</li>)}</ul></div></div>
+    </> : <>
+      <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><h3 style={{margin:0}}>Histórico completo ({historico.length})</h3><button type="button" disabled={!historico.length} onClick={()=>exportCsv("historico-expedientes-controle-diario.csv",["Colaborador","Setor","Contato","Agente","Perfil","Data","Situação do encerramento","Concluído em"],historico,["colaborador","setor","contato","agente","perfil","data","situacao","concluidoEm"])}>EXPORTAR PARA EXCEL (CSV)</button></div>
+      <p>Consulta dos expedientes concluídos. Os registros são apresentados sem alterar o histórico original.</p>
+      <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"end"}}>
+        {select("Colaborador",historyFilters.colaborador,options("colaborador"),v=>setHistory("colaborador",v))}
+        {select("Setor",historyFilters.setor,options("setor"),v=>setHistory("setor",v))}
+        {select("Contato",historyFilters.contato,options("contato"),v=>setHistory("contato",v))}
+        {select("Agente",historyFilters.agente,options("agente"),v=>setHistory("agente",v))}
+        {select("Perfil",historyFilters.perfil,options("perfil"),v=>setHistory("perfil",v))}
+        <label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>Data<input style={inputStyle} type="date" value={historyFilters.data} onChange={e=>setHistory("data",e.target.value)}/></label>
+      </div>
+      <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><thead><tr>{["Colaborador","Setor","Contato","Agente","Perfil","Data","Encerramento","Concluído em","Detalhes"].map(x=><th key={x} style={{textAlign:"left",padding:9,borderBottom:"1px solid var(--border, #ccd8d0)"}}>{x}</th>)}</tr></thead><tbody>{historico.map(row=><Fragment key={row.id}><tr>{[row.colaborador,row.setor,row.contato,row.agente,row.perfil,row.data,row.situacao,row.concluidoEm?new Date(row.concluidoEm).toLocaleString("pt-BR"):"—"].map((value,i)=><td key={i} style={{padding:9,borderBottom:"1px solid var(--border, #e1e8e3)"}}>{String(value||"—")}</td>)}<td><button type="button" onClick={()=>setExpandedId(expandedId===row.id?null:row.id)}>{expandedId===row.id?"FECHAR":"DETALHES"}</button></td></tr>{expandedId===row.id&&<tr><td colSpan={9} style={{padding:12,background:"var(--surface-secondary, #f3f7f4)"}}><strong>Tarefas concluídas</strong><ul>{(row.tarefas??[]).map((task:Row)=><li key={task.id}>{task.nome} — {task.concluida?"Concluída":"Pendente"}</li>)}</ul><strong>Atendimentos registrados: {(row.atendimentos??[]).length}</strong>{(row.atendimentos??[]).length>0&&<ul>{(row.atendimentos??[]).map((item:Row)=><li key={item.id}>{item.ticket} · {item.canal} · {item.nome}</li>)}</ul>}<strong>Observações</strong><p>{row.observacao||"Sem observações."}</p></td></tr>}</Fragment>)}</tbody></table></div>
     </>}
   </section>;
 }
