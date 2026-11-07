@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState, type CSSProperties } from "react";
 
 type Row = Record<string, any>;
 type Overview = { expedientes: Row[]; atendimentos: Row[]; estrutura: { colaboradores: Row[]; setores: Row[]; contatos: Row[] }; totalColaboradores: number; updatedAt: string };
@@ -18,7 +18,7 @@ function exportCsv(name: string, headers: string[], rows: Row[], keys: string[])
   anchor.href = url; anchor.download = name; anchor.click();
   URL.revokeObjectURL(url);
 }
-const selectStyle: React.CSSProperties = { minWidth: 150, padding: "8px", border: "1px solid var(--border, #cbd8ce)", borderRadius: 7, background: "var(--surface, #fff)", color: "inherit" };
+const selectStyle: CSSProperties = { minWidth: 150, padding: "8px", border: "1px solid var(--border, #cbd8ce)", borderRadius: 7, background: "var(--surface, #fff)", color: "inherit" };
 const inputStyle: React.CSSProperties = { ...selectStyle, minWidth: 130 };
 
 export default function SupervisaoPanel() {
@@ -82,7 +82,6 @@ export default function SupervisaoPanel() {
       <button type="button" className={section==="expedientes"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("expedientes")}>EXPEDIENTES</button>
       <button type="button" className={section==="atendimentos"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("atendimentos")}>ATENDIMENTOS</button>
       <button type="button" className={section==="estrutura"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("estrutura")}>ESTRUTURA</button>
-      <button type="button" className={section==="estrutura"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("estrutura")}>ESTRUTURA</button>
     </div>
     {!data ? <p>Clique em ATUALIZAR DADOS para consultar os registros.</p> : section==="expedientes" ? <>
       <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><h3 style={{margin:0}}>Expedientes ({expedientes.length})</h3><button type="button" disabled={!expedientes.length} onClick={()=>exportCsv("expedientes-controle-diario.csv",["Colaborador","Setor","Contato","Agente","Perfil","Data","Situação"],expedientes,["colaborador","setor","contato","agente","perfil","data","situacao"])}>EXPORTAR PARA EXCEL (CSV)</button></div>
@@ -95,7 +94,7 @@ export default function SupervisaoPanel() {
         {select("Perfil",expFilters.perfil,options("perfil"),v=>setExp("perfil",v))}
         <label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>Data<input style={inputStyle} type="date" value={expFilters.data} onChange={e=>setExp("data",e.target.value)}/></label>
       </div>
-      <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><thead><tr>{["Colaborador","Setor","Contato","Agente","Perfil","Data","Situação"].map(x=><th key={x} style={{textAlign:"left",padding:9,borderBottom:"1px solid var(--border, #ccd8d0)"}}>{x}</th>)}</tr></thead><tbody>{expedientes.map(row=><><tr key={row.id}>{[row.colaborador,row.setor,row.contato,row.agente,row.perfil,row.data,row.situacao].map((value,i)=><td key={i} style={{padding:9,borderBottom:"1px solid var(--border, #e1e8e3)"}}>{String(value||"—")}</td>)}<td><button type="button" onClick={()=>setExpandedId(expandedId===row.id?null:row.id)}>{expandedId===row.id?"FECHAR":"DETALHES"}</button></td></tr>{expandedId===row.id&&<tr key={row.id+"-detail"}><td colSpan={8} style={{padding:12,background:"var(--surface-secondary, #f3f7f4)"}}><strong>Tarefas</strong><ul>{(row.tarefas??[]).map((task:Row)=><li key={task.id}>{task.nome} — {task.concluida?"Concluída":"Pendente"}</li>)}</ul><strong>Atendimentos registrados: {(row.atendimentos??[]).length}</strong>{(row.atendimentos??[]).length>0&&<ul>{(row.atendimentos??[]).map((item:Row)=><li key={item.id}>{item.ticket} · {item.canal} · {item.nome}</li>)}</ul>}<strong>Observação</strong><p>{row.observacao||"Sem observação."}</p>{row.concluidoEm&&<small>Concluído em: {new Date(row.concluidoEm).toLocaleString("pt-BR")}</small>}</td></tr>}</>)}</tbody></table></div>
+      <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><thead><tr>{["Colaborador","Setor","Contato","Agente","Perfil","Data","Situação"].map(x=><th key={x} style={{textAlign:"left",padding:9,borderBottom:"1px solid var(--border, #ccd8d0)"}}>{x}</th>)}</tr></thead><tbody>{expedientes.map(row=><Fragment key={row.id}><tr>{[row.colaborador,row.setor,row.contato,row.agente,row.perfil,row.data,row.situacao].map((value,i)=><td key={i} style={{padding:9,borderBottom:"1px solid var(--border, #e1e8e3)"}}>{String(value||"—")}</td>)}<td><button type="button" onClick={()=>setExpandedId(expandedId===row.id?null:row.id)}>{expandedId===row.id?"FECHAR":"DETALHES"}</button></td></tr>{expandedId===row.id&&<tr key={row.id+"-detail"}><td colSpan={8} style={{padding:12,background:"var(--surface-secondary, #f3f7f4)"}}><strong>Tarefas</strong><ul>{(row.tarefas??[]).map((task:Row)=><li key={task.id}>{task.nome} — {task.concluida?"Concluída":"Pendente"}</li>)}</ul><strong>Atendimentos registrados: {(row.atendimentos??[]).length}</strong>{(row.atendimentos??[]).length>0&&<ul>{(row.atendimentos??[]).map((item:Row)=><li key={item.id}>{item.ticket} · {item.canal} · {item.nome}</li>)}</ul>}<strong>Observação</strong><p>{row.observacao||"Sem observação."}</p>{row.concluidoEm&&<small>Concluído em: {new Date(row.concluidoEm).toLocaleString("pt-BR")}</small>}</td></tr>}</Fragment>)}</tbody></table></div>
     </> : section==="atendimentos" ? <>
       <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><h3 style={{margin:0}}>Atendimentos ({atendimentos.length})</h3><button type="button" disabled={!atendimentos.length} onClick={()=>exportCsv("atendimentos-controle-diario.csv",["Ticket","Canal","Código","Nome","Tipo","Resolvido","Subtipo","Colaborador responsável","Setor","Contato","Data do expediente"],atendimentos,["ticket","canal","codigo","nome","tipo","resolvido","subtipo","colaborador","setor","contato","data"])}>EXPORTAR PARA EXCEL (CSV)</button></div>
       <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"end"}}>
