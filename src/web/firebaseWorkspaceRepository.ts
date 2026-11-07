@@ -43,23 +43,12 @@ export class FirebaseWorkspaceRepository {
     if (!user) throw new Error("FAÇA LOGIN PARA CARREGAR SUAS PERSONALIZAÇÕES.");
     const customizationSnapshot = await getDocs(collection(db, "users", user.uid, "taskCustomizations"));
     const overrides = new Map(customizationSnapshot.docs.map(item => [item.id, item.data()]));
-    // Personalizações antigas não podem mascarar uma atualização posterior
-    // publicada pela Supervisão no catálogo institucional.
-    const catalogUpdatedAt = sharedCatalog?.updatedAt as { toMillis?: () => number } | undefined;
-    const catalogUpdatedAtMs = typeof catalogUpdatedAt?.toMillis === "function"
-      ? catalogUpdatedAt.toMillis()
-      : 0;
+    // Uma personalização só vale para a revisão institucional em que foi salva.
+    // Toda publicação da Supervisão invalida automaticamente os textos antigos.
+    const catalogRevision = sharedCatalog?.revision ?? 0;
     configuracao.tarefas.tarefas = configuracao.tarefas.tarefas.map(task => {
       const override = overrides.get(task.id);
-      if (!override) return task;
-      const overrideUpdatedAt = override.updatedAt as { toMillis?: () => number } | undefined;
-      const overrideUpdatedAtMs = typeof overrideUpdatedAt?.toMillis === "function"
-        ? overrideUpdatedAt.toMillis()
-        : 0;
-      // Personalizações legadas sem data confiável também cedem ao catálogo.
-      if (sharedCatalog && (!overrideUpdatedAtMs || (catalogUpdatedAtMs && overrideUpdatedAtMs <= catalogUpdatedAtMs))) {
-        return task;
-      }
+      if (!override || override.catalogRevision !== catalogRevision) return task;
       return {
         ...task,
         ...(typeof override.criacao === "string" ? { criacao: override.criacao } : {}),
@@ -149,8 +138,9 @@ export class FirebaseWorkspaceRepository {
       return;
     }
 
+    const sharedCatalog = await loadSharedTaskCatalog();
     const ref = doc(db, "users", user.uid, "taskCustomizations", input.id);
-    const payload: Record<string, unknown> = { taskId: input.id, updatedAt: serverTimestamp() };
+    const payload: Record<string, unknown> = { taskId: input.id, catalogRevision: sharedCatalog?.revision ?? 0, updatedAt: serverTimestamp() };
     if (Object.prototype.hasOwnProperty.call(input, "criacao")) payload.criacao = String(input.criacao ?? "");
     if (Object.prototype.hasOwnProperty.call(input, "roteiro")) payload.roteiro = JSON.parse(JSON.stringify(input.roteiro));
     await setDoc(ref, payload, { merge: true });
