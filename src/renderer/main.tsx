@@ -10,6 +10,7 @@ import PromotionPanel from "./PromotionPanel";
 import DelinquencyPanel from "./DelinquencyPanel";
 import AtendimentosPanel from "./AtendimentosPanel";
 import AttendanceRowsList from "./AttendanceRowsList";
+import SupervisaoPanel from "./SupervisaoPanel";
 import { loadNotificationPreferences, subscribeSharedNotifications, type NotificationPreferences, type SharedNotification } from "../web/firebaseNotificationService";
 import { installWebBridge } from "../web/webBridge";
 
@@ -365,7 +366,7 @@ function App() {
       : tab==="promocoes" && firebaseAccess?.status==="approved" ? <PromotionPanel promotions={promotions} message={promotionsMessage} canManage={firebaseAccess?.user?.role==="admin" || firebaseAccess?.user?.isSupervisor===true} onSave={savePromotions}/> 
       : tab==="manutencoes" && firebaseAccess?.status==="approved" ? <MaintenancePanel />
       : tab==="inadimplencia" && firebaseAccess?.status==="approved" ? <DelinquencyPanel />
-      : tab==="supervisao" && firebaseAccess?.status==="approved" && (firebaseAccess?.user?.role==="admin" || firebaseAccess?.user?.isSupervisor===true) ? <section className="card"><div className="workspace-intro"><h2>Visão Geral</h2><p>Área de acompanhamento e supervisão do expediente. Os recursos desta seção serão definidos na próxima etapa.</p></div></section>
+      : tab==="supervisao" && firebaseAccess?.status==="approved" && (firebaseAccess?.user?.role==="admin" || firebaseAccess?.user?.isSupervisor===true) ? <SupervisaoPanel />
       : tab==="administracao" && firebaseAccess?.status==="approved" && firebaseAccess?.user?.role==="admin" ? <FirebaseAdminPanel />
       : tab==="sistema" ? <section className="system-workspace"><div className="workspace-intro"><h2>Conta e acesso</h2><p>Gerencie sua sessão.</p></div><div className="system-workspace-grid"><div className="system-workspace-card"><span className="system-workspace-label">IDENTIDADE</span><strong>{firebaseAccess.status==="approved" ? (firebaseAccess.user?.email || "ACESSO APROVADO") : firebaseAccess.status==="pending" ? "AGUARDANDO APROVAÇÃO" : firebaseAccess.status==="blocked" || firebaseAccess.status==="rejected" ? "ACESSO BLOQUEADO/RECUSADO" : firebaseAccess.status==="not-allowed" ? "DOMÍNIO NÃO AUTORIZADO" : firebaseAccess.status==="signed-out" ? "NÃO CONECTADO" : firebaseAccess.status==="unconfigured" ? "FIREBASE NÃO CONFIGURADO" : firebaseAccess.status==="error" ? "ERRO NA AUTENTICAÇÃO" : "VERIFICANDO SESSÃO…"}</strong><p>{firebaseAccess.status==="approved" ? "Conta autenticada e perfil aprovado." : firebaseAccess.status==="pending" ? "Sua solicitação precisa ser aprovada por um administrador." : firebaseAccess.status==="unconfigured" ? (firebaseAccess.message || "Configure as variáveis VITE_FIREBASE_* no ambiente de compilação.") : firebaseAccess.status==="error" ? (firebaseAccess.message || "Não foi possível verificar o acesso.") : "É necessário se identificar."}</p>{firebaseAccess.status==="approved" ? <button disabled={firebaseBusy} onClick={()=>void signOutFirebase()}>SAIR</button> : <button disabled={firebaseBusy || firebaseAccess.status==="checking"} onClick={()=>void signInFirebase()}>{firebaseBusy?"AGUARDE…":"ENTRAR"}</button>}</div></div>{message&&<p className="system-message">{message}</p>}</section>
 
