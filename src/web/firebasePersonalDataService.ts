@@ -166,7 +166,7 @@ export class FirebasePersonalDataService {
     }, { merge: true });
   }
 
-  async loadAttendancePreferences(): Promise<{ canal: string; tipo: string; resolvido: string }> {
+  async loadAttendancePreferences(): Promise<{ canal: string; tipo: string; resolvido: string; ordemCampos: string[] }> {
     const uid = this.currentUserId();
     const { db } = requireFirebase();
     const snapshot = await getDoc(doc(db, "users", uid, "preferences", "attendance"));
@@ -175,6 +175,7 @@ export class FirebasePersonalDataService {
       canal: typeof value.canal === "string" ? value.canal : "",
       tipo: value.tipo === "🛠️" ? "🛠" : typeof value.tipo === "string" ? value.tipo : "",
       resolvido: typeof value.resolvido === "string" ? value.resolvido : "",
+      ordemCampos: Array.isArray(value.ordemCampos) ? value.ordemCampos : ["ticket", "canal", "codigo", "nome", "tipo", "resolvido", "subtipo", "motivoResolucao"],
     };
   }
 
