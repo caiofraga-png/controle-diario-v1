@@ -1,16 +1,11 @@
-import { useEffect, useState } from "react";
-import { subscribeAttendanceRows, type AttendanceRow } from "../web/firebaseAttendanceService";
+import type { AttendanceRecord } from "../shared/types/state";
 
-export default function AttendanceRowsList() {
-  const [rows, setRows] = useState<AttendanceRow[]>([]);
-  const [error, setError] = useState("");
-  useEffect(() => subscribeAttendanceRows(setRows, e => setError(e.message)), []);
+export default function AttendanceRowsList({ rows }: { rows: AttendanceRecord[] }) {
   return <section className="attendance-saved-card">
-    <div className="workspace-intro"><h2>Atendimentos copiados</h2><p>Histórico particular dos atendimentos que você enviou para a planilha.</p></div>
-    {error&&<p className="attendance-error">{error}</p>}
-    {rows.length===0?<p>NENHUM ATENDIMENTO COPIADO AINDA.</p>:<div className="attendance-saved-list">
+    <div className="workspace-intro"><h2>Atendimentos do expediente</h2><p>Tickets registrados neste expediente. Eles serão preservados junto ao histórico quando o expediente for concluído.</p></div>
+    {rows.length===0?<p>NENHUM TICKET REGISTRADO NESTE EXPEDIENTE.</p>:<div className="attendance-saved-list">
       {rows.map((row,index)=><article className="attendance-saved-row" key={row.id}>
-        <strong>{rows.length-index}. {row.nome || "Cliente sem nome"}</strong>
+        <strong>{index+1}. {row.nome || "Cliente sem nome"}</strong>
         <span>TICKET: {row.ticket}</span>
         <span>CÓDIGO: {row.codigo || "—"} · CANAL: {row.canal || "—"}</span>
         <span>TIPO: {row.tipo || "—"} · RESOLVIDO?: {row.resolvido || "—"}</span>
