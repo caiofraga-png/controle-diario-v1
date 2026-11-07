@@ -246,10 +246,10 @@ export async function loadManagementOverview() {
     loadSharedTaskCatalog(),
   ]);
 
-  const managers = new Map(users.map(user => [user.uid, user]));
-  const sectors = new Map(sectorsSnapshot.docs.map(item => [item.id, String(item.data().name ?? "")]));
-  const contacts = new Map(contactsSnapshot.docs.map(item => [item.id, String(item.data().name ?? "")]));
-  const profileNames = new Map((catalog?.perfis.perfis ?? []).map(profile => [profile.id, profile.nome]));
+  const managers = new Map(users.map(user => [user.uid, user] as const));
+  const sectors = new Map(sectorsSnapshot.docs.map(item => [item.id, String(item.data().name ?? "")] as const));
+  const contacts = new Map(contactsSnapshot.docs.map(item => [item.id, String(item.data().name ?? "")] as const));
+  const profileNames = new Map((catalog?.perfis.perfis ?? []).map(profile => [profile.id, profile.nome] as const));
   const assignments = (uid: string) => {
     const user = managers.get(uid);
     return {
