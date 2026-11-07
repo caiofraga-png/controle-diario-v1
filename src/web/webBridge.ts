@@ -53,6 +53,7 @@ export function installWebBridge(){
     marcar:(input:any)=>firebaseWorkflow.mark(input),
     observacao:(value:string)=>firebaseWorkflow.setObservation(value),
     salvarAtendimento:(record:any)=>firebaseWorkflow.saveAttendance(record),
+    substituirAtendimentos:(records:any[])=>firebaseWorkflow.replaceAttendances(records),
     concluir:()=>firebaseWorkflow.complete(),
     abandonar:()=>firebaseWorkflow.abandon(),
     salvarConfiguracao:(config:any)=>firebaseWorkflow.saveConfiguration(config),
