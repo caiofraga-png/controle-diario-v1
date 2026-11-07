@@ -178,6 +178,35 @@ export class FirebaseOperationalService {
     return saved;
   }
 
+  async replaceAttendances(records: AttendanceRecord[]): Promise<EstadoAtual> {
+    const uid = this.uid();
+    const { db } = requireFirebase();
+    const currentRef = this.currentRef(uid);
+    if (!Array.isArray(records) || records.length > 500) throw new Error("A LISTA DE ATENDIMENTOS É INVÁLIDA.");
+    const seen = new Set<string>();
+    for (const item of records) {
+      if (!item || typeof item.id !== "string" || !item.id || seen.has(item.id)) throw new Error("IDENTIFICADOR DE TICKET INVÁLIDO OU DUPLICADO.");
+      seen.add(item.id);
+      for (const key of ["ticket","canal","codigo","nome","tipo","resolvido","subtipo","motivoResolucao","criadoEm"] as const) {
+        if (typeof item[key] !== "string") throw new Error("OS CAMPOS DO ATENDIMENTO SÃO INVÁLIDOS.");
+      }
+      if (!item.ticket.trim() || !item.nome.trim()) throw new Error("TICKET E NOME SÃO OBRIGATÓRIOS.");
+    }
+    return runTransaction(db, async transaction => {
+      const snapshot = await transaction.get(currentRef);
+      if (!snapshot.exists()) throw new Error("NÃO HÁ EXPEDIENTE EM ANDAMENTO.");
+      const envelope = snapshot.data();
+      if (envelope.ownerUid !== uid) throw new Error("O EXPEDIENTE NÃO PERTENCE AO USUÁRIO AUTENTICADO.");
+      const state = assertCurrentState(envelope);
+      if (!state) throw new Error("NÃO HÁ EXPEDIENTE EM ANDAMENTO.");
+      const next: EstadoAtual = { ...state, atendimentos: records, ultimaAlteracao: new Date().toISOString() };
+      const size = new TextEncoder().encode(JSON.stringify({ schemaVersion: 1, ownerUid: uid, estado: next })).length;
+      if (size > 800 * 1024) throw new Error("O EXPEDIENTE ESTÁ PRÓXIMO DO LIMITE DE ARMAZENAMENTO.");
+      transaction.set(currentRef, { schemaVersion: 1, ownerUid: uid, estado: next, updatedAt: serverTimestamp() });
+      return next;
+    });
+  }
+
   async completeState(state: EstadoAtual, concluidoEm = new Date().toISOString()): Promise<RegistroHistorico> {
     const uid = this.uid();
     const tally = progress(state);
