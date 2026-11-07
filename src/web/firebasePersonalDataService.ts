@@ -194,6 +194,35 @@ export class FirebasePersonalDataService {
     }, { merge: true });
   }
 
+  async loadAttendanceFieldOrder(): Promise<string[]> {
+    const uid = this.currentUserId();
+    const { db } = requireFirebase();
+    const snapshot = await getDoc(doc(db, "users", uid, "preferences", "attendance"));
+    const saved = snapshot.exists() ? snapshot.data().ordemCampos : null;
+    const padrao = ["ticket", "canal", "codigo", "nome", "tipo", "resolvido", "subtipo", "motivoResolucao"];
+    if (!Array.isArray(saved)) return padrao;
+    const permitidos = new Set(padrao);
+    const validos = saved.filter((item: unknown): item is string => typeof item === "string" && permitidos.has(item));
+    return validos.length === padrao.length && new Set(validos).size === padrao.length ? validos : padrao;
+  }
+
+  async saveAttendanceFieldOrder(order: string[]): Promise<void> {
+    const padrao = ["ticket", "canal", "codigo", "nome", "tipo", "resolvido", "subtipo", "motivoResolucao"];
+    if (!Array.isArray(order) || order.length !== padrao.length ||
+        new Set(order).size !== padrao.length || order.some(item => !padrao.includes(item))) {
+      throw new Error("A ORDEM DOS CAMPOS DE ATENDIMENTO É INVÁLIDA.");
+    }
+    const uid = this.currentUserId();
+    const { db } = requireFirebase();
+    const ref = doc(db, "users", uid, "preferences", "attendance");
+    await setDoc(ref, { ordemCampos: order, updatedAt: serverTimestamp() }, { merge: true });
+    const saved = await getDoc(ref);
+    const persisted = saved.exists() ? saved.data().ordemCampos : null;
+    if (JSON.stringify(persisted) !== JSON.stringify(order)) {
+      throw new Error("NÃO FOI POSSÍVEL CONFIRMAR A ORDEM DOS CAMPOS DE ATENDIMENTO.");
+    }
+  }
+
   async loadCalendar(): Promise<LoadedData["calendario"] | null> {
     const uid = this.currentUserId();
     const { db } = requireFirebase();
