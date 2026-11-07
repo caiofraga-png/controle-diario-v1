@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { AttendanceRecord } from "../shared/types/state";
 
 type Props = { rows: AttendanceRecord[]; editable?: boolean; onChange?: (rows: AttendanceRecord[]) => Promise<void> };
@@ -9,14 +9,16 @@ const fields: { key: keyof AttendanceRecord; label: string }[] = [
   { key: "subtipo", label: "SUBTIPO" }, { key: "motivoResolucao", label: "MOTIVO RESOLUÇÃO/RETENÇÃO" },
 ];
 function normalizeSheetSymbol(value: string) { return value.replace(/\uFE0F/g, ""); }
-function cells(row: AttendanceRecord) {
-  return [row.ticket, row.canal, row.codigo, row.nome, row.tipo, row.resolvido, row.subtipo, row.motivoResolucao].map(normalizeSheetSymbol);
+function cells(row: AttendanceRecord, order: string[]) {
+  return order.map(key => normalizeSheetSymbol(String(row[key] ?? "")));
 }
 export default function AttendanceRowsList({ rows, editable = false, onChange }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<AttendanceRecord | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [fieldOrder, setFieldOrder] = useState<string[]>(fields.map(field=>field.key));
+  useEffect(() => { let active=true; window.controleDiario.firebase.loadAttendanceFieldOrder().then((order:string[])=>{if(active)setFieldOrder(order);}).catch(()=>{/* Mantém a ordem padrão se a preferência não puder ser carregada. */}); return ()=>{active=false;}; }, []);
   async function commit(next: AttendanceRecord[]) {
     if (!onChange || busy) return;
     setBusy(true); setMessage("");
@@ -25,7 +27,7 @@ export default function AttendanceRowsList({ rows, editable = false, onChange }:
     finally { setBusy(false); }
   }
   async function copyList() {
-    const text = rows.map(row => cells(row).join("\t")).join("\n");
+    const text = rows.map(row => cells(row, fieldOrder).join("\t")).join("\n");
     try { await navigator.clipboard.writeText(text); setMessage("LISTA COPIADA. COLE NA PLANILHA."); }
     catch { setMessage("NÃO FOI POSSÍVEL COPIAR A LISTA. VERIFIQUE A PERMISSÃO DA ÁREA DE TRANSFERÊNCIA."); }
   }
@@ -38,8 +40,8 @@ export default function AttendanceRowsList({ rows, editable = false, onChange }:
             {fields.map(field=><label className="attendance-field" key={field.key}><span>{field.label}</span><input value={String(draft[field.key] ?? "")} onChange={e=>setDraft(current=>current?({...current,[field.key]:e.target.value}):current)}/></label>)}
             <div className="attendance-actions"><button disabled={busy||!draft.ticket.trim()||!draft.nome.trim()} onClick={()=>void commit(rows.map(item=>item.id===draft.id?draft:item))}>SALVAR</button><button disabled={busy} onClick={()=>{setEditingId(null);setDraft(null);}}>CANCELAR</button></div>
           </div> : <>
-            <div className="attendance-compact-line" aria-label={cells(row).join(" ")}>
-              <span style={{ whiteSpace: "pre-wrap" }}>{index+1}. {cells(row).join("\t")}</span>
+            <div className="attendance-compact-line" aria-label={cells(row, fieldOrder).join(" ")}>
+              <span style={{ whiteSpace: "pre-wrap" }}>{index+1}. {cells(row, fieldOrder).join("\t")}</span>
             </div>
             {editable&&<div className="attendance-actions">
               <button disabled={busy||index===0} title="Mover para cima" onClick={()=>{const next=[...rows];[next[index-1],next[index]]=[next[index],next[index-1]];void commit(next);}}>↑</button>
