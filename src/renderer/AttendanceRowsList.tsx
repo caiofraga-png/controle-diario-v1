@@ -38,7 +38,7 @@ export default function AttendanceRowsList({ rows, editable = false, onChange }:
             <div className="attendance-actions"><button disabled={busy||!draft.ticket.trim()||!draft.nome.trim()} onClick={()=>void commit(rows.map(item=>item.id===draft.id?draft:item))}>SALVAR</button><button disabled={busy} onClick={()=>{setEditingId(null);setDraft(null);}}>CANCELAR</button></div>
           </div> : <>
             <div className="attendance-compact-line" aria-label={cells(row,index).join(" ")}>
-              <strong>{index+1}. {row.nome}</strong>{" "}{row.ticket}{" "}{row.codigo}{" "}{row.canal}{" "}{row.tipo}{" "}{row.resolvido}{" "}{row.subtipo}{" "}{row.motivoResolucao}
+              <span style={{ whiteSpace: "pre-wrap" }}>{cells(row,index).join("\\t")}</span>
             </div>
             {editable&&<div className="attendance-actions">
               <button disabled={busy||index===0} title="Mover para cima" onClick={()=>{const next=[...rows];[next[index-1],next[index]]=[next[index],next[index-1]];void commit(next);}}>↑</button>
