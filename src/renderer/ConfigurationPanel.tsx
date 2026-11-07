@@ -4,7 +4,7 @@ import NotificationPreferencesPanel from "./NotificationPreferencesPanel";
 import MaintenancePermissionPanel from "./MaintenancePermissionPanel";
 
 type Config = any;
-type Tab = "aparencia" | "perfis" | "tarefas" | "email" | "promocoes" | "avisos" | "layout" | "atalhos";
+type Tab = "aparencia" | "perfis" | "tarefas" | "email" | "promocoes" | "avisos" | "layout" | "atalhos" | "atendimentos";
 type ThemePreference = "corporate-light" | "corporate-dark" | "elegant-light" | "midnight-blue" | "midnight-violet" | "blue-light" | "system";
 
 function clone<T>(v:T):T { return JSON.parse(JSON.stringify(v)); }
@@ -117,6 +117,23 @@ export default function ConfigurationPanel({ initial, onSave, onSaveLayout, onCl
   const [promotionForm,setPromotionForm]=useState<any>({});
   const [shortcutName,setShortcutName]=useState("");
   const [shortcutUrl,setShortcutUrl]=useState("");
+  const attendanceFields = [
+    { key: "ticket", label: "TICKET" }, { key: "canal", label: "CANAL" },
+    { key: "codigo", label: "CÓDIGO" }, { key: "nome", label: "NOME" },
+    { key: "tipo", label: "TIPO" }, { key: "resolvido", label: "RESOLVIDO?" },
+    { key: "subtipo", label: "SUBTIPO" }, { key: "motivoResolucao", label: "MOTIVO RESOLUÇÃO/RETENÇÃO" },
+  ];
+  const [attendanceOrder,setAttendanceOrder]=useState<string[]>(attendanceFields.map(field=>field.key));
+  const [attendanceOrderLoaded,setAttendanceOrderLoaded]=useState(false);
+  const [attendanceOrderSaving,setAttendanceOrderSaving]=useState(false);
+  useEffect(() => {
+    let active = true;
+    window.controleDiario.firebase.loadAttendanceFieldOrder()
+      .then((order:string[]) => { if(active) setAttendanceOrder(order); })
+      .catch((error:unknown) => { if(active) setLocalMessage(error instanceof Error ? error.message : "NÃO FOI POSSÍVEL CARREGAR A ORDEM DOS CAMPOS."); })
+      .finally(() => { if(active) setAttendanceOrderLoaded(true); });
+    return () => { active = false; };
+  }, []);
   useEffect(() => setPromotionItems(promotions), [promotions]);
   // Keep the editor synchronized with the latest personal configuration returned by Firebase.
   // This is important when a save completes and the parent reloads the persisted layout.
@@ -197,6 +214,46 @@ export default function ConfigurationPanel({ initial, onSave, onSaveLayout, onCl
   function toggleTaskEmail(id:string){ setForm((f:any)=>({...f,emailsVinculados:(f.emailsVinculados??[]).includes(id)?(f.emailsVinculados??[]).filter((x:string)=>x!==id):[...(f.emailsVinculados??[]),id]})); }
   function toggleProfileTask(id:string){ setForm((f:any)=>({...f,tarefas:(f.tarefas??[]).includes(id)?(f.tarefas??[]).filter((x:string)=>x!==id):[...(f.tarefas??[]),id]})); }
 
+  async function saveAttendanceOrder(){
+    setAttendanceOrderSaving(true); setLocalMessage("");
+    try {
+      await window.controleDiario.firebase.saveAttendanceFieldOrder(attendanceOrder);
+      setLocalMessage("ORDEM DOS CAMPOS DE ATENDIMENTO SALVA.");
+    } catch(error) {
+      setLocalMessage(error instanceof Error ? error.message : "NÃO FOI POSSÍVEL SALVAR A ORDEM DOS CAMPOS.");
+    } finally { setAttendanceOrderSaving(false); }
+  }
+
+  function renderAttendanceSettings(){
+    const moveField=(index:number,direction:-1|1)=>{
+      const target=index+direction;
+      if(target<0||target>=attendanceOrder.length)return;
+      setAttendanceOrder(current=>{const next=[...current];[next[index],next[target]]=[next[target],next[index]];return next;});
+      setLocalMessage("");
+    };
+    return <section className="layout-editor">
+      <h3>ATENDIMENTOS</h3>
+      <p>Organize os campos utilizados conforme sua preferência.</p>
+      {!attendanceOrderLoaded?<p>CARREGANDO PREFERÊNCIAS…</p>:<>
+        {attendanceOrder.map((key,index)=>{
+          const field=attendanceFields.find(item=>item.key===key);
+          if(!field)return null;
+          return <div className="drag-row" key={key}>
+            <span>{index+1}.</span>{field.label}
+            <div>
+              <button type="button" title="Mover para cima" aria-label={`Mover ${field.label} para cima`} disabled={index===0||attendanceOrderSaving} onClick={()=>moveField(index,-1)}>↑</button>
+              <button type="button" title="Mover para baixo" aria-label={`Mover ${field.label} para baixo`} disabled={index===attendanceOrder.length-1||attendanceOrderSaving} onClick={()=>moveField(index,1)}>↓</button>
+            </div>
+          </div>;
+        })}
+        <div className="config-actions">
+          <button type="button" disabled={attendanceOrderSaving} onClick={()=>{setAttendanceOrder(attendanceFields.map(field=>field.key));setLocalMessage("ORDEM PADRÃO RESTAURADA. SALVE PARA CONFIRMAR.");}}>RESTAURAR PADRÃO</button>
+          <button type="button" className="primary" disabled={attendanceOrderSaving||!attendanceOrderLoaded} onClick={()=>void saveAttendanceOrder()}>{attendanceOrderSaving?"SALVANDO…":"SALVAR"}</button>
+        </div>
+      </>}
+    </section>;
+  }
+
   function renderShortcuts(){
     const builtIns=[{id:"sosbeta",label:"SOS BETA"},{id:"email",label:"EMAIL"},{id:"chat",label:"CHAT"},{id:"keep",label:"KEEP"},{id:"wiki",label:"WIKI"},{id:"calendario",label:"CALENDÁRIO"},{id:"flit",label:"FLIT"},{id:"youk",label:"YOUK"}];
     const custom=draft.layout.atalhosPersonalizados??[];
@@ -239,5 +296,5 @@ export default function ConfigurationPanel({ initial, onSave, onSaveLayout, onCl
 
   async function saveRoteiroValue(value:any){ if(!selectedId) return; const next=clone(draft); const t=next.tarefas.tarefas.find((x:any)=>x.id===selectedId); if(!t) return; t.roteiro=clone(value); try { await window.controleDiario.firebase.workflow.salvarTarefa({id:selectedId,roteiro:clone(value)}); setDraft(next); setForm((f:any)=>({...f,roteiro:clone(value)})); setRoteiroOpen(false); setLocalMessage("ROTEIRO SALVO NO FIREBASE."); } catch(error) { setLocalMessage(error instanceof Error?error.message:"NÃO FOI POSSÍVEL SALVAR O ROTEIRO."); } }
   const roteiroInitial = roteiro ?? {linhas:50,colunas:5,largurasColunas:[120,120,120,120,120],celulas:{},mesclas:[],filtro:null};
-  return <div className={embedded?"config-embedded":"config-overlay"}><div className="config-window"><header className="config-head"><div><h2>CONFIGURAÇÃO</h2><span>Personalize seu CONTROLE DIÁRIO</span></div><button onClick={onClose} aria-label="Voltar para tarefas">✕</button></header><nav className="config-tabs"><button className={tab==="aparencia"?"active":""} onClick={()=>switchTab("aparencia")}>🎨 APARÊNCIA</button>{canManageCatalog&&<><button className={tab==="perfis"?"active":""} onClick={()=>switchTab("perfis")}>👤 PERFIS</button><button className={tab==="tarefas"?"active":""} onClick={()=>switchTab("tarefas")}>✅ TAREFAS</button><button className={tab==="email"?"active":""} onClick={()=>switchTab("email")}>✉️ E-MAIL</button><button className={tab==="promocoes"?"active":""} onClick={()=>switchTab("promocoes")}>🏷 PROMOÇÕES</button></>}<button className={tab==="avisos"?"active":""} onClick={()=>switchTab("avisos")}>🔔 AVISOS</button><button className={tab==="layout"?"active":""} onClick={()=>switchTab("layout")}>📐 LAYOUT</button><button className={tab==="atalhos"?"active":""} onClick={()=>switchTab("atalhos")}>🔗 ATALHOS</button></nav>{localMessage&&<div className="system-message">{localMessage}</div>}{tab==="aparencia"?renderAppearance():tab==="avisos"?<><NotificationPreferencesPanel canManageAccess={canManageCatalog}/>{canManageCatalog&&<MaintenancePermissionPanel/>}</>:tab==="promocoes"?renderPromotions():tab==="atalhos"?renderShortcuts():route==="lista"&&tab!=="layout"?renderList():route==="editar"&&tab!=="layout"?renderEdit():renderList()}</div>{roteiroOpen&&<RoteiroEditor initial={roteiroInitial} onCancel={()=>setRoteiroOpen(false)} onSave={saveRoteiroValue}/>}</div>;
+  return <div className={embedded?"config-embedded":"config-overlay"}><div className="config-window"><header className="config-head"><div><h2>CONFIGURAÇÃO</h2><span>Personalize seu CONTROLE DIÁRIO</span></div><button onClick={onClose} aria-label="Voltar para tarefas">✕</button></header><nav className="config-tabs"><button className={tab==="aparencia"?"active":""} onClick={()=>switchTab("aparencia")}>🎨 APARÊNCIA</button>{canManageCatalog&&<><button className={tab==="perfis"?"active":""} onClick={()=>switchTab("perfis")}>👤 PERFIS</button><button className={tab==="tarefas"?"active":""} onClick={()=>switchTab("tarefas")}>✅ TAREFAS</button><button className={tab==="email"?"active":""} onClick={()=>switchTab("email")}>✉️ E-MAIL</button><button className={tab==="promocoes"?"active":""} onClick={()=>switchTab("promocoes")}>🏷 PROMOÇÕES</button></>}<button className={tab==="avisos"?"active":""} onClick={()=>switchTab("avisos")}>🔔 AVISOS</button><button className={tab==="layout"?"active":""} onClick={()=>switchTab("layout")}>📐 LAYOUT</button><button className={tab==="atalhos"?"active":""} onClick={()=>switchTab("atalhos")}>🔗 ATALHOS</button><button className={tab==="atendimentos"?"active":""} onClick={()=>switchTab("atendimentos")}>📋 ATENDIMENTOS</button></nav>{localMessage&&<div className="system-message">{localMessage}</div>}{tab==="aparencia"?renderAppearance():tab==="avisos"?<><NotificationPreferencesPanel canManageAccess={canManageCatalog}/>{canManageCatalog&&<MaintenancePermissionPanel/>}</>:tab==="promocoes"?renderPromotions():tab==="atalhos"?renderShortcuts():tab==="atendimentos"?renderAttendanceSettings():route==="lista"&&tab!=="layout"?renderList():route==="editar"&&tab!=="layout"?renderEdit():renderList()}</div>{roteiroOpen&&<RoteiroEditor initial={roteiroInitial} onCancel={()=>setRoteiroOpen(false)} onSave={saveRoteiroValue}/>}</div>;
 }
