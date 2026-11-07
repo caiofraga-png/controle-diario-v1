@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 import { requireFirebase } from "./firebaseClient";
 import type { OrganizationalContact, OrganizationalSector, OrganizationalUser } from "../shared/types/organization";
+import { loadSharedTaskCatalog } from "./firebaseSharedTaskCatalogService";
 
 function asUser(id: string, data: DocumentData): OrganizationalUser {
   return {
@@ -236,17 +237,19 @@ export async function deleteContact(id: string) {
  */
 export async function loadManagementOverview() {
   const { db } = requireFirebase();
-  const [users, sectorsSnapshot, contactsSnapshot, currentSnapshot, historySnapshot] = await Promise.all([
+  const [users, sectorsSnapshot, contactsSnapshot, currentSnapshot, historySnapshot, catalog] = await Promise.all([
     listOrganizationalUsers(),
     getDocs(collection(db, "organizationSectors")),
     getDocs(collection(db, "organizationContacts")),
     getDocs(query(collectionGroup(db, "operational"), where("schemaVersion", "==", 1))),
     getDocs(collectionGroup(db, "entries")),
+    loadSharedTaskCatalog(),
   ]);
 
-  const managers = new Map(users.filter(user => user.status === "approved").map(user => [user.uid, user]));
+  const managers = new Map(users.map(user => [user.uid, user]));
   const sectors = new Map(sectorsSnapshot.docs.map(item => [item.id, String(item.data().name ?? "")]));
   const contacts = new Map(contactsSnapshot.docs.map(item => [item.id, String(item.data().name ?? "")]));
+  const profileNames = new Map((catalog?.perfis.perfis ?? []).map(profile => [profile.id, profile.nome]));
   const assignments = (uid: string) => {
     const user = managers.get(uid);
     return {
@@ -301,5 +304,10 @@ export async function loadManagementOverview() {
   }
   expedientes.sort((a,b)=>String(b.data).localeCompare(String(a.data)) || String(a.colaborador).localeCompare(String(b.colaborador)));
   atendimentos.sort((a,b)=>String(b.data).localeCompare(String(a.data)) || String(a.ticket).localeCompare(String(b.ticket)));
-  return { expedientes, atendimentos, totalColaboradores: managers.size, updatedAt: new Date().toISOString() };
+  const estrutura = {
+    colaboradores: users.map(user => ({ uid: user.uid, colaborador: user.login || user.email || user.uid, email: user.email, agente: user.agent, setor: sectors.get(user.sectorId) ?? "", contato: contacts.get(user.contactId) ?? "", perfis: (user.allowedProfileIds ?? []).map(id => profileNames.get(id) ?? id).join(", "), status: user.status })),
+    setores: sectorsSnapshot.docs.map(item => ({ id: item.id, nome: String(item.data().name ?? ""), ativo: item.data().active === true })),
+    contatos: contactsSnapshot.docs.map(item => ({ id: item.id, nome: String(item.data().name ?? ""), setor: sectors.get(String(item.data().sectorId ?? "")) ?? "", ativo: item.data().active === true })),
+  };
+  return { expedientes, atendimentos, estrutura, totalColaboradores: users.filter(user => user.status === "approved").length, updatedAt: new Date().toISOString() };
 }
