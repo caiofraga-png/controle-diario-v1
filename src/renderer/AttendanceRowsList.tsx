@@ -10,7 +10,7 @@ const fields: { key: keyof AttendanceRecord; label: string }[] = [
 ];
 function normalizeSheetSymbol(value: string) { return value.replace(/\uFE0F/g, ""); }
 function cells(row: AttendanceRecord, order: string[]) {
-  return order.map(key => normalizeSheetSymbol(String(row[key] ?? "")));
+  return order.map(key => normalizeSheetSymbol(String(row[key as keyof AttendanceRecord] ?? "")));
 }
 export default function AttendanceRowsList({ rows, editable = false, onChange }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
