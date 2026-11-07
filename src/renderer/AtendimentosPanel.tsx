@@ -21,6 +21,7 @@ function valueAfterLabel(text: string, label: string): string {
 }
 const channels = ["📞 ⬅", "☎ ➜", "🔵", "📱", "💬", "🏠", "💳", "📲"];
 const types = ["🛒", "🛠", "💰", "♻️"];
+const normalizeSheetSymbol = (value: string) => value.replace(/\\uFE0F/g, "");
 const resolutions = ["✅", "❌", "📌", "⬅ BACK", "♻️"];
 const emptyDraft: AttendanceDraft = { ticket:"", canal:"", codigo:"", nome:"", tipo:"", resolvido:"", subtipo:"", motivoResolucao:"" };
 
@@ -73,7 +74,7 @@ export default function AtendimentosPanel({ onSave, hasExpediente }: { onSave: (
     try {
       if (!hasExpediente) throw new Error("INICIE UM EXPEDIENTE ANTES DE COPIAR O TICKET.");
       if (copied && !window.confirm("Este ticket já foi salvo neste expediente. Deseja adicioná-lo novamente à lista?")) return;
-      await onSave({ ...draft, tipo: draft.tipo === "🛠️" ? "🛠" : draft.tipo, id: globalThis.crypto.randomUUID(), criadoEm: new Date().toISOString() });
+      await onSave({ ...draft, tipo: normalizeSheetSymbol(draft.tipo), id: globalThis.crypto.randomUUID(), criadoEm: new Date().toISOString() });
       const cells = [draft.ticket, draft.canal, draft.codigo, draft.nome, draft.tipo, draft.resolvido, draft.subtipo, draft.motivoResolucao];
       try { await navigator.clipboard.writeText(cells.join("\t")); setCopied(true); }
       catch { setCopied(true); setError("Ticket salvo no sistema. A cópia automática falhou; copie os campos manualmente."); }
