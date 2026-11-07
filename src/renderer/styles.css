@@ -2003,3 +2003,6 @@ html[data-theme="midnight-violet"] .config-embedded .config-tabs button.active {
   .attendance-saved-row .attendance-actions { margin-left:auto; }
 }
 
+
+.obligations-title { margin: 0 0 12px; font-size: 17px; font-weight: 700; color: #173b2d; }
+:is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .obligations-title { color: #e4eee8; }
