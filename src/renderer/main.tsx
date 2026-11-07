@@ -17,7 +17,7 @@ import { installWebBridge } from "../web/webBridge";
 installWebBridge();
 
 interface Bridge {
-  firebase: { signIn: () => Promise<any>; restoreSession: () => Promise<any>; observeAccess: (callback:(result:any)=>void, onError?:(error:Error)=>void)=>()=>void; signOut: () => Promise<void>; loadThemePreference: () => Promise<"corporate-light" | "corporate-dark" | "elegant-light" | "midnight-blue" | "midnight-violet" | "blue-light" | "system">; saveThemePreference: (theme:"corporate-light" | "corporate-dark" | "elegant-light" | "midnight-blue" | "midnight-violet" | "blue-light" | "system") => Promise<void>; loadAttendancePreferences: () => Promise<{ canal: string; tipo: string; resolvido: string }>; saveAttendancePreferences: (value: { canal: string; tipo: string; resolvido: string }) => Promise<void>; workflow: any };
+  firebase: { signIn: () => Promise<any>; restoreSession: () => Promise<any>; observeAccess: (callback:(result:any)=>void, onError?:(error:Error)=>void)=>()=>void; signOut: () => Promise<void>; loadThemePreference: () => Promise<"corporate-light" | "corporate-dark" | "elegant-light" | "midnight-blue" | "midnight-violet" | "blue-light" | "system">; saveThemePreference: (theme:"corporate-light" | "corporate-dark" | "elegant-light" | "midnight-blue" | "midnight-violet" | "blue-light" | "system") => Promise<void>; loadAttendancePreferences: () => Promise<{ canal: string; tipo: string; resolvido: string }>; saveAttendancePreferences: (value: { canal: string; tipo: string; resolvido: string }) => Promise<void>; loadAttendanceFieldOrder: () => Promise<string[]>; saveAttendanceFieldOrder: (order: string[]) => Promise<void>; workflow: any };
 }
 declare global { interface Window { controleDiario: Bridge } }
 
