@@ -24,7 +24,7 @@ export default function AttendanceRowsList({ rows, editable = false, onChange }:
     finally { setBusy(false); }
   }
   async function copyList() {
-    const text = rows.map((row, index) => cells(row, index).join("\t")).join("\n");
+    const text = rows.map(row => cells(row).join("\t")).join("\n");
     try { await navigator.clipboard.writeText(text); setMessage("LISTA COPIADA. COLE NA PLANILHA."); }
     catch { setMessage("NÃO FOI POSSÍVEL COPIAR A LISTA. VERIFIQUE A PERMISSÃO DA ÁREA DE TRANSFERÊNCIA."); }
   }
@@ -38,7 +38,7 @@ export default function AttendanceRowsList({ rows, editable = false, onChange }:
             <div className="attendance-actions"><button disabled={busy||!draft.ticket.trim()||!draft.nome.trim()} onClick={()=>void commit(rows.map(item=>item.id===draft.id?draft:item))}>SALVAR</button><button disabled={busy} onClick={()=>{setEditingId(null);setDraft(null);}}>CANCELAR</button></div>
           </div> : <>
             <div className="attendance-compact-line" aria-label={cells(row).join(" ")}>
-              <span style={{ whiteSpace: "pre-wrap" }}>{cells(row,index).join("\t")}</span>
+              <span style={{ whiteSpace: "pre-wrap" }}>{index+1}. {cells(row).join("\t")}</span>
             </div>
             {editable&&<div className="attendance-actions">
               <button disabled={busy||index===0} title="Mover para cima" onClick={()=>{const next=[...rows];[next[index-1],next[index]]=[next[index],next[index-1]];void commit(next);}}>↑</button>
