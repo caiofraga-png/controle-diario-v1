@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { AttendanceRecord } from "../shared/types/state";
 
 type AttendanceDraft = {
@@ -31,6 +31,31 @@ export default function AtendimentosPanel({ onSave, hasExpediente }: { onSave: (
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [preferences, setPreferences] = useState({ canal: "", tipo: "", resolvido: "" });
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    window.controleDiario.firebase.loadAttendancePreferences()
+      .then((value: { canal: string; tipo: string; resolvido: string }) => {
+        if (active) setPreferences(value);
+      })
+      .catch((e: unknown) => {
+        if (active) setError(e instanceof Error ? e.message : "NÃO FOI POSSÍVEL CARREGAR AS PREFERÊNCIAS.");
+      })
+      .finally(() => { if (active) setPreferencesLoaded(true); });
+    return () => { active = false; };
+  }, []);
+
+  async function updatePreference(key: "canal" | "tipo" | "resolvido", value: string) {
+    const next = { ...preferences, [key]: value };
+    setPreferences(next);
+    try {
+      await window.controleDiario.firebase.saveAttendancePreferences(next);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "NÃO FOI POSSÍVEL SALVAR A PREFERÊNCIA.");
+    }
+  }
   const update = (key: keyof AttendanceDraft, value: string) => setDraft(current => current ? { ...current, [key]: value } : current);
 
   function processTicket() {
@@ -39,7 +64,7 @@ export default function AtendimentosPanel({ onSave, hasExpediente }: { onSave: (
     const codigo = valueAfterLabel(ticketText, "Código do Cliente");
     if (!ticketLink.trim()) { setDraft(null); setError("INFORME O LINK DO TICKET."); return; }
     if (!nome || nome === "Informações do Cliente") { setDraft(null); setError("NÃO FOI POSSÍVEL IDENTIFICAR O NOME DO CLIENTE. CONFIRA O TEXTO COPIADO."); return; }
-    setDraft({ ...emptyDraft, ticket: ticketLink.trim(), codigo, nome });
+    setDraft({ ...emptyDraft, ticket: ticketLink.trim(), codigo, nome, ...preferences });
   }
 
   async function copyRow() {
@@ -68,14 +93,14 @@ export default function AtendimentosPanel({ onSave, hasExpediente }: { onSave: (
       {!hasExpediente&&<p className="attendance-error">INICIE UM EXPEDIENTE PARA REGISTRAR OS TICKETS.</p>}{error&&<p className="attendance-error" role="alert">{error}</p>}
     </div>
     {draft&&<div className="attendance-preview-card">
-      <div className="attendance-preview-head"><h3>CONFERÊNCIA DOS DADOS</h3><span>EDITÁVEL</span></div>
+      <div className="attendance-preview-head"><h3>CONFERÊNCIA DOS DADOS</h3></div>
       <div className="attendance-edit-grid">
         <label className="attendance-field"><span>TICKET</span><input value={draft.ticket} onChange={e=>update("ticket",e.target.value)}/></label>
-        <label className="attendance-field"><span>CANAL</span><select value={draft.canal} onChange={e=>update("canal",e.target.value)}><option value="">SELECIONE</option>{channels.map(x=><option key={x} value={x}>{x}</option>)}</select></label>
+        <label className="attendance-field"><span>CANAL</span><select value={draft.canal} disabled={!preferencesLoaded} onChange={e=>{update("canal",e.target.value);void updatePreference("canal",e.target.value);}}><option value="">SELECIONE</option>{channels.map(x=><option key={x} value={x}>{x}</option>)}</select></label>
         <label className="attendance-field"><span>CÓDIGO</span><input value={draft.codigo} onChange={e=>update("codigo",e.target.value)}/></label>
         <label className="attendance-field"><span>NOME</span><input value={draft.nome} onChange={e=>update("nome",e.target.value)}/></label>
-        <label className="attendance-field"><span>TIPO</span><select value={draft.tipo} onChange={e=>update("tipo",e.target.value)}><option value="">SELECIONE</option>{types.map(x=><option key={x} value={x}>{x}</option>)}</select></label>
-        <label className="attendance-field"><span>RESOLVIDO?</span><select value={draft.resolvido} onChange={e=>update("resolvido",e.target.value)}><option value="">SELECIONE</option>{resolutions.map(x=><option key={x} value={x}>{x}</option>)}</select></label>
+        <label className="attendance-field"><span>TIPO</span><select value={draft.tipo} disabled={!preferencesLoaded} onChange={e=>{update("tipo",e.target.value);void updatePreference("tipo",e.target.value);}}><option value="">SELECIONE</option>{types.map(x=><option key={x} value={x}>{x}</option>)}</select></label>
+        <label className="attendance-field"><span>RESOLVIDO?</span><select value={draft.resolvido} disabled={!preferencesLoaded} onChange={e=>{update("resolvido",e.target.value);void updatePreference("resolvido",e.target.value);}}><option value="">SELECIONE</option>{resolutions.map(x=><option key={x} value={x}>{x}</option>)}</select></label>
         <label className="attendance-field"><span>SUBTIPO</span><input value={draft.subtipo} onChange={e=>update("subtipo",e.target.value)} placeholder="Preenchimento manual"/></label>
         <label className="attendance-field"><span>MOTIVO RESOLUÇÃO/RETENÇÃO</span><textarea rows={3} value={draft.motivoResolucao} onChange={e=>update("motivoResolucao",e.target.value)} placeholder="Preenchimento manual"/></label>
       </div>
