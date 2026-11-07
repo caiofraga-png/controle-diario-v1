@@ -43,8 +43,8 @@ export default function AttendanceRowsList({ rows, editable = false, onChange }:
             {editable&&<div className="attendance-actions">
               <button disabled={busy||index===0} title="Mover para cima" onClick={()=>{const next=[...rows];[next[index-1],next[index]]=[next[index],next[index-1]];void commit(next);}}>↑</button>
               <button disabled={busy||index===rows.length-1} title="Mover para baixo" onClick={()=>{const next=[...rows];[next[index+1],next[index]]=[next[index],next[index+1]];void commit(next);}}>↓</button>
-              <button disabled={busy} title="Editar ticket" aria-label="Editar ticket" onClick={()=>{setEditingId(row.id);setDraft({...row});}}><icon name="pencil" /></button>
-              <button disabled={busy} title="Remover ticket" aria-label="Remover ticket" onClick={()=>{if(window.confirm("Deseja remover este ticket do expediente?"))void commit(rows.filter(item=>item.id!==row.id));}}><icon name="trash-2" /></button>
+              <button disabled={busy} title="Editar ticket" aria-label="Editar ticket" onClick={()=>{setEditingId(row.id);setDraft({...row});}}>✎</button>
+              <button disabled={busy} title="Remover ticket" aria-label="Remover ticket" onClick={()=>{if(window.confirm("Deseja remover este ticket do expediente?"))void commit(rows.filter(item=>item.id!==row.id));}}>⌫</button>
             </div>}
           </>}
         </article>)}
