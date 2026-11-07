@@ -76,8 +76,7 @@ export default function AtendimentosPanel({ onSave, hasExpediente }: { onSave: (
       if (!hasExpediente) throw new Error("INICIE UM EXPEDIENTE ANTES DE COPIAR O TICKET.");
       if (copied && !window.confirm("Este ticket já foi salvo neste expediente. Deseja adicioná-lo novamente à lista?")) return;
       await onSave({ ...draft, tipo: normalizeSheetSymbol(draft.tipo), id: globalThis.crypto.randomUUID(), criadoEm: new Date().toISOString() });
-      const values: Record<string,string> = draft;
-      const cells = fieldOrder.map(key => values[key] ?? "");
+      const cells = fieldOrder.map(key => draft[key as keyof AttendanceDraft] ?? "");
       try { await navigator.clipboard.writeText(cells.map(normalizeSheetSymbol).join("\t")); setCopied(true); }
       catch { setCopied(true); setError("Ticket salvo no sistema. A cópia automática falhou; copie os campos manualmente."); }
     } catch (e) {
