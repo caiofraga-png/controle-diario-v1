@@ -26,8 +26,8 @@ function extractText(r: Roteiro) {
   const keys = Object.keys(cells);
   if (!keys.length) return "";
   const sorted = keys.sort((a, b) => {
-    const ma = a.match(/^[A-Z]+(\\d+)$/);
-    const mb = b.match(/^[A-Z]+(\\d+)$/);
+    const ma = a.match(/^[A-Z]+(\d+)$/);
+    const mb = b.match(/^[A-Z]+(\d+)$/);
     return Number(ma?.[1] ?? 999999) - Number(mb?.[1] ?? 999999);
   });
   return sorted
