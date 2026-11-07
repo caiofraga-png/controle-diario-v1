@@ -8,8 +8,9 @@ const fields: { key: keyof AttendanceRecord; label: string }[] = [
   { key: "tipo", label: "TIPO" }, { key: "resolvido", label: "RESOLVIDO?" },
   { key: "subtipo", label: "SUBTIPO" }, { key: "motivoResolucao", label: "MOTIVO RESOLUÇÃO/RETENÇÃO" },
 ];
+function normalizeSheetSymbol(value: string) { return value.replace(/\uFE0F/g, ""); }
 function cells(row: AttendanceRecord) {
-  return [row.ticket, row.canal, row.codigo, row.nome, row.tipo, row.resolvido, row.subtipo, row.motivoResolucao];
+  return [row.ticket, row.canal, row.codigo, row.nome, row.tipo, row.resolvido, row.subtipo, row.motivoResolucao].map(normalizeSheetSymbol);
 }
 export default function AttendanceRowsList({ rows, editable = false, onChange }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
