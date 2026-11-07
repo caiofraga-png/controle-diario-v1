@@ -38,9 +38,9 @@ export default function AtendimentosPanel({ onSave, hasExpediente }: { onSave: (
 
   useEffect(() => {
     let active = true;
-    Promise.all([window.controleDiario.firebase.loadAttendancePreferences(), window.controleDiario.firebase.loadAttendanceFieldOrder()])
-      .then(([value, order]: [{ canal: string; tipo: string; resolvido: string }, string[]]) => {
-        if (active) { setPreferences(value); setFieldOrder(order); }
+    window.controleDiario.firebase.loadAttendancePreferences()
+      .then((value: { canal: string; tipo: string; resolvido: string; ordemCampos: string[] }) => {
+        if (active) { setPreferences({ canal: value.canal, tipo: value.tipo, resolvido: value.resolvido }); setFieldOrder(value.ordemCampos); }
       })
       .catch((e: unknown) => {
         if (active) setError(e instanceof Error ? e.message : "NÃO FOI POSSÍVEL CARREGAR AS PREFERÊNCIAS.");
