@@ -152,7 +152,7 @@ test("administrador pode ler subcoleções privadas de qualquer colaborador para
   }
 });
 
-test("supervisor não pode ler subcoleções privadas de outros colaboradores para backup", async () => {
+test("supervisor lê expedientes e históricos de outros colaboradores, mas mantém as demais subcoleções privadas", async () => {
   const supervisor = dbAs("supervisor");
   const privatePaths = [
     "users/alice/configuration/layout",
@@ -160,12 +160,12 @@ test("supervisor não pode ler subcoleções privadas de outros colaboradores pa
     "users/alice/calendar/dados",
     "users/alice/taskCustomizations/T001",
     "users/alice/usefulLinks/L001",
-    "users/alice/operational/currentState",
-    "users/alice/operational/history/entries/2026-10-28_R001",
   ];
   for (const path of privatePaths) {
     await assertFails(getDoc(doc(supervisor, path)));
   }
+  await assertSucceeds(getDoc(doc(supervisor, "users/alice/operational/currentState")));
+  await assertSucceeds(getDoc(doc(supervisor, "users/alice/operational/history/entries/2026-10-28_R001")));
 });
 
 test("administrador pode restaurar documentos privados ausentes, mas não sobrescrever nem excluir", async () => {
