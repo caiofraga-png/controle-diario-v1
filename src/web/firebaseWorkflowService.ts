@@ -183,6 +183,10 @@ export class FirebaseWorkflowService {
     return this.operational.appendAttendance(input);
   }
 
+  async replaceAttendances(records: import("../shared/types/state").AttendanceRecord[]): Promise<EstadoAtual> {
+    return this.operational.replaceAttendances(records);
+  }
+
   async complete(): Promise<RegistroHistorico> {
     const loaded = await this.workspace.load();
     if (!loaded.estado) throw new Error("NÃO HÁ EXPEDIENTE EM PRODUÇÃO.");
