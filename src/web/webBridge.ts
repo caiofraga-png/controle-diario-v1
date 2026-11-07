@@ -35,6 +35,8 @@ export function installWebBridge(){
    saveThemePreference:(theme:ThemePreference)=>firebasePersonalData.saveThemePreference(theme),
    loadAttendancePreferences:()=>firebasePersonalData.loadAttendancePreferences(),
    saveAttendancePreferences:(value:any)=>firebasePersonalData.saveAttendancePreferences(value),
+   loadAttendanceFieldOrder:()=>firebasePersonalData.loadAttendanceFieldOrder(),
+   saveAttendanceFieldOrder:(order:string[])=>firebasePersonalData.saveAttendanceFieldOrder(order),
    loadCurrentState:()=>firebaseOperational.loadCurrentState(),
    saveCurrentState:(state:any)=>firebaseOperational.saveCurrentState(state),
    completeState:(state:any,completedAt?:string)=>firebaseOperational.completeState(state,completedAt),
