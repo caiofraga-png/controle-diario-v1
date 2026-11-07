@@ -6,6 +6,7 @@ import { FirebaseWorkspaceRepository } from "./firebaseWorkspaceRepository";
 import { normalizeConfiguration as normalizeFirebaseConfiguration } from "./dataRepository";
 import { FirebaseWorkflowService } from "./firebaseWorkflowService";
 import { loadMaintenanceHistory, saveExternalMaintenance, subscribeExternalMaintenances } from "./firebaseMaintenanceService";
+import { loadManagementOverview } from "./firebaseAdminService";
 
 
 const firebasePersonalData = new FirebasePersonalDataService();
@@ -47,6 +48,7 @@ export function installWebBridge(){
    },
    workflow:{
     load:()=>firebaseWorkflow.load(),
+    visaoGeral:()=>loadManagementOverview(),
     perfilAnterior:()=>firebaseWorkflow.lastUsedProfileId(),
     iniciar:(input:any)=>firebaseWorkflow.start(input),
     trocarPerfil:(profileId:string)=>firebaseWorkflow.switchProfile(profileId),
