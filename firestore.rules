@@ -153,6 +153,27 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // Attendance rows are private, append-only records owned by each collaborator.
+      match /attendanceRows/{rowId} {
+        allow read: if approvedUser() && request.auth.uid == uid && resource.data.ownerUid == uid;
+        allow create: if approvedUser() && request.auth.uid == uid
+          && request.resource.data.ownerUid == uid
+          && request.resource.data.keys().hasOnly([
+            "ticket", "canal", "codigo", "nome", "tipo", "resolvido",
+            "subtipo", "motivoResolucao", "ownerUid", "createdAt"
+          ])
+          && request.resource.data.ticket is string
+          && request.resource.data.canal is string
+          && request.resource.data.codigo is string
+          && request.resource.data.nome is string
+          && request.resource.data.tipo is string
+          && request.resource.data.resolvido is string
+          && request.resource.data.subtipo is string
+          && request.resource.data.motivoResolucao is string
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+
       // Mutable current state belongs only to the approved owner.
       // The envelope and owner UID cannot be changed by a client update.
       match /operational/currentState {
