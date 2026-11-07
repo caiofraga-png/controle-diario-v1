@@ -9,6 +9,7 @@ import {
 
 export type SharedTaskCatalog = Pick<Configuracao, "tarefas" | "perfis" | "email"> & {
   schemaVersion: 1;
+  revision: number;
   updatedAt?: unknown;
   updatedByUid?: string;
 };
@@ -27,6 +28,7 @@ export async function loadSharedTaskCatalog(): Promise<SharedTaskCatalog | null>
   }
   return {
     schemaVersion: 1,
+    revision: Number.isInteger(data.revision) ? data.revision : 1,
     tarefas: validateTarefas(data.tarefas),
     perfis: validatePerfis(data.perfis),
     email: validateEmails(data.email),
@@ -42,6 +44,7 @@ export async function saveSharedTaskCatalog(config: Configuracao): Promise<void>
   if (!user) throw new Error("É necessário autenticar-se para editar o catálogo.");
   const catalog = {
     schemaVersion: 1,
+    revision: 1,
     tarefas: validateTarefas(config.tarefas),
     perfis: validatePerfis(config.perfis),
     email: validateEmails(config.email),
@@ -70,6 +73,7 @@ export async function updateSharedTaskCatalog(config: Configuracao): Promise<voi
   }
   await updateDoc(reference, {
     schemaVersion: 1,
+    revision: (Number.isInteger(existing.data().revision) ? existing.data().revision : 1) + 1,
     tarefas: validateTarefas(config.tarefas),
     perfis: validatePerfis(config.perfis),
     email: validateEmails(config.email),
