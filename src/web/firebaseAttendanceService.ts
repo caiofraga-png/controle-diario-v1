@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, type Unsubscribe } from "firebase/firestore";
+import { collection, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, where, type Unsubscribe } from "firebase/firestore";
 import { requireFirebase } from "./firebaseClient";
 
 export type AttendanceRow = {
@@ -37,6 +37,10 @@ export function subscribeAttendanceRows(callback: (rows: AttendanceRow[]) => voi
   const { auth, db } = requireFirebase();
   const user = auth.currentUser;
   if (!user) throw new Error("FAÇA LOGIN PARA CONSULTAR ATENDIMENTOS.");
-  const q = query(collection(db, "users", user.uid, "attendanceRows"), where("ownerUid", "==", user.uid), orderBy("createdAt", "desc"));
-  return onSnapshot(q, snapshot => callback(snapshot.docs.map(item => ({ id: item.id, ...item.data() } as AttendanceRow))), error => onError?.(error));
+  const q = query(collection(db, "users", user.uid, "attendanceRows"), where("ownerUid", "==", user.uid));
+  return onSnapshot(q, snapshot => callback(snapshot.docs.map(item => ({ id: item.id, ...item.data() } as AttendanceRow)).sort((a, b) => {
+    const at = typeof (a.createdAt as any)?.toMillis === "function" ? (a.createdAt as any).toMillis() : 0;
+    const bt = typeof (b.createdAt as any)?.toMillis === "function" ? (b.createdAt as any).toMillis() : 0;
+    return bt - at;
+  })), error => onError?.(error));
 }
