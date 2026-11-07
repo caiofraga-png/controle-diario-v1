@@ -10,6 +10,99 @@ type ThemePreference = "corporate-light" | "corporate-dark" | "elegant-light" | 
 function clone<T>(v:T):T { return JSON.parse(JSON.stringify(v)); }
 function move<T>(arr:T[], from:number, to:number){ const a=[...arr]; const [x]=a.splice(from,1); a.splice(to,0,x); return a; }
 
+const estatisticaManutencaoRoteiro = [
+"Abrir arquivo DEMANDA DO DIA",
+"",
+"Colar no separador BD MANUT FEITAS",
+"Copiar conteúdo da aba MANUT FEITAS e lançar na planilha, na aba de mesmo nome",
+"",
+"1- Arrastar script das colunas MEIO DE CONTATO e SETOR",
+"2- Ajustar FORMATAR>NÚMERO>DATA na coluna DATA ATIV. CRIADA",
+"3- Arrastar script das colunas:",
+"DIAS Ñ UTEIS, HORAS DIAS Ñ UTEIS, TEMPO REAL (ATÉ), TEMPO TOTAL, SLA e STATUS",
+"4- Ajustar FORMATAR>NÚMERO>DATA na coluna DATA DA VISITA/TICKET",
+"5- Arrastar script das colunas TENT. DE VISITA - 1º OS E TENT. DE VISITA - EM 3 OS",
+"6- Verificar a linha preenchida na coluna MOTIVO DO CANCELAMENTO - 1º OS",
+"7- Inserir a linha no botão da planilha, aba MODELO EMAIL AUTO",
+"8- Arrastar script das colunas:",
+"CONV. HORAS - REAIS, T. TOTAL - 1º OS, T. TOTAL - 2º OS, T. TOTAL - 3º OS e PREF. START/END",
+"",
+"Corrigir os bairros. Eliminar linhas vazias.",
+"Na aba MANUT PRAZO, abrir filtro:",
+"1- Filtrar ✅ na coluna STATUS e eliminar todas as linhas.",
+"2- Ordenar em ordem alfabética a coluna TICKET DA VISITA",
+"3- Fechar filtro",
+"Abrir arquivo ABERTAS DO DIA",
+"",
+"Abrir arquivo ABERTAS DO DIA",
+"Conferir se não há TESTE, DESENVOLVIMENTO e LIXEIRA",
+"",
+"Colar no separador BD MANUT PRAZO",
+"Copiar conteúdo da aba MANUT PRAZO e lançar na planilha, na aba de mesmo nome",
+"",
+"1- Arrastar script das colunas MEIO DE CONTATO e SETOR",
+"2- Ajustar FORMATAR>NÚMERO>DATA HORA na coluna DATA ATIV. CRIADA",
+"3- Arrastar script das colunas DIAS Ñ UTEIS, HORAS DIAS Ñ UTEIS, TEMPO REAL (ATÉ), TEMPO TOTAL, SLA e STATUS",
+"4- Arrastar script das colunas TENT. DE VISITA - 1º OS E TENT. DE VISITA - EM 3 OS",
+"5- Arrastar script das colunas CONV. HORAS - REAIS, T. TOTAL - 1º OS, T. TOTAL - 2º OS, T. TOTAL - 3º OS e PREF. START/END",
+"",
+"Eliminar linhas vazias.",
+"Criar filtro SELECIONANDO DA ÚLTIMA LINHA ATÉ O TOPO.",
+"Filtrar ordem alfabética na coluna TICKET DA VISITA",
+"",
+"Abrir arquivo TODAS ABERTAS",
+"",
+"Filtrar coluna ticket em ordem crescente",
+"Eliminar linhas contendo: TESTE, DESENVOLVIMENTO e LIXEIRA",
+"Filtrar coluna subtipo: LOS e LOS AUTO",
+"Filtrar coluna estado atividade: Pendente Tarefa",
+"Filtrar coluna conectado: SIM",
+"Analisar cada ticket e verificar se podemos encerrar atividade.",
+"Eliminar do arquivo os tickets que forem encerrados após análise.",
+"",
+"Selecionar a lista de ticket e colar na planilha MANUT PRAZO abaixo do filtro",
+"A lista colada deverá ficar totalmente verde",
+"Na lista de tickets filtrados acima, selecionar Filtro> Filtrar por cor> Cor de preenchimento > Branco",
+"Na coluna STATUS, filtrar apenas 🕒",
+"Ocultar colunas, de DESCONTO até PREF. END.",
+"",
+"Analisar cada ticket, identificar motivo do cancelamento na coluna RESOLUÇÃO DA VISITA e mudar o 🕒 para 📞",
+"Ao final, mostrar colunas ocultas, desfazer filtros do Status e Cor de preenchimento.",
+"Apagar lista de tickets abaixo do filtro.",
+"",
+"Filtrar novamente coluna STATUS> 🕒",
+"Filtrar TICKET DA VISITA em ordem crescente",
+"Colar novamente a lista de tickets TODAS ABERTAS ao lado da coluna TICKET DA VISITA",
+"Conferir se as listas são idênticas.",
+"",
+"Copiar o arquivo TODAS ABERTAS e colar no separador BD MANUT PRAZO",
+"Na aba TODAS ABERTAS:",
+"1- Copiar a coluna fila atual e substituir na coluna homônima em MANUT PRAZO",
+"2- Copiar a coluna estado_atividade e substituir na coluna homônima em MANUT PRAZO",
+"3- Copiar colunas motivo_cancel, visitas canceladas, priorityStart e priorityEnd",
+"e lançar nas colunas homônimas em MANUT PRAZO.",
+"",
+"Verifica a linha do primeiro MOTIVO DO CANCELAMENTO - 1º OS substituído e",
+"insira no botão SEPARAR MOTIVO CANCELAMENTO - ABERTAS na aba MODELO EMAIL AUTO. Aperte o botão.",
+"",
+"Após isso, verificar na coluna VISITAS CANCELADAS:",
+"Todo ticket que tiver o valor 3 ou mais (e a célula vermelha), devemos copiar o motivo da primeira visita no ticket e",
+"atualizar na planilha.",
+"",
+"Desfaça o filtro na coluna STATUS, ordene BAIRRO e CIDADE em ordem crescente e corrija.",
+"Após correção, filtre de forma crescente a coluna TICKET DA VISITA e remova o filtro.",
+"",
+"NUNCA ESQUECER DE ARRASTAR E CONFERIR TODAS AS COLUNAS DE FÓRMULAS",
+"IMPORTANTE: VERIFICAR SUBTIPO (A-Z) E CORRIGIR SUBTIPOS ESTRANHOS (AMBAS ABAS)",
+"",
+"BATER CONTAGEM:",
+"1- Total de manutenções, bater com as linhas do arquivo TODAS ABERTAS",
+"2 - Fechar e Salvar arquivo TODAS ABERTAS",
+"3 - Total de visitas feitas, bater com as linhas do arquivo DEMANDA DO DIA",
+"4 - Fechar e Salvar arquivo DEMANDA DO DIA",
+"5 - Mandar email para liderança e backoffice. NAO ESQUECER ANEXOS"
+].join("\\n");
+
 export default function ConfigurationPanel({ initial, onSave, onSaveLayout, onClose, busy, embedded = false, canManageCatalog = false, canAdmin = false, themePreference = "system", onThemeChange, themeSaving = false, promotions = [], onSavePromotions }: { initial: Config; onSave: (config:Config)=>Promise<void>; onSaveLayout?: (layout:any)=>Promise<void>; onClose:()=>void; busy:boolean; embedded?:boolean; canManageCatalog?:boolean; canAdmin?:boolean; themePreference?:ThemePreference; onThemeChange?:(theme:ThemePreference)=>Promise<void>; themeSaving?:boolean; promotions?:any[]; onSavePromotions?:(items:any[])=>Promise<void> }) {
   const [tab,setTab]=useState<Tab>("aparencia");
   const [draft,setDraft]=useState<Config>(()=>clone(initial));
@@ -35,7 +128,7 @@ export default function ConfigurationPanel({ initial, onSave, onSaveLayout, onCl
   const selectedEmail = draft.email.emails.find((e:any)=>e.id===selectedId);
 
   function startNew(){ setCreating(true); setSelectedId(null); setRoute("editar"); setForm(tab==="perfis"?{nome:"",tarefas:[]}:tab==="tarefas"?{nome:"",link:"",criacao:"",ativo:false,emailsVinculados:[]}: {nome:"",titulo:"",corpo:"",ativo:false,global:false}); }
-  function edit(id:string){ setCreating(false); setSelectedId(id); setRoute("editar"); const obj=tab==="perfis"?draft.perfis.perfis.find((x:any)=>x.id===id):tab==="tarefas"?draft.tarefas.tarefas.find((x:any)=>x.id===id):draft.email.emails.find((x:any)=>x.id===id); setForm(clone(obj)); if(tab==="email") setForm((f:any)=>({...clone(obj),global:draft.email.emailsGlobais.includes(id),perfisVinculados:[...(obj.perfisVinculados??[])]})); }
+  function edit(id:string){ setCreating(false); setSelectedId(id); setRoute("editar"); const obj=tab==="perfis"?draft.perfis.perfis.find((x:any)=>x.id===id):tab==="tarefas"?draft.tarefas.tarefas.find((x:any)=>x.id===id):draft.email.emails.find((x:any)=>x.id===id); const edited=tab==="tarefas" && obj?.nome?.trim().toLocaleUpperCase("pt-BR")==="ESTATÍSTICA - MANUTENÇÃO" ? {...clone(obj),roteiro:{linhas:estatisticaManutencaoRoteiro.split("\\n").length,colunas:1,largurasColunas:[900],celulas:{A1:{valor:estatisticaManutencaoRoteiro}},mesclas:[],filtro:null}} : clone(obj); setForm(edited); if(tab==="email") setForm((f:any)=>({...clone(obj),global:draft.email.emailsGlobais.includes(id),perfisVinculados:[...(obj.perfisVinculados??[])]})); }
   function switchTab(t:Tab){if(["perfis","tarefas","email","promocoes"].includes(t) && !canManageCatalog) return;setTab(t);setRoute("lista");setSelectedId(null);setLocalMessage("");}
   function renderAppearance(){ return <section className="config-form"><h3>APARÊNCIA DO SISTEMA</h3><p>Escolha seu tema visual.</p><label>TEMA VISUAL<select aria-label="Aparência do site" value={themePreference} disabled={themeSaving} onChange={e=>void onThemeChange?.(e.target.value as ThemePreference)}><option value="system">Automático</option><option value="corporate-light">Claro corporativo</option><option value="corporate-dark">Escuro corporativo</option><option value="elegant-light">Claro elegante</option><option value="midnight-blue">Noturno azulado</option><option value="midnight-violet">Noturno sofisticado</option><option value="blue-light">Claro azulado</option></select></label>{themeSaving&&<p>Salvando preferência…</p>}</section>; }
 
@@ -144,7 +237,7 @@ export default function ConfigurationPanel({ initial, onSave, onSaveLayout, onCl
     return <div className="config-form"><h3>{creating?"NOVO E-MAIL":"EDITAR E-MAIL"}</h3>{!creating&&<p className="id-note">ID: {form.id}</p>}<label>NOME<input value={form.nome??""} onChange={e=>setForm({...form,nome:e.target.value})}/></label><label>TÍTULO<input value={form.titulo??""} onChange={e=>setForm({...form,titulo:e.target.value})}/></label><label>TEXTO<textarea rows={9} value={form.corpo??""} onChange={e=>setForm({...form,corpo:e.target.value})}/></label><h4>PERFIS VINCULADOS</h4><p>Selecione os perfis nos quais este e-mail deverá aparecer. A compilação global ignora esta seleção e habilita o e-mail em todos os perfis.</p>{draft.perfis.perfis.filter((p:any)=>p.ativo).map((p:any)=><label className="check-line" key={p.id}><input type="checkbox" checked={(form.perfisVinculados??[]).includes(p.id)} onChange={e=>setForm((f:any)=>({...f,perfisVinculados:e.target.checked?[...(f.perfisVinculados??[]),p.id]:(f.perfisVinculados??[]).filter((id:string)=>id!==p.id)}))}/>{p.nome}</label>)}<label className="check-line"><input type="checkbox" checked={Boolean(form.global)} onChange={e=>setForm({...form,global:e.target.checked})}/>COMPILAÇÃO GLOBAL</label>{!creating&&<label>STATUS<select value={form.ativo?"ativo":"inativo"} onChange={e=>setForm({...form,ativo:e.target.value==="ativo"})}><option value="ativo">ATIVO</option><option value="inativo">INATIVO</option></select></label>}<div className="config-actions"><button onClick={()=>setRoute("lista")}>CANCELAR</button><button className="primary" disabled={busy} onClick={()=>void saveItem()}>SALVAR</button></div></div>;
   }
 
-  function saveRoteiroValue(value:any){ if(!selectedId) return; const next=clone(draft); const t=next.tarefas.tarefas.find((x:any)=>x.id===selectedId); if(!t) return; t.roteiro=clone(value); setDraft(next); setForm((f:any)=>({...f,roteiro:clone(value)})); setRoteiroOpen(false); }
+  async function saveRoteiroValue(value:any){ if(!selectedId) return; const next=clone(draft); const t=next.tarefas.tarefas.find((x:any)=>x.id===selectedId); if(!t) return; t.roteiro=clone(value); try { await window.controleDiario.firebase.workflow.salvarTarefa({id:selectedId,roteiro:clone(value)}); setDraft(next); setForm((f:any)=>({...f,roteiro:clone(value)})); setRoteiroOpen(false); setLocalMessage("ROTEIRO SALVO NO FIREBASE."); } catch(error) { setLocalMessage(error instanceof Error?error.message:"NÃO FOI POSSÍVEL SALVAR O ROTEIRO."); } }
   const roteiroInitial = roteiro ?? {linhas:50,colunas:5,largurasColunas:[120,120,120,120,120],celulas:{},mesclas:[],filtro:null};
   return <div className={embedded?"config-embedded":"config-overlay"}><div className="config-window"><header className="config-head"><div><h2>CONFIGURAÇÃO</h2><span>Personalize seu CONTROLE DIÁRIO</span></div><button onClick={onClose} aria-label="Voltar para tarefas">✕</button></header><nav className="config-tabs"><button className={tab==="aparencia"?"active":""} onClick={()=>switchTab("aparencia")}>🎨 APARÊNCIA</button>{canManageCatalog&&<><button className={tab==="perfis"?"active":""} onClick={()=>switchTab("perfis")}>👤 PERFIS</button><button className={tab==="tarefas"?"active":""} onClick={()=>switchTab("tarefas")}>✅ TAREFAS</button><button className={tab==="email"?"active":""} onClick={()=>switchTab("email")}>✉️ E-MAIL</button><button className={tab==="promocoes"?"active":""} onClick={()=>switchTab("promocoes")}>🏷 PROMOÇÕES</button></>}<button className={tab==="avisos"?"active":""} onClick={()=>switchTab("avisos")}>🔔 AVISOS</button><button className={tab==="layout"?"active":""} onClick={()=>switchTab("layout")}>📐 LAYOUT</button><button className={tab==="atalhos"?"active":""} onClick={()=>switchTab("atalhos")}>🔗 ATALHOS</button></nav>{localMessage&&<div className="system-message">{localMessage}</div>}{tab==="aparencia"?renderAppearance():tab==="avisos"?<><NotificationPreferencesPanel canManageAccess={canManageCatalog}/>{canManageCatalog&&<MaintenancePermissionPanel/>}</>:tab==="promocoes"?renderPromotions():tab==="atalhos"?renderShortcuts():route==="lista"&&tab!=="layout"?renderList():route==="editar"&&tab!=="layout"?renderEdit():renderList()}</div>{roteiroOpen&&<RoteiroEditor initial={roteiroInitial} onCancel={()=>setRoteiroOpen(false)} onSave={saveRoteiroValue}/>}</div>;
 }
