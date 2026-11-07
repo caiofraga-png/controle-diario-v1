@@ -1,4 +1,4 @@
-import { collection, doc, onSnapshot, orderBy, query, serverTimestamp, setDoc, type Unsubscribe } from "firebase/firestore";
+import { collection, doc, getDoc, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, type Unsubscribe } from "firebase/firestore";
 import { requireFirebase } from "./firebaseClient";
 
 export type AttendanceRow = {
@@ -27,7 +27,6 @@ export async function saveAttendanceRow(input: Omit<AttendanceRow, "id" | "owner
   const user = auth.currentUser;
   if (!user || !user.emailVerified) throw new Error("FAÇA LOGIN COM UMA CONTA EMPRESARIAL VERIFICADA.");
   const userRef = doc(db, "users", user.uid);
-  const { getDoc } = await import("firebase/firestore");
   const profile = await getDoc(userRef);
   if (!profile.exists() || profile.data().status !== "approved") throw new Error("SOMENTE COLABORADORES APROVADOS PODEM SALVAR ATENDIMENTOS.");
   const ref = doc(attendanceCollection());
@@ -35,6 +34,9 @@ export async function saveAttendanceRow(input: Omit<AttendanceRow, "id" | "owner
 }
 
 export function subscribeAttendanceRows(callback: (rows: AttendanceRow[]) => void, onError?: (error: Error) => void): Unsubscribe {
-  const q = query(attendanceCollection(), orderBy("createdAt", "desc"));
+  const { auth, db } = requireFirebase();
+  const user = auth.currentUser;
+  if (!user) throw new Error("FAÇA LOGIN PARA CONSULTAR ATENDIMENTOS.");
+  const q = query(collection(db, "users", user.uid, "attendanceRows"), where("ownerUid", "==", user.uid), orderBy("createdAt", "desc"));
   return onSnapshot(q, snapshot => callback(snapshot.docs.map(item => ({ id: item.id, ...item.data() } as AttendanceRow))), error => onError?.(error));
 }
