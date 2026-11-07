@@ -166,6 +166,34 @@ export class FirebasePersonalDataService {
     }, { merge: true });
   }
 
+  async loadAttendancePreferences(): Promise<{ canal: string; tipo: string; resolvido: string }> {
+    const uid = this.currentUserId();
+    const { db } = requireFirebase();
+    const snapshot = await getDoc(doc(db, "users", uid, "preferences", "attendance"));
+    const value = snapshot.exists() ? snapshot.data() : {};
+    return {
+      canal: typeof value.canal === "string" ? value.canal : "",
+      tipo: typeof value.tipo === "string" ? value.tipo : "",
+      resolvido: typeof value.resolvido === "string" ? value.resolvido : "",
+    };
+  }
+
+  async saveAttendancePreferences(value: { canal: string; tipo: string; resolvido: string }): Promise<void> {
+    const allowed = {
+      canal: ["📞 ⬅", "☎ ➜", "🔵", "📱", "💬", "🏠", "💳", "📲"],
+      tipo: ["🛒", "🛠️", "💰", "♻️"],
+      resolvido: ["✅", "❌", "📌", "⬅ BACK", "♻️"],
+    };
+    if (!allowed.canal.includes(value.canal) || !allowed.tipo.includes(value.tipo) || !allowed.resolvido.includes(value.resolvido)) {
+      throw new Error("PREFERÊNCIAS DE ATENDIMENTO INVÁLIDAS.");
+    }
+    const uid = this.currentUserId();
+    const { db } = requireFirebase();
+    await setDoc(doc(db, "users", uid, "preferences", "attendance"), {
+      canal: value.canal, tipo: value.tipo, resolvido: value.resolvido, updatedAt: serverTimestamp(),
+    }, { merge: true });
+  }
+
   async loadCalendar(): Promise<LoadedData["calendario"] | null> {
     const uid = this.currentUserId();
     const { db } = requireFirebase();
