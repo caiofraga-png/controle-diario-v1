@@ -18,7 +18,7 @@ export default function AttendanceRowsList({ rows, editable = false, onChange }:
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [fieldOrder, setFieldOrder] = useState<string[]>(fields.map(field=>field.key));
-  useEffect(() => { let active=true; window.controleDiario.firebase.loadAttendanceFieldOrder().then((order:string[])=>{if(active)setFieldOrder(order);}).catch(()=>{/* Mantém a ordem padrão se a preferência não puder ser carregada. */}); return ()=>{active=false;}; }, []);
+  useEffect(() => { let active=true; window.controleDiario.firebase.loadAttendancePreferences().then((value:{ ordemCampos:string[] })=>{if(active)setFieldOrder(value.ordemCampos);}).catch(()=>{/* Mantém a ordem padrão se a preferência não puder ser carregada. */}); return ()=>{active=false;}; }, []);
   async function commit(next: AttendanceRecord[]) {
     if (!onChange || busy) return;
     setBusy(true); setMessage("");
