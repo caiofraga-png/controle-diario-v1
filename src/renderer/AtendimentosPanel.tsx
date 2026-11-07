@@ -34,12 +34,13 @@ export default function AtendimentosPanel({ onSave, hasExpediente }: { onSave: (
   const [saving, setSaving] = useState(false);
   const [preferences, setPreferences] = useState({ canal: "", tipo: "", resolvido: "" });
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+  const [fieldOrder, setFieldOrder] = useState<string[]>(["ticket","canal","codigo","nome","tipo","resolvido","subtipo","motivoResolucao"]);
 
   useEffect(() => {
     let active = true;
-    window.controleDiario.firebase.loadAttendancePreferences()
-      .then((value: { canal: string; tipo: string; resolvido: string }) => {
-        if (active) setPreferences(value);
+    Promise.all([window.controleDiario.firebase.loadAttendancePreferences(), window.controleDiario.firebase.loadAttendanceFieldOrder()])
+      .then(([value, order]: [{ canal: string; tipo: string; resolvido: string }, string[]]) => {
+        if (active) { setPreferences(value); setFieldOrder(order); }
       })
       .catch((e: unknown) => {
         if (active) setError(e instanceof Error ? e.message : "NÃO FOI POSSÍVEL CARREGAR AS PREFERÊNCIAS.");
@@ -75,7 +76,8 @@ export default function AtendimentosPanel({ onSave, hasExpediente }: { onSave: (
       if (!hasExpediente) throw new Error("INICIE UM EXPEDIENTE ANTES DE COPIAR O TICKET.");
       if (copied && !window.confirm("Este ticket já foi salvo neste expediente. Deseja adicioná-lo novamente à lista?")) return;
       await onSave({ ...draft, tipo: normalizeSheetSymbol(draft.tipo), id: globalThis.crypto.randomUUID(), criadoEm: new Date().toISOString() });
-      const cells = [draft.ticket, draft.canal, draft.codigo, draft.nome, draft.tipo, draft.resolvido, draft.subtipo, draft.motivoResolucao];
+      const values: Record<string,string> = draft;
+      const cells = fieldOrder.map(key => values[key] ?? "");
       try { await navigator.clipboard.writeText(cells.map(normalizeSheetSymbol).join("\t")); setCopied(true); }
       catch { setCopied(true); setError("Ticket salvo no sistema. A cópia automática falhou; copie os campos manualmente."); }
     } catch (e) {
