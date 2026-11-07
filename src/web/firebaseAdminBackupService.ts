@@ -25,7 +25,7 @@ const INSTITUTIONAL_SUBCOLLECTIONS = ["externalMaintenances/*/history"] as const
 // sincronizada com os caminhos efetivamente utilizados pela aplicação.
 const USER_DOCUMENTS = [
   "configuration/tarefas", "configuration/perfis", "configuration/email", "configuration/layout",
-  "preferences/appearance", "preferences/workSchedule", "preferences/notifications", "calendar/dados", "operational/currentState",
+  "preferences/appearance", "preferences/workSchedule", "preferences/notifications", "preferences/attendance", "calendar/dados", "operational/currentState",
 ] as const;
 const USER_COLLECTIONS = [
   "attendanceRows",
