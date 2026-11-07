@@ -20,7 +20,7 @@ function valueAfterLabel(text: string, label: string): string {
   return "";
 }
 const channels = ["📞 ⬅", "☎ ➜", "🔵", "📱", "💬", "🏠", "💳", "📲"];
-const types = ["🛒", "🛠️", "💰", "♻️"];
+const types = ["🛒", "🛠", "💰", "♻️"];
 const resolutions = ["✅", "❌", "📌", "⬅ BACK", "♻️"];
 const emptyDraft: AttendanceDraft = { ticket:"", canal:"", codigo:"", nome:"", tipo:"", resolvido:"", subtipo:"", motivoResolucao:"" };
 
@@ -72,10 +72,11 @@ export default function AtendimentosPanel({ onSave, hasExpediente }: { onSave: (
     setSaving(true); setError(""); setCopied(false);
     try {
       if (!hasExpediente) throw new Error("INICIE UM EXPEDIENTE ANTES DE COPIAR O TICKET.");
-      await onSave({ ...draft, id: globalThis.crypto.randomUUID(), criadoEm: new Date().toISOString() });
+      if (copied && !window.confirm("Este ticket já foi salvo neste expediente. Deseja adicioná-lo novamente à lista?")) return;
+      await onSave({ ...draft, tipo: draft.tipo === "🛠️" ? "🛠" : draft.tipo, id: globalThis.crypto.randomUUID(), criadoEm: new Date().toISOString() });
       const cells = [draft.ticket, draft.canal, draft.codigo, draft.nome, draft.tipo, draft.resolvido, draft.subtipo, draft.motivoResolucao];
       try { await navigator.clipboard.writeText(cells.join("\t")); setCopied(true); }
-      catch { setCopied(true); setError("ATENDIMENTO SALVO NO EXPEDIENTE. A CÓPIA AUTOMÁTICA FALHOU; COPIE OS CAMPOS MANUALMENTE."); }
+      catch { setCopied(true); setError("Ticket salvo no sistema. A cópia automática falhou; copie os campos manualmente."); }
     } catch (e) {
       setError(e instanceof Error ? e.message : "NÃO FOI POSSÍVEL SALVAR O ATENDIMENTO.");
     } finally { setSaving(false); }
@@ -104,8 +105,8 @@ export default function AtendimentosPanel({ onSave, hasExpediente }: { onSave: (
         <label className="attendance-field"><span>SUBTIPO</span><input value={draft.subtipo} onChange={e=>update("subtipo",e.target.value)} placeholder="Preenchimento manual"/></label>
         <label className="attendance-field"><span>MOTIVO RESOLUÇÃO/RETENÇÃO</span><textarea rows={3} value={draft.motivoResolucao} onChange={e=>update("motivoResolucao",e.target.value)} placeholder="Preenchimento manual"/></label>
       </div>
-      <button className="attendance-primary" disabled={saving||!hasExpediente||!draft.ticket.trim()||!draft.nome.trim()} onClick={()=>void copyRow()}>{saving?"SALVANDO…":copied?"✓ COPIAR OUTRA VEZ":"COPIAR PARA PLANILHA"}</button>
-      {copied&&<p className="attendance-success">LINHA SALVA NO EXPEDIENTE E COPIADA. COLE NA PLANILHA.</p>}
+      <button className="attendance-primary" disabled={saving||!hasExpediente||!draft.ticket.trim()||!draft.nome.trim()} onClick={()=>void copyRow()}>{saving?"SALVANDO…":copied?"COPIAR PARA PLANILHA":"COPIAR PARA PLANILHA"}</button>
+      {copied&&<p className="attendance-success">Ticket salvo no sistema. Cole na planilha</p>}
     </div>}
   </section>;
 }
