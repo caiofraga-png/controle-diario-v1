@@ -28,6 +28,7 @@ const USER_DOCUMENTS = [
   "preferences/appearance", "preferences/workSchedule", "preferences/notifications", "calendar/dados", "operational/currentState",
 ] as const;
 const USER_COLLECTIONS = [
+  "attendanceRows",
   "taskCustomizations", "usefulLinks", "operational/history/entries",
 ] as const;
 
