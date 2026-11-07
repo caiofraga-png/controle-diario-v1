@@ -189,13 +189,18 @@ function App() {
     return () => { active = false; stop?.(); };
   }, [firebaseAccess?.status]);
 
+  const previousFirebaseStatus = useRef(firebaseAccess?.status);
   useEffect(() => {
-    if (firebaseAccess?.status !== "approved") {
-      setTab("sistema");
-    } else if (tab === "administracao" && firebaseAccess?.user?.role !== "admin") {
+    const previousStatus = previousFirebaseStatus.current;
+    previousFirebaseStatus.current = firebaseAccess?.status;
+    if (firebaseAccess?.status === "approved") {
+      // On refresh/login, land on the main work screen instead of Sistema.
+      if (previousStatus !== "approved") setTab("tarefas");
+      else if (tab === "administracao" && firebaseAccess?.user?.role !== "admin") setTab("sistema");
+    } else if (firebaseAccess?.status && firebaseAccess.status !== "checking") {
       setTab("sistema");
     }
-  }, [firebaseAccess?.status, firebaseAccess?.user?.role, tab]);
+  }, [firebaseAccess?.status, firebaseAccess?.user?.role]);
   useEffect(() => {
     let active = true;
     if (firebaseAccess?.status === "approved") {
