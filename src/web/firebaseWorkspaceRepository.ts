@@ -43,9 +43,23 @@ export class FirebaseWorkspaceRepository {
     if (!user) throw new Error("FAÇA LOGIN PARA CARREGAR SUAS PERSONALIZAÇÕES.");
     const customizationSnapshot = await getDocs(collection(db, "users", user.uid, "taskCustomizations"));
     const overrides = new Map(customizationSnapshot.docs.map(item => [item.id, item.data()]));
+    // Personalizações antigas não podem mascarar uma atualização posterior
+    // publicada pela Supervisão no catálogo institucional.
+    const catalogUpdatedAt = sharedCatalog?.updatedAt as { toMillis?: () => number } | undefined;
+    const catalogUpdatedAtMs = typeof catalogUpdatedAt?.toMillis === "function"
+      ? catalogUpdatedAt.toMillis()
+      : 0;
     configuracao.tarefas.tarefas = configuracao.tarefas.tarefas.map(task => {
       const override = overrides.get(task.id);
       if (!override) return task;
+      const overrideUpdatedAt = override.updatedAt as { toMillis?: () => number } | undefined;
+      const overrideUpdatedAtMs = typeof overrideUpdatedAt?.toMillis === "function"
+        ? overrideUpdatedAt.toMillis()
+        : 0;
+      // Personalizações legadas sem data confiável também cedem ao catálogo.
+      if (sharedCatalog && (!overrideUpdatedAtMs || (catalogUpdatedAtMs && overrideUpdatedAtMs <= catalogUpdatedAtMs))) {
+        return task;
+      }
       return {
         ...task,
         ...(typeof override.criacao === "string" ? { criacao: override.criacao } : {}),
