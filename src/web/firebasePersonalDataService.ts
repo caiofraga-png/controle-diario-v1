@@ -173,7 +173,7 @@ export class FirebasePersonalDataService {
     const value = snapshot.exists() ? snapshot.data() : {};
     return {
       canal: typeof value.canal === "string" ? value.canal : "",
-      tipo: typeof value.tipo === "string" ? value.tipo : "",
+      tipo: value.tipo === "🛠️" ? "🛠" : typeof value.tipo === "string" ? value.tipo : "",
       resolvido: typeof value.resolvido === "string" ? value.resolvido : "",
     };
   }
@@ -181,7 +181,7 @@ export class FirebasePersonalDataService {
   async saveAttendancePreferences(value: { canal: string; tipo: string; resolvido: string }): Promise<void> {
     const allowed = {
       canal: ["📞 ⬅", "☎ ➜", "🔵", "📱", "💬", "🏠", "💳", "📲"],
-      tipo: ["🛒", "🛠️", "💰", "♻️"],
+      tipo: ["🛒", "🛠", "💰", "♻️"],
       resolvido: ["✅", "❌", "📌", "⬅ BACK", "♻️"],
     };
     if (!allowed.canal.includes(value.canal) || !allowed.tipo.includes(value.tipo) || !allowed.resolvido.includes(value.resolvido)) {
