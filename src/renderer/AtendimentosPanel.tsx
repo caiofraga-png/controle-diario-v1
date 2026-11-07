@@ -1,7 +1,10 @@
 import { useState } from "react";
+import { saveAttendanceRow } from "../web/firebaseAttendanceService";
 
-type ParsedTicket = { link: string; codigo: string; nome: string };
-
+type AttendanceDraft = {
+  ticket: string; canal: string; codigo: string; nome: string;
+  tipo: string; resolvido: string; subtipo: string; motivoResolucao: string;
+};
 function valueAfterLabel(text: string, label: string): string {
   const lines = text.replace(/\r/g, "").split("\n");
   const target = label.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -16,76 +19,67 @@ function valueAfterLabel(text: string, label: string): string {
   }
   return "";
 }
+const channels = ["📞 ⬅", "☎ ➜", "🔵", "📱", "💬", "🏠", "💳", "📲"];
+const types = ["🛒", "🛠️", "💰", "♻️"];
+const resolutions = ["✅", "❌", "📌", "⬅ BACK", "♻️"];
+const emptyDraft: AttendanceDraft = { ticket:"", canal:"", codigo:"", nome:"", tipo:"", resolvido:"", subtipo:"", motivoResolucao:"" };
 
 export default function AtendimentosPanel() {
   const [ticketText, setTicketText] = useState("");
   const [ticketLink, setTicketLink] = useState("");
-  const [parsed, setParsed] = useState<ParsedTicket | null>(null);
+  const [draft, setDraft] = useState<AttendanceDraft | null>(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const update = (key: keyof AttendanceDraft, value: string) => setDraft(current => current ? { ...current, [key]: value } : current);
 
   function processTicket() {
-    setError("");
-    setCopied(false);
+    setError(""); setCopied(false);
     const nome = valueAfterLabel(ticketText, "Cliente");
     const codigo = valueAfterLabel(ticketText, "Código do Cliente");
-    if (!ticketLink.trim()) {
-      setParsed(null);
-      setError("INFORME O LINK DO TICKET.");
-      return;
-    }
-    if (!nome || nome === "Informações do Cliente") {
-      setParsed(null);
-      setError("NÃO FOI POSSÍVEL IDENTIFICAR O NOME DO CLIENTE. CONFIRA O TEXTO COPIADO.");
-      return;
-    }
-    setParsed({ link: ticketLink.trim(), codigo, nome });
+    if (!ticketLink.trim()) { setDraft(null); setError("INFORME O LINK DO TICKET."); return; }
+    if (!nome || nome === "Informações do Cliente") { setDraft(null); setError("NÃO FOI POSSÍVEL IDENTIFICAR O NOME DO CLIENTE. CONFIRA O TEXTO COPIADO."); return; }
+    setDraft({ ...emptyDraft, ticket: ticketLink.trim(), codigo, nome });
   }
 
   async function copyRow() {
-    if (!parsed) return;
-    // A pessoa seleciona a coluna C (TICKET). A saída cobre C:F:
-    // TICKET, CANAL (célula vazia), CÓDIGO e NOME.
-    const cells = [parsed.link, "", parsed.codigo, parsed.nome];
+    if (!draft || saving) return;
+    setSaving(true); setError(""); setCopied(false);
     try {
-      await navigator.clipboard.writeText(cells.join("\t"));
-      setCopied(true);
-      setError("");
-    } catch {
-      setError("NÃO FOI POSSÍVEL COPIAR AUTOMATICAMENTE. VERIFIQUE A PERMISSÃO DE ÁREA DE TRANSFERÊNCIA DO NAVEGADOR.");
-    }
+      await saveAttendanceRow(draft);
+      const cells = [draft.ticket, draft.canal, draft.codigo, draft.nome, draft.tipo, draft.resolvido, draft.subtipo, draft.motivoResolucao];
+      try { await navigator.clipboard.writeText(cells.join("\t")); setCopied(true); }
+      catch { setCopied(true); setError("ATENDIMENTO SALVO EM TAREFAS. A CÓPIA AUTOMÁTICA FALHOU; COPIE OS CAMPOS MANUALMENTE."); }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "NÃO FOI POSSÍVEL SALVAR O ATENDIMENTO.");
+    } finally { setSaving(false); }
   }
 
   return <section className="attendances-workspace">
-    <div className="workspace-intro">
-      <h2>Atendimentos</h2>
-      <p>Organize os dados principais do ticket.</p>
-    </div>
+    <div className="workspace-intro"><h2>Atendimentos</h2><p>Processe o ticket, revise os campos e copie a linha para a planilha.</p></div>
     <div className="attendance-form-card">
-      <label className="attendance-field">
-        <span>LINK DO TICKET</span>
-        <input value={ticketLink} onChange={e => { setTicketLink(e.target.value); setParsed(null); setCopied(false); }} />
-      </label>
-      <label className="attendance-field">
-        <span>CONTEÚDO COPIADO</span>
-        <textarea value={ticketText} onChange={e => { setTicketText(e.target.value); setParsed(null); setCopied(false); }} rows={12} placeholder="Cole o conteúdo do ticket aqui" />
-      </label>
+      <label className="attendance-field"><span>LINK DO TICKET</span><input value={ticketLink} onChange={e=>{setTicketLink(e.target.value);setDraft(null);setCopied(false);}} /></label>
+      <label className="attendance-field"><span>CONTEÚDO COPIADO</span><textarea value={ticketText} onChange={e=>{setTicketText(e.target.value);setDraft(null);setCopied(false);}} rows={12} placeholder="Cole o conteúdo do ticket aqui" /></label>
       <div className="attendance-actions">
-        <button className="attendance-primary" onClick={processTicket} disabled={!ticketText.trim() || !ticketLink.trim()}>PROCESSAR TICKET</button>
-        <button className="attendance-secondary" onClick={() => { setTicketText(""); setTicketLink(""); setParsed(null); setError(""); setCopied(false); }}>LIMPAR</button>
+        <button className="attendance-primary" onClick={processTicket} disabled={!ticketText.trim()||!ticketLink.trim()}>PROCESSAR TICKET</button>
+        <button className="attendance-secondary" onClick={()=>{setTicketText("");setTicketLink("");setDraft(null);setError("");setCopied(false);}}>LIMPAR</button>
       </div>
-      {error && <p className="attendance-error" role="alert">{error}</p>}
+      {error&&<p className="attendance-error" role="alert">{error}</p>}
     </div>
-    {parsed && <div className="attendance-preview-card">
-      <div className="attendance-preview-head"><h3>CONFERÊNCIA DOS DADOS</h3><span>PRONTO PARA COPIAR</span></div>
-      <dl>
-        <div><dt>TICKET</dt><dd>{parsed.link}</dd></div>
-        <div><dt>CÓDIGO</dt><dd>{parsed.codigo || "— (SEM CÓDIGO)"}</dd></div>
-        <div><dt>NOME</dt><dd>{parsed.nome}</dd></div>
-      </dl>
-      
-      <button className="attendance-primary" onClick={() => void copyRow()}>{copied ? "✓ COPIADO" : "COPIAR PARA A PLANILHA"}</button>
-      {copied && <p className="attendance-success">COPIADO. Selecione a célula C (TICKET) da nova linha e cole.</p>}
+    {draft&&<div className="attendance-preview-card">
+      <div className="attendance-preview-head"><h3>CONFERÊNCIA DOS DADOS</h3><span>EDITÁVEL</span></div>
+      <div className="attendance-edit-grid">
+        <label className="attendance-field"><span>TICKET</span><input value={draft.ticket} onChange={e=>update("ticket",e.target.value)}/></label>
+        <label className="attendance-field"><span>CANAL</span><select value={draft.canal} onChange={e=>update("canal",e.target.value)}><option value="">SELECIONE</option>{channels.map(x=><option key={x} value={x}>{x}</option>)}</select></label>
+        <label className="attendance-field"><span>CÓDIGO</span><input value={draft.codigo} onChange={e=>update("codigo",e.target.value)}/></label>
+        <label className="attendance-field"><span>NOME</span><input value={draft.nome} onChange={e=>update("nome",e.target.value)}/></label>
+        <label className="attendance-field"><span>TIPO</span><select value={draft.tipo} onChange={e=>update("tipo",e.target.value)}><option value="">SELECIONE</option>{types.map(x=><option key={x} value={x}>{x}</option>)}</select></label>
+        <label className="attendance-field"><span>RESOLVIDO?</span><select value={draft.resolvido} onChange={e=>update("resolvido",e.target.value)}><option value="">SELECIONE</option>{resolutions.map(x=><option key={x} value={x}>{x}</option>)}</select></label>
+        <label className="attendance-field"><span>SUBTIPO</span><input value={draft.subtipo} onChange={e=>update("subtipo",e.target.value)} placeholder="Preenchimento manual"/></label>
+        <label className="attendance-field"><span>MOTIVO RESOLUÇÃO/RETENÇÃO</span><textarea rows={3} value={draft.motivoResolucao} onChange={e=>update("motivoResolucao",e.target.value)} placeholder="Preenchimento manual"/></label>
+      </div>
+      <button className="attendance-primary" disabled={saving||!draft.ticket.trim()||!draft.nome.trim()} onClick={()=>void copyRow()}>{saving?"SALVANDO…":copied?"✓ COPIAR OUTRA VEZ":"COPIAR PARA PLANILHA"}</button>
+      {copied&&<p className="attendance-success">LINHA SALVA EM TAREFAS E COPIADA. COLE NA PLANILHA.</p>}
     </div>}
   </section>;
 }
