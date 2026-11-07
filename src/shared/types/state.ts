@@ -16,6 +16,19 @@ export interface ExpedienteCatalogSnapshot {
   layout: { ordemPerfis: string[]; ordemTarefas: Record<string, string[]> };
 }
 
+export interface AttendanceRecord {
+  id: string;
+  ticket: string;
+  canal: string;
+  codigo: string;
+  nome: string;
+  tipo: string;
+  resolvido: string;
+  subtipo: string;
+  motivoResolucao: string;
+  criadoEm: string;
+}
+
 export interface EstadoAtual {
   id: string;
   data: string;
@@ -23,6 +36,8 @@ export interface EstadoAtual {
   tarefas: TarefaSnapshot[];
   emailsGlobais: EmailSnapshot[];
   observacao: string;
+  /** Tickets saved during the active expediente and copied to immutable history on completion. */
+  atendimentos?: AttendanceRecord[];
   criadoEm: string;
   ultimaAlteracao: string;
   /** Immutable catalog/layout version captured when this expediente starts. */
@@ -38,6 +53,8 @@ export interface RegistroHistorico {
   tarefas: TarefaSnapshot[];
   emailsGlobais: EmailSnapshot[];
   observacao: string;
+  /** Tickets preserved with the completed expediente. */
+  atendimentos?: AttendanceRecord[];
   status: "CONCLUIDO";
   criadoEm: string;
   concluidoEm: string;
