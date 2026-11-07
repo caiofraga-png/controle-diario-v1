@@ -1,5 +1,6 @@
 import {
   collection,
+  collectionGroup,
   doc,
   getDocs,
   limit,
@@ -227,4 +228,78 @@ export async function deleteContact(id: string) {
   if (!users.empty) throw new Error("Não é possível excluir um contato utilizado por colaboradores. Reatribua os colaboradores primeiro.");
   await deleteDoc(doc(db, "organizationContacts", id));
   await audit("CONTACT_DELETED", id);
+}
+
+/**
+ * Consolidated read-only operational view for administrators and supervisors.
+ * Data is loaded only on explicit request to keep Firestore reads predictable.
+ */
+export async function loadManagementOverview() {
+  const { db } = requireFirebase();
+  const [users, sectorsSnapshot, contactsSnapshot, currentSnapshot, historySnapshot] = await Promise.all([
+    listOrganizationalUsers(),
+    getDocs(collection(db, "organizationSectors")),
+    getDocs(collection(db, "organizationContacts")),
+    getDocs(query(collectionGroup(db, "operational"), where("schemaVersion", "==", 1))),
+    getDocs(collectionGroup(db, "entries")),
+  ]);
+
+  const managers = new Map(users.filter(user => user.status === "approved").map(user => [user.uid, user]));
+  const sectors = new Map(sectorsSnapshot.docs.map(item => [item.id, String(item.data().name ?? "")]));
+  const contacts = new Map(contactsSnapshot.docs.map(item => [item.id, String(item.data().name ?? "")]));
+  const assignments = (uid: string) => {
+    const user = managers.get(uid);
+    return {
+      uid,
+      colaborador: user?.login || user?.email || uid,
+      setor: sectors.get(user?.sectorId ?? "") ?? "",
+      setorId: user?.sectorId ?? "",
+      contato: contacts.get(user?.contactId ?? "") ?? "",
+      contatoId: user?.contactId ?? "",
+      agente: user?.agent ?? "",
+    };
+  };
+
+  const expedientes: Record<string, unknown>[] = [];
+  const atendimentos: Record<string, unknown>[] = [];
+  for (const item of currentSnapshot.docs) {
+    if (item.id !== "currentState") continue;
+    const uid = item.ref.path.split("/")[1] ?? "";
+    if (!managers.has(uid)) continue;
+    const state = item.data().estado;
+    if (!state || typeof state !== "object") continue;
+    const assignment = assignments(uid);
+    expedientes.push({
+      id: item.ref.path, ...assignment, perfil: String(state.perfil?.nome ?? ""),
+      perfilId: String(state.perfil?.id ?? ""), data: String(state.data ?? ""),
+      situacao: "NÃO CONCLUÍDO", status: "NAO_CONCLUIDO",
+      tarefas: state.tarefas ?? [], observacao: String(state.observacao ?? ""),
+      atendimentos: state.atendimentos ?? [],
+    });
+    for (const row of state.atendimentos ?? []) atendimentos.push({
+      ...row, ...assignment, perfil: String(state.perfil?.nome ?? ""),
+      data: String(state.data ?? ""), situacaoExpediente: "NÃO CONCLUÍDO",
+    });
+  }
+  for (const item of historySnapshot.docs) {
+    const uid = item.ref.path.split("/")[1] ?? "";
+    if (!managers.has(uid)) continue;
+    const record = item.data();
+    if (record.status !== "CONCLUIDO") continue;
+    const assignment = assignments(uid);
+    expedientes.push({
+      id: item.ref.path, ...assignment, perfil: String(record.perfil?.nome ?? ""),
+      perfilId: String(record.perfil?.id ?? ""), data: String(record.data ?? ""),
+      situacao: "CONCLUÍDO", status: "CONCLUIDO",
+      tarefas: record.tarefas ?? [], observacao: String(record.observacao ?? ""),
+      atendimentos: record.atendimentos ?? [], concluidoEm: String(record.concluidoEm ?? ""),
+    });
+    for (const row of record.atendimentos ?? []) atendimentos.push({
+      ...row, ...assignment, perfil: String(record.perfil?.nome ?? ""),
+      data: String(record.data ?? ""), situacaoExpediente: "CONCLUÍDO",
+    });
+  }
+  expedientes.sort((a,b)=>String(b.data).localeCompare(String(a.data)) || String(a.colaborador).localeCompare(String(b.colaborador)));
+  atendimentos.sort((a,b)=>String(b.data).localeCompare(String(a.data)) || String(a.ticket).localeCompare(String(b.ticket)));
+  return { expedientes, atendimentos, totalColaboradores: managers.size, updatedAt: new Date().toISOString() };
 }
