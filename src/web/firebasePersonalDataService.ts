@@ -171,11 +171,14 @@ export class FirebasePersonalDataService {
     const { db } = requireFirebase();
     const snapshot = await getDoc(doc(db, "users", uid, "preferences", "attendance"));
     const value = snapshot.exists() ? snapshot.data() : {};
+    const padrao = ["ticket", "canal", "codigo", "nome", "tipo", "resolvido", "subtipo", "motivoResolucao"];
+    const ordemSalva = Array.isArray(value.ordemCampos) ? value.ordemCampos : [];
+    const ordemCampos = ordemSalva.length === padrao.length && new Set(ordemSalva).size === padrao.length && ordemSalva.every((item: unknown) => typeof item === "string" && padrao.includes(item)) ? ordemSalva : padrao;
     return {
       canal: typeof value.canal === "string" ? value.canal : "",
       tipo: value.tipo === "🛠️" ? "🛠" : typeof value.tipo === "string" ? value.tipo : "",
       resolvido: typeof value.resolvido === "string" ? value.resolvido : "",
-      ordemCampos: Array.isArray(value.ordemCampos) ? value.ordemCampos : ["ticket", "canal", "codigo", "nome", "tipo", "resolvido", "subtipo", "motivoResolucao"],
+      ordemCampos,
     };
   }
 
