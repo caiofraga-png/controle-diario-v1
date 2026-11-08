@@ -1,15 +1,15 @@
 {
-  "indexes": [
+  "indexes": [],
+  "fieldOverrides": [
     {
       "collectionGroup": "operational",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
+      "fieldPath": "schemaVersion",
+      "indexes": [
         {
-          "fieldPath": "schemaVersion",
-          "order": "ASCENDING"
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
         }
       ]
     }
-  ],
-  "fieldOverrides": []
+  ]
 }
