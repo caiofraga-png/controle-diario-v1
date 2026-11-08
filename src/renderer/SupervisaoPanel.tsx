@@ -1,4 +1,5 @@
 import { Fragment, useMemo, useState, type CSSProperties } from "react";
+import ExcelJS from "exceljs";
 
 type Row = Record<string, any>;
 type Overview = { expedientes: Row[]; atendimentos: Row[]; estrutura: { colaboradores: Row[]; setores: Row[]; contatos: Row[]; agentes: Row[]; perfis: Row[] }; totalColaboradores: number; updatedAt: string };
@@ -6,17 +7,34 @@ type Overview = { expedientes: Row[]; atendimentos: Row[]; estrutura: { colabora
 function unique(rows: Row[], key: string) {
   return [...new Set(rows.map(row => String(row[key] ?? "")).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"pt-BR"));
 }
-function csvCell(value: unknown) {
-  const text = String(value ?? "").replace(/\r?\n/g, " ");
-  return '"' + text.replace(/"/g, '""') + '"';
-}
-function exportCsv(name: string, headers: string[], rows: Row[], keys: string[]) {
-  const content = "\uFEFF" + [headers, ...rows.map(row => keys.map(key => String(row[key] ?? "")))].map(line => line.map(csvCell).join(";")).join("\r\n");
-  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+async function exportXlsx(name: string, headers: string[], rows: Row[], keys: string[]) {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "Controle Diário";
+  workbook.created = new Date();
+  const sheet = workbook.addWorksheet("Dados");
+  sheet.addRow(headers);
+  for (const row of rows) sheet.addRow(keys.map(key => row[key] ?? ""));
+  sheet.views = [{ state: "frozen", ySplit: 1 }];
+  sheet.autoFilter = { from: "A1", to: { row: 1, column: headers.length } };
+  sheet.getRow(1).font = { bold: true };
+  sheet.columns = headers.map((header, index) => ({
+    header, key: String(index), width: Math.min(42, Math.max(14, header.length + 3,
+      ...rows.slice(0, 100).map(row => String(row[keys[index]] ?? "").length + 2))),
+  }));
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
-  anchor.href = url; anchor.download = name; anchor.click();
+  anchor.href = url;
+  anchor.download = name.replace(/\\.csv$/i, ".xlsx");
+  anchor.click();
   URL.revokeObjectURL(url);
+}
+function cascadeOptions(rows: Row[], filters: Record<string, string>, key: string) {
+  const matching = rows.filter(row => Object.entries(filters).every(([filterKey, value]) =>
+    filterKey === key || !value || String(row[filterKey] ?? "").toLocaleLowerCase("pt-BR").includes(value.toLocaleLowerCase("pt-BR"))
+  ));
+  return unique(matching, key);
 }
 const selectStyle: CSSProperties = { minWidth: 150, padding: "8px", border: "1px solid var(--border, #cbd8ce)", borderRadius: 7, background: "var(--surface, #fff)", color: "inherit" };
 const inputStyle: React.CSSProperties = { ...selectStyle, minWidth: 130 };
@@ -97,19 +115,19 @@ export default function SupervisaoPanel() {
       <button type="button" className={section==="historico"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("historico")}>HISTÓRICO</button>
     </div>
     {!data ? <p>Clique em ATUALIZAR DADOS para consultar os registros.</p> : section==="expedientes" ? <>
-      <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><h3 style={{margin:0}}>Expedientes ({expedientes.length})</h3><button type="button" disabled={!expedientes.length} onClick={()=>exportCsv("expedientes-controle-diario.csv",["Colaborador","Setor","Contato","Agente","Perfil","Data","Situação"],expedientes,["colaborador","setor","contato","agente","perfil","data","situacao"])}>EXPORTAR PARA EXCEL (CSV)</button></div>
+      <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><h3 style={{margin:0}}>Expedientes ({expedientes.length})</h3><button type="button" disabled={!expedientes.length} onClick={()=>exportXlsx("expedientes-controle-diario.xlsx",["Login","Setor","Contato","Agente","Perfil","Data","Situação"],expedientes,["colaborador","setor","contato","agente","perfil","data","situacao"])}>EXPORTAR PARA EXCEL (CSV)</button></div>
       <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"end"}}>
         <label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>Situação<select style={selectStyle} value={status} onChange={event=>setStatus(event.target.value)}><option value="TODOS">Ambos</option><option value="NAO_CONCLUIDO">Não concluídos</option><option value="CONCLUIDO">Concluídos</option></select></label>
-        {select("Colaborador",expFilters.colaborador,options("colaborador"),v=>setExp("colaborador",v))}
+        {<label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>Login<input style={inputStyle} list="visao-logins" value={expFilters.colaborador} onChange={e=>setExp("colaborador",e.target.value)} placeholder="Pesquisar login"/><datalist id="visao-logins">{options("colaborador").map(item=><option key={item} value={item}/>)}</datalist></label>}
         {select("Setor",expFilters.setor,options("setor"),v=>setExp("setor",v))}
         {select("Contato",expFilters.contato,options("contato"),v=>setExp("contato",v))}
-        {select("Agente",expFilters.agente,options("agente"),v=>setExp("agente",v))}
+        {<label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>Agente<input style={inputStyle} list="visao-agentes" value={expFilters.agente} onChange={e=>setExp("agente",e.target.value)} placeholder="Pesquisar agente"/><datalist id="visao-agentes">{options("agente").map(item=><option key={item} value={item}/>)}</datalist></label>}
         {select("Perfil",expFilters.perfil,options("perfil"),v=>setExp("perfil",v))}
         <label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>Data<input style={inputStyle} type="date" value={expFilters.data} onChange={e=>setExp("data",e.target.value)}/></label>
       </div>
       <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><thead><tr>{["Colaborador","Setor","Contato","Agente","Perfil","Data","Situação"].map(x=><th key={x} style={{textAlign:"left",padding:9,borderBottom:"1px solid var(--border, #ccd8d0)"}}>{x}</th>)}</tr></thead><tbody>{expedientes.map(row=><Fragment key={row.id}><tr>{[row.colaborador,row.setor,row.contato,row.agente,row.perfil,row.data,row.situacao].map((value,i)=><td key={i} style={{padding:9,borderBottom:"1px solid var(--border, #e1e8e3)"}}>{String(value||"—")}</td>)}<td><button type="button" onClick={()=>setExpandedId(expandedId===row.id?null:row.id)}>{expandedId===row.id?"FECHAR":"DETALHES"}</button></td></tr>{expandedId===row.id&&<tr key={row.id+"-detail"}><td colSpan={8} style={{padding:12,background:"var(--surface-secondary, #f3f7f4)"}}><strong>Tarefas</strong><ul>{(row.tarefas??[]).map((task:Row)=><li key={task.id}>{task.nome} — {task.concluida?"Concluída":"Pendente"}</li>)}</ul><strong>Atendimentos registrados: {(row.atendimentos??[]).length}</strong>{(row.atendimentos??[]).length>0&&<ul>{(row.atendimentos??[]).map((item:Row)=><li key={item.id}>{item.ticket} · {item.canal} · {item.nome}</li>)}</ul>}<strong>Observação</strong><p>{row.observacao||"Sem observação."}</p>{row.concluidoEm&&<small>Concluído em: {new Date(row.concluidoEm).toLocaleString("pt-BR")}</small>}</td></tr>}</Fragment>)}</tbody></table></div>
     </> : section==="atendimentos" ? <>
-      <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><h3 style={{margin:0}}>Atendimentos ({atendimentos.length})</h3><button type="button" disabled={!atendimentos.length} onClick={()=>exportCsv("atendimentos-controle-diario.csv",["Ticket","Canal","Código","Nome","Tipo","Resolvido","Subtipo","Colaborador responsável","Setor","Contato","Data do expediente"],atendimentos,["ticket","canal","codigo","nome","tipo","resolvido","subtipo","colaborador","setor","contato","data"])}>EXPORTAR PARA EXCEL (CSV)</button></div>
+      <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><h3 style={{margin:0}}>Atendimentos ({atendimentos.length})</h3><button type="button" disabled={!atendimentos.length} onClick={()=>exportCsv("atendimentos-controle-diario.xlsx",["Ticket","Canal","Código","Nome","Tipo","Resolvido","Subtipo","Login responsável","Setor","Contato","Data do expediente"],atendimentos,["ticket","canal","codigo","nome","tipo","resolvido","subtipo","colaborador","setor","contato","data"])}>EXPORTAR PARA EXCEL (CSV)</button></div>
       <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"end"}}>
         {select("Canal",attFilters.canal,attOptions("canal"),v=>setAtt("canal",v))}
         <label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>Código<input style={inputStyle} value={attFilters.codigo} onChange={e=>setAtt("codigo",e.target.value)} placeholder="Buscar código"/></label>
@@ -125,9 +143,9 @@ export default function SupervisaoPanel() {
       <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><thead><tr>{["Ticket","Canal","Código","Nome","Tipo","Resolvido","Subtipo","Colaborador","Setor","Contato","Data"].map(x=><th key={x} style={{textAlign:"left",padding:9,borderBottom:"1px solid var(--border, #ccd8d0)"}}>{x}</th>)}</tr></thead><tbody>{atendimentos.map((row,index)=><tr key={row.id||index}>{[row.ticket,row.canal,row.codigo,row.nome,row.tipo,row.resolvido,row.subtipo,row.colaborador,row.setor,row.contato,row.data].map((value,i)=><td key={i} style={{padding:9,borderBottom:"1px solid var(--border, #e1e8e3)"}}>{String(value||"—")}</td>)}</tr>)}</tbody></table></div>
     </> : section==="estrutura" ? <>
       <h3>Estrutura organizacional</h3>
-      <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><strong>Colaboradores ({data.estrutura.colaboradores.length})</strong><button type="button" disabled={!data.estrutura.colaboradores.length} onClick={()=>exportCsv("estrutura-colaboradores.csv",["Colaborador","E-mail","Agente","Setor","Contato","Perfis vinculados","Status"],data.estrutura.colaboradores,["colaborador","email","agente","setor","contato","perfis","status"])}>EXPORTAR PARA EXCEL (CSV)</button></div>
+      <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><strong>Colaboradores ({data.estrutura.colaboradores.length})</strong><button type="button" disabled={!data.estrutura.colaboradores.length} onClick={()=>exportCsv("estrutura-colaboradores.xlsx",["Colaborador","E-mail","Agente","Setor","Contato","Perfis vinculados","Status"],data.estrutura.colaboradores,["colaborador","email","agente","setor","contato","perfis","status"])}>EXPORTAR PARA EXCEL (CSV)</button></div>
       <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><thead><tr>{["Colaborador","Agente","Setor","Contato","Perfis vinculados","Status"].map(x=><th key={x} style={{textAlign:"left",padding:9,borderBottom:"1px solid var(--border, #ccd8d0)"}}>{x}</th>)}</tr></thead><tbody>{data.estrutura.colaboradores.map(row=><tr key={row.uid}>{[row.colaborador,row.agente,row.setor,row.contato,row.perfis,row.status].map((value,i)=><td key={i} style={{padding:9,borderBottom:"1px solid var(--border, #e1e8e3)"}}>{String(value||"—")}</td>)}</tr>)}</tbody></table></div>
-      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}><button type="button" disabled={!data.estrutura.setores.length} onClick={()=>exportCsv("estrutura-setores.csv",["Setor","Status"],data.estrutura.setores,["nome","ativo"])}>EXPORTAR SETORES (CSV)</button><button type="button" disabled={!data.estrutura.contatos.length} onClick={()=>exportCsv("estrutura-contatos.csv",["Contato","Setor","Status"],data.estrutura.contatos,["nome","setor","ativo"])}>EXPORTAR CONTATOS (CSV)</button><button type="button" disabled={!data.estrutura.agentes.length} onClick={()=>exportCsv("estrutura-agentes.csv",["Agente","Colaboradores vinculados"],data.estrutura.agentes,["nome","colaboradores"])}>EXPORTAR AGENTES (CSV)</button><button type="button" disabled={!data.estrutura.perfis.length} onClick={()=>exportCsv("estrutura-perfis.csv",["Perfil","Colaboradores vinculados"],data.estrutura.perfis,["nome","colaboradores"])}>EXPORTAR PERFIS (CSV)</button></div>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}><button type="button" disabled={!data.estrutura.setores.length} onClick={()=>exportCsv("estrutura-setores.xlsx",["Setor","Status"],data.estrutura.setores,["nome","ativo"])}>EXPORTAR SETORES (CSV)</button><button type="button" disabled={!data.estrutura.contatos.length} onClick={()=>exportCsv("estrutura-contatos.xlsx",["Contato","Setor","Status"],data.estrutura.contatos,["nome","setor","ativo"])}>EXPORTAR CONTATOS (CSV)</button><button type="button" disabled={!data.estrutura.agentes.length} onClick={()=>exportCsv("estrutura-agentes.xlsx",["Agente","Colaboradores vinculados"],data.estrutura.agentes,["nome","colaboradores"])}>EXPORTAR AGENTES (CSV)</button><button type="button" disabled={!data.estrutura.perfis.length} onClick={()=>exportCsv("estrutura-perfis.xlsx",["Perfil","Colaboradores vinculados"],data.estrutura.perfis,["nome","colaboradores"])}>EXPORTAR PERFIS (CSV)</button></div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16}}>
         <div><strong>Setores ({data.estrutura.setores.length})</strong><ul>{data.estrutura.setores.map(row=><li key={row.id}>{row.nome} · {row.ativo?"Ativo":"Inativo"}</li>)}</ul></div>
         <div><strong>Contatos ({data.estrutura.contatos.length})</strong><ul>{data.estrutura.contatos.map(row=><li key={row.id}>{row.nome} — {row.setor} · {row.ativo?"Ativo":"Inativo"}</li>)}</ul></div>
@@ -135,13 +153,13 @@ export default function SupervisaoPanel() {
         <div><strong>Perfis ({data.estrutura.perfis.length})</strong><ul>{data.estrutura.perfis.map(row=><li key={row.id}><strong>{row.nome}</strong><small> — {(row.colaboradores??[]).join(", ") || "Sem colaboradores vinculados"}</small></li>)}</ul></div>
       </div>
     </> : <>
-      <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><h3 style={{margin:0}}>Histórico completo ({historico.length})</h3><button type="button" disabled={!historico.length} onClick={()=>exportCsv("historico-expedientes-controle-diario.csv",["Colaborador","Setor","Contato","Agente","Perfil","Data","Situação do encerramento","Concluído em"],historico,["colaborador","setor","contato","agente","perfil","data","situacao","concluidoEm"])}>EXPORTAR PARA EXCEL (CSV)</button></div>
+      <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><h3 style={{margin:0}}>Histórico completo ({historico.length})</h3><button type="button" disabled={!historico.length} onClick={()=>exportCsv("historico-expedientes-controle-diario.xlsx",["Colaborador","Setor","Contato","Agente","Perfil","Data","Situação do encerramento","Concluído em"],historico,["colaborador","setor","contato","agente","perfil","data","situacao","concluidoEm"])}>EXPORTAR PARA EXCEL (CSV)</button></div>
       <p>Consulta dos expedientes concluídos. Os registros são apresentados sem alterar o histórico original.</p>
       <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"end"}}>
-        {select("Colaborador",historyFilters.colaborador,options("colaborador"),v=>setHistory("colaborador",v))}
+        {<label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>Login<input style={inputStyle} list="historico-logins" value={historyFilters.colaborador} onChange={e=>setHistory("colaborador",e.target.value)} placeholder="Pesquisar login"/><datalist id="historico-logins">{cascadeOptions(data?.expedientes ?? [],historyFilters,"colaborador").map(item=><option key={item} value={item}/>)}</datalist></label>}
         {select("Setor",historyFilters.setor,options("setor"),v=>setHistory("setor",v))}
         {select("Contato",historyFilters.contato,options("contato"),v=>setHistory("contato",v))}
-        {select("Agente",historyFilters.agente,options("agente"),v=>setHistory("agente",v))}
+        {<label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>Agente<input style={inputStyle} list="historico-agentes" value={historyFilters.agente} onChange={e=>setHistory("agente",e.target.value)} placeholder="Pesquisar agente"/><datalist id="historico-agentes">{cascadeOptions(data?.expedientes ?? [],historyFilters,"agente").map(item=><option key={item} value={item}/>)}</datalist></label>}
         {select("Perfil",historyFilters.perfil,options("perfil"),v=>setHistory("perfil",v))}
         <label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>Data<input style={inputStyle} type="date" value={historyFilters.data} onChange={e=>setHistory("data",e.target.value)}/></label>
       </div>
