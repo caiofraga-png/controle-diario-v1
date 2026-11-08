@@ -45,6 +45,16 @@ export interface EstadoAtual {
 }
 
 export interface RegistroHistorico {
+  /** Organizational assignment captured at completion; optional for legacy history records. */
+  assignment?: {
+    uid: string;
+    login: string;
+    agent: string;
+    sectorId: string;
+    sectorName: string;
+    contactId: string;
+    contactName: string;
+  };
   schemaVersion: 1;
   id: string;
   versao: number;
