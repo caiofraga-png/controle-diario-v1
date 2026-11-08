@@ -265,7 +265,17 @@ export class FirebaseOperationalService {
       }
 
       const recordRef = doc(history, recordId);
+      const assignment = {
+        uid,
+        login: String(profile.login ?? ""),
+        agent: String(profile.agent ?? ""),
+        sectorId,
+        sectorName,
+        contactId,
+        contactName,
+      };
       const record: HistoryEntry = {
+        assignment,
         schemaVersion: 1,
         id: persistedState.data + "-R" + String(versao).padStart(3, "0"),
         versao,
@@ -281,15 +291,6 @@ export class FirebaseOperationalService {
         ultimaAlteracao: persistedState.ultimaAlteracao,
         origemVersao: null,
         ownerUid: uid,
-      };
-      const assignment = {
-        uid,
-        login: String(profile.login ?? ""),
-        agent: String(profile.agent ?? ""),
-        sectorId,
-        sectorName,
-        contactId,
-        contactName,
       };
       const indexRecord = {
         ownerUid: uid,
