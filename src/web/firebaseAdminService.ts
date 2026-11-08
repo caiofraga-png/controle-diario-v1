@@ -261,9 +261,9 @@ export async function loadManagementOverview() {
       uid,
       colaborador: String(source.login ?? user?.login ?? user?.email ?? uid),
       setor: String(source.sectorName ?? sectors.get(sectorId) ?? ""),
-      setorId,
+      setorId: sectorId,
       contato: String(source.contactName ?? contacts.get(contactId) ?? ""),
-      contatoId,
+      contatoId: contactId,
       agente: String(source.agent ?? user?.agent ?? ""),
     };
   };
