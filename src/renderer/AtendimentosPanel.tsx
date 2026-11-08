@@ -35,7 +35,7 @@ export default function AtendimentosPanel({ onSave, hasExpediente }: { onSave: (
   const [preferences, setPreferences] = useState({ canal: "", tipo: "", resolvido: "" });
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   const [fieldOrder, setFieldOrder] = useState<string[]>(["ticket","canal","codigo","nome","tipo","resolvido","subtipo","motivoResolucao"]);
-  const [subtypeOptions, setSubtypeOptions] = useState<{id:string;name:string}[]>([]);
+  const [subtypeOptions, setSubtypeOptions] = useState<{id:string;name:string}[]>([]);\n  const [motiveOptions, setMotiveOptions] = useState<string[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -109,7 +109,7 @@ export default function AtendimentosPanel({ onSave, hasExpediente }: { onSave: (
         <label className="attendance-field"><span>TIPO</span><select value={draft.tipo} disabled={!preferencesLoaded} onChange={e=>{update("tipo",e.target.value);void updatePreference("tipo",e.target.value);}}><option value="">SELECIONE</option>{types.map(x=><option key={x} value={x}>{x}</option>)}</select></label>
         <label className="attendance-field"><span>RESOLVIDO?</span><select value={draft.resolvido} disabled={!preferencesLoaded} onChange={e=>{update("resolvido",e.target.value);void updatePreference("resolvido",e.target.value);}}><option value="">SELECIONE</option>{resolutions.map(x=><option key={x} value={x}>{x}</option>)}</select></label>
         <label className="attendance-field"><span>SUBTIPO</span><input list="attendance-subtype-options" value={draft.subtipo} onChange={e=>update("subtipo",e.target.value)} placeholder="Digite ou selecione um subtipo"/><datalist id="attendance-subtype-options">{subtypeOptions.map(item=><option key={item.id} value={item.name}/>)}</datalist></label>
-        <label className="attendance-field"><span>MOTIVO RESOLUÇÃO/RETENÇÃO</span><textarea rows={3} value={draft.motivoResolucao} onChange={e=>update("motivoResolucao",e.target.value)} placeholder="Preenchimento manual"/></label>
+        <label className="attendance-field"><span>MOTIVO RESOLUÇÃO/RETENÇÃO</span><input list="attendance-motive-options" value={draft.motivoResolucao} onChange={e=>update("motivoResolucao",e.target.value)} placeholder="Selecione uma resposta ou digite livremente"/><datalist id="attendance-motive-options">{motiveOptions.map((item,index)=><option key={`${index}-${item}`} value={item}/>)}</datalist></label>
       </div>
       <button className="attendance-primary" disabled={saving||!hasExpediente||!draft.ticket.trim()||!draft.nome.trim()} onClick={()=>void copyRow()}>{saving?"SALVANDO…":copied?"COPIAR PARA PLANILHA":"COPIAR PARA PLANILHA"}</button>
       {copied&&<p className="attendance-success">Ticket salvo no sistema. Cole na planilha</p>}
