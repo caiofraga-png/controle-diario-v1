@@ -40,6 +40,8 @@ export default function AtendimentosPanel({ onSave, hasExpediente }: { onSave: (
 
   useEffect(() => {
     let active = true;
+    window.controleDiario.firebase.listAttendanceSubtypes().then((items:{id:string;name:string}[])=>{if(active)setSubtypeOptions(items);}).catch(()=>{});
+    window.controleDiario.firebase.loadAttendanceMotives().then((items:string[])=>{if(active)setMotiveOptions(items);}).catch(()=>{});
     window.controleDiario.firebase.loadAttendancePreferences()
       .then((value: { canal: string; tipo: string; resolvido: string; ordemCampos: string[] }) => {
         if (active) { setPreferences({ canal: value.canal, tipo: value.tipo, resolvido: value.resolvido }); setFieldOrder(value.ordemCampos); }
