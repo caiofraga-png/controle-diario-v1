@@ -125,7 +125,12 @@ export default function ConfigurationPanel({ initial, onSave, onSaveLayout, onCl
   ];
   const [attendanceOrder,setAttendanceOrder]=useState<string[]>(attendanceFields.map(field=>field.key));
   const [attendanceOrderLoaded,setAttendanceOrderLoaded]=useState(false);
-  const [attendanceOrderSaving,setAttendanceOrderSaving]=useState(false);\n  const [subtypeCatalog,setSubtypeCatalog]=useState<{id:string;name:string;active:boolean}[]>([]);\n  const [subtypeBusy,setSubtypeBusy]=useState(false);\n  const [motiveItems,setMotiveItems]=useState<string[]>([]);\n  const [motiveNew,setMotiveNew]=useState("");\n  const [motiveBusy,setMotiveBusy]=useState(false);
+  const [attendanceOrderSaving,setAttendanceOrderSaving]=useState(false);
+  const [subtypeCatalog,setSubtypeCatalog]=useState<{id:string;name:string;active:boolean}[]>([]);
+  const [subtypeBusy,setSubtypeBusy]=useState(false);
+  const [motiveItems,setMotiveItems]=useState<string[]>([]);
+  const [motiveNew,setMotiveNew]=useState("");
+  const [motiveBusy,setMotiveBusy]=useState(false);
   useEffect(() => {
     let active = true;
     window.controleDiario.firebase.loadAttendanceFieldOrder()
@@ -134,7 +139,9 @@ export default function ConfigurationPanel({ initial, onSave, onSaveLayout, onCl
       .finally(() => { if(active) setAttendanceOrderLoaded(true); });
     return () => { active = false; };
   }, []);
-  useEffect(() => setPromotionItems(promotions), [promotions]);\n  useEffect(() => { if(!canManageCatalog)return; let active=true; window.controleDiario.firebase.loadAttendanceMotives().then((items:string[])=>{if(active)setMotiveItems(items);}).catch((error:unknown)=>{if(active)setLocalMessage(error instanceof Error?error.message:"NÃO FOI POSSÍVEL CARREGAR AS RESPOSTAS SALVAS.");}); return ()=>{active=false;}; }, [canManageCatalog]);\n  useEffect(() => { if(!canManageCatalog)return; let active=true; window.controleDiario.firebase.listAttendanceSubtypeCatalog().then((items:any[])=>{if(active)setSubtypeCatalog(items);}).catch((error:unknown)=>{if(active)setLocalMessage(error instanceof Error?error.message:"NÃO FOI POSSÍVEL CARREGAR OS SUBTIPOS.");}); return ()=>{active=false;}; }, [canManageCatalog]);
+  useEffect(() => setPromotionItems(promotions), [promotions]);
+  useEffect(() => { if(!canManageCatalog)return; let active=true; window.controleDiario.firebase.loadAttendanceMotives().then((items:string[])=>{if(active)setMotiveItems(items);}).catch((error:unknown)=>{if(active)setLocalMessage(error instanceof Error?error.message:"NÃO FOI POSSÍVEL CARREGAR AS RESPOSTAS SALVAS.");}); return ()=>{active=false;}; }, [canManageCatalog]);
+  useEffect(() => { if(!canManageCatalog)return; let active=true; window.controleDiario.firebase.listAttendanceSubtypeCatalog().then((items:any[])=>{if(active)setSubtypeCatalog(items);}).catch((error:unknown)=>{if(active)setLocalMessage(error instanceof Error?error.message:"NÃO FOI POSSÍVEL CARREGAR OS SUBTIPOS.");}); return ()=>{active=false;}; }, [canManageCatalog]);
   // Keep the editor synchronized with the latest personal configuration returned by Firebase.
   // This is important when a save completes and the parent reloads the persisted layout.
   useEffect(() => { setDraft(clone(initial)); }, [initial]);
