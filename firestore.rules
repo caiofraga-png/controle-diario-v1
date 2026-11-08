@@ -214,9 +214,13 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
-      // Any operational document not explicitly modeled above remains denied.
+      // Managers can query the operational collection group. Employees remain
+      // restricted to documents carrying their own UID; writes stay governed
+      // by the specific current-state and append-only history matches above.
       match /operational/{document=**} {
-        allow read, write: if false;
+        allow read: if activeManager()
+          || (approvedUser() && request.auth.uid == uid && resource.data.ownerUid == uid);
+        allow write: if false;
       }
     }
 
