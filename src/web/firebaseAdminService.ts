@@ -249,7 +249,8 @@ export async function loadManagementOverview() {
   const managers = new Map(users.map(user => [user.uid, user] as const));
   const sectors = new Map(sectorsSnapshot.docs.map(item => [item.id, String(item.data().name ?? "")] as const));
   const contacts = new Map(contactsSnapshot.docs.map(item => [item.id, String(item.data().name ?? "")] as const));
-  const profileNames = new Map((catalog?.perfis.perfis ?? []).map(profile => [profile.id, profile.nome] as const));
+  const profiles = catalog?.perfis.perfis ?? [];
+  const profileNames = new Map(profiles.map(profile => [profile.id, profile.nome] as const));
   const assignments = (uid: string, snapshot?: Record<string, unknown>) => {
     const user = managers.get(uid);
     // Prefer the assignment saved with the historical record. Older records
@@ -313,6 +314,15 @@ export async function loadManagementOverview() {
     colaboradores: users.map(user => ({ uid: user.uid, colaborador: user.login || user.email || user.uid, email: user.email, agente: user.agent, setor: sectors.get(user.sectorId) ?? "", contato: contacts.get(user.contactId) ?? "", perfis: (user.allowedProfileIds ?? []).map(id => profileNames.get(id) ?? id).join(", "), status: user.status })),
     setores: sectorsSnapshot.docs.map(item => ({ id: item.id, nome: String(item.data().name ?? ""), ativo: item.data().active === true })),
     contatos: contactsSnapshot.docs.map(item => ({ id: item.id, nome: String(item.data().name ?? ""), setor: sectors.get(String(item.data().sectorId ?? "")) ?? "", ativo: item.data().active === true })),
+    agentes: [...new Set(users.map(user => user.agent.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR")).map(nome => ({
+      nome,
+      colaboradores: users.filter(user => user.agent.trim() === nome).map(user => user.login || user.email || user.uid).sort((a, b) => a.localeCompare(b, "pt-BR")),
+    })),
+    perfis: profiles.filter(profile => profile.ativo).map(profile => ({
+      id: profile.id,
+      nome: profile.nome,
+      colaboradores: users.filter(user => (user.allowedProfileIds ?? []).includes(profile.id)).map(user => user.login || user.email || user.uid).sort((a, b) => a.localeCompare(b, "pt-BR")),
+    })).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
   };
   return { expedientes, atendimentos, estrutura, totalColaboradores: users.filter(user => user.status === "approved").length, updatedAt: new Date().toISOString() };
 }
