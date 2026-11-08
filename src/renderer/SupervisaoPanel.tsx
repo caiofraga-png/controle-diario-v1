@@ -83,7 +83,8 @@ export default function SupervisaoPanel() {
   ), [data, historyFilters]);
 
   const atendimentos = useMemo(() => (data?.atendimentos ?? []).filter(row =>
-    (!attFilters.ticket || String(row.ticket ?? "").toLowerCase().includes(attFilters.ticket.toLowerCase())) &&\n    (!attFilters.canal || row.canal === attFilters.canal) &&
+    (!attFilters.ticket || String(row.ticket ?? "").toLowerCase().includes(attFilters.ticket.toLowerCase())) &&
+    (!attFilters.canal || row.canal === attFilters.canal) &&
     (!attFilters.codigo || String(row.codigo ?? "").toLowerCase().includes(attFilters.codigo.toLowerCase())) &&
     (!attFilters.nome || String(row.nome ?? "").toLowerCase().includes(attFilters.nome.toLowerCase())) &&
     (!attFilters.tipo || row.tipo === attFilters.tipo) &&
