@@ -8,6 +8,7 @@ import { FirebaseWorkflowService } from "./firebaseWorkflowService";
 import { loadMaintenanceHistory, saveExternalMaintenance, subscribeExternalMaintenances } from "./firebaseMaintenanceService";
 import { loadManagementOverview } from "./firebaseAdminService";
 import { ensureAttendanceSubtype, listAttendanceSubtypes, listAttendanceSubtypeCatalog, deactivateAttendanceSubtype } from "./firebaseAttendanceSubtypeService";
+import { loadAttendanceMotives, saveAttendanceMotives } from "./firebaseAttendanceMotivesService";
 
 
 const firebasePersonalData = new FirebasePersonalDataService();
@@ -41,7 +42,7 @@ export function installWebBridge(){
    ensureAttendanceSubtype,
    listAttendanceSubtypes,
    listAttendanceSubtypeCatalog,
-   deactivateAttendanceSubtype,
+   deactivateAttendanceSubtype,\n   loadAttendanceMotives,\n   saveAttendanceMotives,
    loadCurrentState:()=>firebaseOperational.loadCurrentState(),
    saveCurrentState:(state:any)=>firebaseOperational.saveCurrentState(state),
    completeState:(state:any,completedAt?:string)=>firebaseOperational.completeState(state,completedAt),
