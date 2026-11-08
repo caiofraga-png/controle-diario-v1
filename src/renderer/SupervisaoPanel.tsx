@@ -82,7 +82,9 @@ export default function SupervisaoPanel() {
   const [expFilters, setExpFilters] = useState({ colaborador:"", setor:"", contato:"", agente:"", perfil:"", data:"" });
   const [attFilters, setAttFilters] = useState({ ticket:"", canal:"", codigo:"", nome:"", tipo:"", resolvido:"", subtipo:"", colaborador:"", setor:"", contato:"", data:"" });
   const [historyFilters, setHistoryFilters] = useState({ colaborador:"", setor:"", contato:"", agente:"", perfil:"", data:"" });
-  const [structureFilters, setStructureFilters] = useState({ colaborador:"", agente:"", setor:"", contato:"", perfis:"", status:"" });\n  const [attendancePage, setAttendancePage] = useState(1);\n  const attendancePageSize = 30;
+  const [structureFilters, setStructureFilters] = useState({ colaborador:"", agente:"", setor:"", contato:"", perfis:"", status:"" });
+  const [attendancePage, setAttendancePage] = useState(1);
+  const attendancePageSize = 30;
 
   async function refresh() {
     setBusy(true); setMessage("");
@@ -129,7 +131,9 @@ export default function SupervisaoPanel() {
     (!attFilters.data || row.data === attFilters.data)
   ), [data, attFilters]);
 
-  const attendancePageCount = Math.max(1, Math.ceil(atendimentos.length / attendancePageSize));\n  const visibleAttendances = atendimentos.slice((attendancePage - 1) * attendancePageSize, attendancePage * attendancePageSize);\n  const setExp = (key: string, value: string) => setExpFilters(current => ({...current,[key]:value}));
+  const attendancePageCount = Math.max(1, Math.ceil(atendimentos.length / attendancePageSize));
+  const visibleAttendances = atendimentos.slice((attendancePage - 1) * attendancePageSize, attendancePage * attendancePageSize);
+  const setExp = (key: string, value: string) => setExpFilters(current => ({...current,[key]:value}));
   const setAtt = (key: string, value: string) => { setAttendancePage(1); setAttFilters(current => ({...current,[key]:value})); };
   const setHistory = (key: string, value: string) => setHistoryFilters(current => ({...current,[key]:value}));
   const setStructure = (key: string, value: string) => setStructureFilters(current => ({...current,[key]:value}));
