@@ -620,6 +620,18 @@ service cloud.firestore {
       allow write: if activeAdmin();
     }
 
+    match /settings/attendanceMotives {
+      allow read: if approvedUser();
+      allow create, update: if activeManager()
+        && request.resource.data.keys().hasOnly(["schemaVersion", "items", "updatedByUid", "updatedAt"])
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.items is list
+        && request.resource.data.items.size() <= 50
+        && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
     match /settings/{settingId} {
       allow read: if approvedUser();
       allow write: if activeAdmin();
