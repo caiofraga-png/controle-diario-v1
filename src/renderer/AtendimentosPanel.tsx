@@ -62,8 +62,11 @@ export default function AtendimentosPanel({ onSave, hasExpediente }: { onSave: (
 
   function processTicket() {
     setError(""); setCopied(false);
-    const nome = valueAfterLabel(ticketText, "Cliente");
-    const codigo = valueAfterLabel(ticketText, "Código do Cliente");
+    // Pré-cadastro não possui código de cliente; o nome aparece logo após esse rótulo.
+    const preCadastroNome = valueAfterLabel(ticketText, "Pré Cadastro");
+    const isPreCadastro = Boolean(preCadastroNome);
+    const nome = isPreCadastro ? preCadastroNome : valueAfterLabel(ticketText, "Cliente");
+    const codigo = isPreCadastro ? "PRÉ-CADASTRO" : valueAfterLabel(ticketText, "Código do Cliente");
     if (!ticketLink.trim()) { setDraft(null); setError("INFORME O LINK DO TICKET."); return; }
     if (!nome || nome === "Informações do Cliente") { setDraft(null); setError("NÃO FOI POSSÍVEL IDENTIFICAR O NOME DO CLIENTE. CONFIRA O TEXTO COPIADO."); return; }
     setDraft({ ...emptyDraft, ticket: ticketLink.trim(), codigo, nome, ...preferences });
