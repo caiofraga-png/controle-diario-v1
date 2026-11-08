@@ -615,6 +615,22 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Collection-group reads used by Visão Geral. The recursive path is
+    // required because these queries span each user's operational subcollection.
+    // Managers can read across collaborators; employees must constrain queries
+    // to documents carrying their own ownerUid. No collection-group writes.
+    match /{path=**}/operational/{documentId} {
+      allow read: if activeManager()
+        || (approvedUser() && resource.data.ownerUid == request.auth.uid);
+      allow write: if false;
+    }
+
+    match /{path=**}/entries/{entryId} {
+      allow read: if activeManager()
+        || (approvedUser() && resource.data.ownerUid == request.auth.uid);
+      allow write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
