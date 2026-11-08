@@ -4,7 +4,7 @@ import NotificationPreferencesPanel from "./NotificationPreferencesPanel";
 import MaintenancePermissionPanel from "./MaintenancePermissionPanel";
 
 type Config = any;
-type Tab = "aparencia" | "perfis" | "tarefas" | "email" | "promocoes" | "avisos" | "layout" | "atalhos" | "atendimentos";
+type Tab = "aparencia" | "perfis" | "tarefas" | "email" | "promocoes" | "avisos" | "layout" | "atalhos" | "atendimentos" | "subtipos";
 type ThemePreference = "corporate-light" | "corporate-dark" | "elegant-light" | "midnight-blue" | "midnight-violet" | "blue-light" | "system";
 
 function clone<T>(v:T):T { return JSON.parse(JSON.stringify(v)); }
@@ -125,7 +125,7 @@ export default function ConfigurationPanel({ initial, onSave, onSaveLayout, onCl
   ];
   const [attendanceOrder,setAttendanceOrder]=useState<string[]>(attendanceFields.map(field=>field.key));
   const [attendanceOrderLoaded,setAttendanceOrderLoaded]=useState(false);
-  const [attendanceOrderSaving,setAttendanceOrderSaving]=useState(false);
+  const [attendanceOrderSaving,setAttendanceOrderSaving]=useState(false);\n  const [subtypeCatalog,setSubtypeCatalog]=useState<{id:string;name:string;active:boolean}[]>([]);\n  const [subtypeBusy,setSubtypeBusy]=useState(false);
   useEffect(() => {
     let active = true;
     window.controleDiario.firebase.loadAttendanceFieldOrder()
@@ -134,7 +134,7 @@ export default function ConfigurationPanel({ initial, onSave, onSaveLayout, onCl
       .finally(() => { if(active) setAttendanceOrderLoaded(true); });
     return () => { active = false; };
   }, []);
-  useEffect(() => setPromotionItems(promotions), [promotions]);
+  useEffect(() => setPromotionItems(promotions), [promotions]);\n  useEffect(() => { if(!canManageCatalog)return; let active=true; window.controleDiario.firebase.listAttendanceSubtypeCatalog().then((items:any[])=>{if(active)setSubtypeCatalog(items);}).catch((error:unknown)=>{if(active)setLocalMessage(error instanceof Error?error.message:"NÃO FOI POSSÍVEL CARREGAR OS SUBTIPOS.");}); return ()=>{active=false;}; }, [canManageCatalog]);
   // Keep the editor synchronized with the latest personal configuration returned by Firebase.
   // This is important when a save completes and the parent reloads the persisted layout.
   useEffect(() => { setDraft(clone(initial)); }, [initial]);
@@ -224,6 +224,15 @@ export default function ConfigurationPanel({ initial, onSave, onSaveLayout, onCl
     } finally { setAttendanceOrderSaving(false); }
   }
 
+  async function deactivateSubtype(item:{id:string;name:string}) {
+    if(!window.confirm(`DESATIVAR O SUBTIPO "${item.name}"? Ele deixará de aparecer nas sugestões, mas será preservado nos atendimentos antigos.`)) return;
+    setSubtypeBusy(true); setLocalMessage("");
+    try { await window.controleDiario.firebase.deactivateAttendanceSubtype(item.id); setSubtypeCatalog(current=>current.map(row=>row.id===item.id?{...row,active:false}:row)); setLocalMessage("SUBTIPO DESATIVADO. OS REGISTROS ANTIGOS FORAM PRESERVADOS."); }
+    catch(error){setLocalMessage(error instanceof Error?error.message:"NÃO FOI POSSÍVEL DESATIVAR O SUBTIPO.");}
+    finally{setSubtypeBusy(false);}
+  }
+  function renderSubtypes(){ return <section className="layout-editor"><h3>CATÁLOGO DE SUBTIPOS</h3><p>Os novos subtipos são adicionados automaticamente quando utilizados em um atendimento. Aqui, Administração e Supervisão podem consultar e desativar opções inseridas incorretamente.</p><strong>ATIVOS ({subtypeCatalog.filter(item=>item.active).length})</strong>{subtypeCatalog.filter(item=>item.active).length===0?<p>NENHUM SUBTIPO CADASTRADO.</p>:<div style={{display:"grid",gap:8}}>{subtypeCatalog.filter(item=>item.active).map(item=><div className="drag-row" key={item.id}><span>{item.name}</span><button type="button" disabled={subtypeBusy} onClick={()=>void deactivateSubtype(item)}>DESATIVAR</button></div>)}</div>}<details><summary>SUBTIPOS DESATIVADOS ({subtypeCatalog.filter(item=>!item.active).length})</summary><ul>{subtypeCatalog.filter(item=>!item.active).map(item=><li key={item.id}>{item.name}</li>)}</ul></details></section>; }
+
   function renderAttendanceSettings(){
     const moveField=(index:number,direction:-1|1)=>{
       const target=index+direction;
@@ -296,5 +305,5 @@ export default function ConfigurationPanel({ initial, onSave, onSaveLayout, onCl
 
   async function saveRoteiroValue(value:any){ if(!selectedId) return; const next=clone(draft); const t=next.tarefas.tarefas.find((x:any)=>x.id===selectedId); if(!t) return; t.roteiro=clone(value); try { await window.controleDiario.firebase.workflow.salvarTarefa({id:selectedId,roteiro:clone(value)}); setDraft(next); setForm((f:any)=>({...f,roteiro:clone(value)})); setRoteiroOpen(false); setLocalMessage("ROTEIRO SALVO NO FIREBASE."); } catch(error) { setLocalMessage(error instanceof Error?error.message:"NÃO FOI POSSÍVEL SALVAR O ROTEIRO."); } }
   const roteiroInitial = roteiro ?? {linhas:50,colunas:5,largurasColunas:[120,120,120,120,120],celulas:{},mesclas:[],filtro:null};
-  return <div className={embedded?"config-embedded":"config-overlay"}><div className="config-window"><header className="config-head"><div><h2>CONFIGURAÇÃO</h2><span>Personalize seu CONTROLE DIÁRIO</span></div><button onClick={onClose} aria-label="Voltar para tarefas">✕</button></header><nav className="config-tabs"><button className={tab==="aparencia"?"active":""} onClick={()=>switchTab("aparencia")}>🎨 APARÊNCIA</button>{canManageCatalog&&<><button className={tab==="perfis"?"active":""} onClick={()=>switchTab("perfis")}>👤 PERFIS</button><button className={tab==="tarefas"?"active":""} onClick={()=>switchTab("tarefas")}>✅ TAREFAS</button><button className={tab==="email"?"active":""} onClick={()=>switchTab("email")}>✉️ E-MAIL</button><button className={tab==="promocoes"?"active":""} onClick={()=>switchTab("promocoes")}>🏷 PROMOÇÕES</button></>}<button className={tab==="avisos"?"active":""} onClick={()=>switchTab("avisos")}>🔔 AVISOS</button><button className={tab==="layout"?"active":""} onClick={()=>switchTab("layout")}>📐 LAYOUT</button><button className={tab==="atalhos"?"active":""} onClick={()=>switchTab("atalhos")}>🔗 ATALHOS</button><button className={tab==="atendimentos"?"active":""} onClick={()=>switchTab("atendimentos")}>📋 ATENDIMENTOS</button></nav>{localMessage&&<div className="system-message">{localMessage}</div>}{tab==="aparencia"?renderAppearance():tab==="avisos"?<><NotificationPreferencesPanel canManageAccess={canManageCatalog}/>{canManageCatalog&&<MaintenancePermissionPanel/>}</>:tab==="promocoes"?renderPromotions():tab==="atalhos"?renderShortcuts():tab==="atendimentos"?renderAttendanceSettings():route==="lista"&&tab!=="layout"?renderList():route==="editar"&&tab!=="layout"?renderEdit():renderList()}</div>{roteiroOpen&&<RoteiroEditor initial={roteiroInitial} onCancel={()=>setRoteiroOpen(false)} onSave={saveRoteiroValue}/>}</div>;
+  return <div className={embedded?"config-embedded":"config-overlay"}><div className="config-window"><header className="config-head"><div><h2>CONFIGURAÇÃO</h2><span>Personalize seu CONTROLE DIÁRIO</span></div><button onClick={onClose} aria-label="Voltar para tarefas">✕</button></header><nav className="config-tabs"><button className={tab==="aparencia"?"active":""} onClick={()=>switchTab("aparencia")}>🎨 APARÊNCIA</button>{canManageCatalog&&<><button className={tab==="perfis"?"active":""} onClick={()=>switchTab("perfis")}>👤 PERFIS</button><button className={tab==="tarefas"?"active":""} onClick={()=>switchTab("tarefas")}>✅ TAREFAS</button><button className={tab==="email"?"active":""} onClick={()=>switchTab("email")}>✉️ E-MAIL</button><button className={tab==="promocoes"?"active":""} onClick={()=>switchTab("promocoes")}>🏷 PROMOÇÕES</button></>}<button className={tab==="avisos"?"active":""} onClick={()=>switchTab("avisos")}>🔔 AVISOS</button><button className={tab==="layout"?"active":""} onClick={()=>switchTab("layout")}>📐 LAYOUT</button><button className={tab==="atalhos"?"active":""} onClick={()=>switchTab("atalhos")}>🔗 ATALHOS</button><button className={tab==="atendimentos"?"active":""} onClick={()=>switchTab("atendimentos")}>📋 ATENDIMENTOS</button>{canManageCatalog&&<button className={tab==="subtipos"?"active":""} onClick={()=>switchTab("subtipos")}>🏷 SUBTIPOS</button>}</nav>{localMessage&&<div className="system-message">{localMessage}</div>}{tab==="aparencia"?renderAppearance():tab==="avisos"?<><NotificationPreferencesPanel canManageAccess={canManageCatalog}/>{canManageCatalog&&<MaintenancePermissionPanel/>}</>:tab==="promocoes"?renderPromotions():tab==="atalhos"?renderShortcuts():tab==="atendimentos"?renderAttendanceSettings():tab==="subtipos"&&canManageCatalog?renderSubtypes():route==="lista"&&tab!=="layout"?renderList():route==="editar"&&tab!=="layout"?renderEdit():renderList()}</div>{roteiroOpen&&<RoteiroEditor initial={roteiroInitial} onCancel={()=>setRoteiroOpen(false)} onSave={saveRoteiroValue}/>}</div>;
 }
