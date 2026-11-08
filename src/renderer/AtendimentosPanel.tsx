@@ -35,7 +35,8 @@ export default function AtendimentosPanel({ onSave, hasExpediente }: { onSave: (
   const [preferences, setPreferences] = useState({ canal: "", tipo: "", resolvido: "" });
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   const [fieldOrder, setFieldOrder] = useState<string[]>(["ticket","canal","codigo","nome","tipo","resolvido","subtipo","motivoResolucao"]);
-  const [subtypeOptions, setSubtypeOptions] = useState<{id:string;name:string}[]>([]);\n  const [motiveOptions, setMotiveOptions] = useState<string[]>([]);
+  const [subtypeOptions, setSubtypeOptions] = useState<{id:string;name:string}[]>([]);
+  const [motiveOptions, setMotiveOptions] = useState<string[]>([]);
 
   useEffect(() => {
     let active = true;
