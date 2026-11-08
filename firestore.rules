@@ -594,6 +594,27 @@ service cloud.firestore {
         || (resource.data.targetType == "delinquency" && (activeManager() || delinquencyPublisher()));
     }
 
+    // Shared attendance subtype catalog: approved collaborators may add suggestions;
+    // only administrators and supervisors may deactivate them.
+    match /attendanceSubtypes/{subtypeId} {
+      allow read: if approvedUser();
+      allow create: if approvedUser()
+        && request.resource.data.keys().hasOnly(["name", "normalized", "active", "createdBy", "createdAt"])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.normalized == subtypeId
+        && request.resource.data.active == true
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+      allow update: if activeManager()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["active", "deactivatedAt", "deactivatedBy"])
+        && request.resource.data.active == false
+        && request.resource.data.deactivatedBy == request.auth.uid
+        && request.resource.data.deactivatedAt == request.time;
+      allow delete: if false;
+    }
+
     match /settings/allowedDomains {
       allow read: if signedIn();
       allow write: if activeAdmin();
