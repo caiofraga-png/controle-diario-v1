@@ -1,5 +1,6 @@
 import { Fragment, useMemo, useState, type CSSProperties } from "react";
 import ExcelJS from "exceljs";
+import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
 
 type Row = Record<string, any>;
 type Overview = { expedientes: Row[]; atendimentos: Row[]; estrutura: { colaboradores: Row[]; setores: Row[]; contatos: Row[]; agentes: Row[]; perfis: Row[] }; totalColaboradores: number; updatedAt: string };
@@ -27,6 +28,38 @@ async function exportXlsx(name: string, headers: string[], rows: Row[], keys: st
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = name.replace(/\\.csv$/i, ".xlsx");
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+async function exportExpedientesDocx(rows: Row[]) {
+  const children: Paragraph[] = [
+    new Paragraph({ text: "RELATÓRIO DETALHADO DE EXPEDIENTES", heading: HeadingLevel.TITLE }),
+    new Paragraph({ text: `Gerado em ${new Date().toLocaleString("pt-BR")}` }),
+    new Paragraph({ text: `Total de expedientes: ${rows.length}` }),
+    new Paragraph({ text: "Os registros abaixo respeitam os filtros aplicados na Visão Geral." }),
+  ];
+  for (const row of rows) {
+    children.push(new Paragraph({ text: `Login: ${row.colaborador || "—"}`, heading: HeadingLevel.HEADING_1 }));
+    children.push(new Paragraph({ children: [new TextRun({text:"Setor: ",bold:true}), new TextRun(String(row.setor||"—")), new TextRun({text:"   Contato: ",bold:true}), new TextRun(String(row.contato||"—"))] }));
+    children.push(new Paragraph({ children: [new TextRun({text:"Agente: ",bold:true}), new TextRun(String(row.agente||"—")), new TextRun({text:"   Perfil: ",bold:true}), new TextRun(String(row.perfil||"—"))] }));
+    children.push(new Paragraph({ children: [new TextRun({text:"Data: ",bold:true}), new TextRun(String(row.data||"—")), new TextRun({text:"   Situação: ",bold:true}), new TextRun(String(row.situacao||"—"))] }));
+    children.push(new Paragraph({ text: "Tarefas", heading: HeadingLevel.HEADING_2 }));
+    if ((row.tarefas??[]).length) for (const task of row.tarefas) children.push(new Paragraph({ text: `• ${task.nome || "Tarefa"} — ${task.concluida ? "Concluída" : "Pendente"}` }));
+    else children.push(new Paragraph({ text: "Nenhuma tarefa registrada." }));
+    children.push(new Paragraph({ text: "Atendimentos", heading: HeadingLevel.HEADING_2 }));
+    if ((row.atendimentos??[]).length) for (const item of row.atendimentos) children.push(new Paragraph({ text: `Ticket: ${item.ticket||"—"} | Código: ${item.codigo||"—"} | Nome: ${item.nome||"—"} | Tipo: ${item.tipo||"—"} | Subtipo: ${item.subtipo||"—"} | Canal: ${item.canal||"—"} | Resolvido: ${item.resolvido||"—"}` }));
+    else children.push(new Paragraph({ text: "Nenhum atendimento registrado." }));
+    children.push(new Paragraph({ text: "Observações", heading: HeadingLevel.HEADING_2 }));
+    children.push(new Paragraph({ text: String(row.observacao||"Sem observações.") }));
+    if (row.concluidoEm) children.push(new Paragraph({ text: `Concluído em: ${new Date(row.concluidoEm).toLocaleString("pt-BR")}` }));
+    children.push(new Paragraph({ text: " " }));
+  }
+  const document = new Document({ sections: [{ properties: {}, children }] });
+  const blob = await Packer.toBlob(document);
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "relatorio-detalhado-expedientes.docx";
   anchor.click();
   URL.revokeObjectURL(url);
 }
@@ -124,7 +157,7 @@ export default function SupervisaoPanel() {
       <button type="button" className={section==="historico"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("historico")}>HISTÓRICO</button>
     </div>
     {!data ? <p>Clique em ATUALIZAR DADOS para consultar os registros.</p> : section==="expedientes" ? <>
-      <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><h3 style={{margin:0}}>Expedientes ({expedientes.length})</h3><button type="button" disabled={!expedientes.length} onClick={()=>exportXlsx("expedientes-controle-diario.xlsx",["Login","Setor","Contato","Agente","Perfil","Data","Situação"],expedientes,["colaborador","setor","contato","agente","perfil","data","situacao"])}>EXPORTAR PARA EXCEL (.XLSX)</button></div>
+      <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><h3 style={{margin:0}}>Expedientes ({expedientes.length})</h3><button type="button" disabled={!expedientes.length} onClick={()=>exportXlsx("expedientes-controle-diario.xlsx",["Login","Setor","Contato","Agente","Perfil","Data","Situação"],expedientes,["colaborador","setor","contato","agente","perfil","data","situacao"])}>EXPORTAR PARA EXCEL (.XLSX)</button><button type="button" disabled={!expedientes.length} onClick={()=>void exportExpedientesDocx(expedientes)}>EXPORTAR RELATÓRIO DETALHADO (.DOCX)</button></div>
       <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"end"}}>
         <label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>Situação<select style={selectStyle} value={status} onChange={event=>setStatus(event.target.value)}><option value="TODOS">Ambos</option><option value="NAO_CONCLUIDO">Não concluídos</option><option value="CONCLUIDO">Concluídos</option></select></label>
         {<label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>Login<input style={inputStyle} list="visao-logins" value={expFilters.colaborador} onChange={e=>setExp("colaborador",e.target.value)} placeholder="Pesquisar login"/><datalist id="visao-logins">{options("colaborador").map(item=><option key={item} value={item}/>)}</datalist></label>}
