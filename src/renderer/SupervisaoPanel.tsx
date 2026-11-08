@@ -1,7 +1,7 @@
 import { Fragment, useMemo, useState, type CSSProperties } from "react";
 
 type Row = Record<string, any>;
-type Overview = { expedientes: Row[]; atendimentos: Row[]; estrutura: { colaboradores: Row[]; setores: Row[]; contatos: Row[] }; totalColaboradores: number; updatedAt: string };
+type Overview = { expedientes: Row[]; atendimentos: Row[]; estrutura: { colaboradores: Row[]; setores: Row[]; contatos: Row[]; agentes: Row[]; perfis: Row[] }; totalColaboradores: number; updatedAt: string };
 
 function unique(rows: Row[], key: string) {
   return [...new Set(rows.map(row => String(row[key] ?? "")).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"pt-BR"));
@@ -127,7 +127,12 @@ export default function SupervisaoPanel() {
       <h3>Estrutura organizacional</h3>
       <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><strong>Colaboradores ({data.estrutura.colaboradores.length})</strong><button type="button" onClick={()=>exportCsv("estrutura-colaboradores.csv",["Colaborador","E-mail","Agente","Setor","Contato","Perfis vinculados","Status"],data.estrutura.colaboradores,["colaborador","email","agente","setor","contato","perfis","status"])}>EXPORTAR PARA EXCEL (CSV)</button></div>
       <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><thead><tr>{["Colaborador","Agente","Setor","Contato","Perfis vinculados","Status"].map(x=><th key={x} style={{textAlign:"left",padding:9,borderBottom:"1px solid var(--border, #ccd8d0)"}}>{x}</th>)}</tr></thead><tbody>{data.estrutura.colaboradores.map(row=><tr key={row.uid}>{[row.colaborador,row.agente,row.setor,row.contato,row.perfis,row.status].map((value,i)=><td key={i} style={{padding:9,borderBottom:"1px solid var(--border, #e1e8e3)"}}>{String(value||"—")}</td>)}</tr>)}</tbody></table></div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16}}><div><strong>Setores ({data.estrutura.setores.length})</strong><ul>{data.estrutura.setores.map(row=><li key={row.id}>{row.nome} · {row.ativo?"Ativo":"Inativo"}</li>)}</ul></div><div><strong>Contatos ({data.estrutura.contatos.length})</strong><ul>{data.estrutura.contatos.map(row=><li key={row.id}>{row.nome} — {row.setor} · {row.ativo?"Ativo":"Inativo"}</li>)}</ul></div></div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16}}>
+        <div><strong>Setores ({data.estrutura.setores.length})</strong><ul>{data.estrutura.setores.map(row=><li key={row.id}>{row.nome} · {row.ativo?"Ativo":"Inativo"}</li>)}</ul></div>
+        <div><strong>Contatos ({data.estrutura.contatos.length})</strong><ul>{data.estrutura.contatos.map(row=><li key={row.id}>{row.nome} — {row.setor} · {row.ativo?"Ativo":"Inativo"}</li>)}</ul></div>
+        <div><strong>Agentes ({data.estrutura.agentes.length})</strong><ul>{data.estrutura.agentes.map(row=><li key={row.nome}><strong>{row.nome}</strong><small> — {(row.colaboradores??[]).join(", ") || "Sem colaboradores vinculados"}</small></li>)}</ul></div>
+        <div><strong>Perfis ({data.estrutura.perfis.length})</strong><ul>{data.estrutura.perfis.map(row=><li key={row.id}><strong>{row.nome}</strong><small> — {(row.colaboradores??[]).join(", ") || "Sem colaboradores vinculados"}</small></li>)}</ul></div>
+      </div>
     </> : <>
       <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><h3 style={{margin:0}}>Histórico completo ({historico.length})</h3><button type="button" disabled={!historico.length} onClick={()=>exportCsv("historico-expedientes-controle-diario.csv",["Colaborador","Setor","Contato","Agente","Perfil","Data","Situação do encerramento","Concluído em"],historico,["colaborador","setor","contato","agente","perfil","data","situacao","concluidoEm"])}>EXPORTAR PARA EXCEL (CSV)</button></div>
       <p>Consulta dos expedientes concluídos. Os registros são apresentados sem alterar o histórico original.</p>
