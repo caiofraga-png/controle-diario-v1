@@ -54,8 +54,8 @@ async function exportExpedientesDocx(rows: Row[]) {
     if (row.concluidoEm) children.push(new Paragraph({ text: `Concluído em: ${new Date(row.concluidoEm).toLocaleString("pt-BR")}` }));
     children.push(new Paragraph({ text: " " }));
   }
-  const document = new Document({ sections: [{ properties: {}, children }] });
-  const blob = await Packer.toBlob(document);
+  const wordDocument = new Document({ sections: [{ properties: {}, children }] });
+  const blob = await Packer.toBlob(wordDocument);
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
