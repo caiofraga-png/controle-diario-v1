@@ -47,7 +47,7 @@ export default function SupervisaoPanel() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [status, setStatus] = useState("TODOS");
   const [expFilters, setExpFilters] = useState({ colaborador:"", setor:"", contato:"", agente:"", perfil:"", data:"" });
-  const [attFilters, setAttFilters] = useState({ canal:"", codigo:"", nome:"", tipo:"", resolvido:"", subtipo:"", colaborador:"", setor:"", contato:"", data:"" });
+  const [attFilters, setAttFilters] = useState({ ticket:"", canal:"", codigo:"", nome:"", tipo:"", resolvido:"", subtipo:"", colaborador:"", setor:"", contato:"", data:"" });
   const [historyFilters, setHistoryFilters] = useState({ colaborador:"", setor:"", contato:"", agente:"", perfil:"", data:"" });
   const [structureFilters, setStructureFilters] = useState({ colaborador:"", agente:"", setor:"", contato:"", perfis:"", status:"" });
 
@@ -83,7 +83,7 @@ export default function SupervisaoPanel() {
   ), [data, historyFilters]);
 
   const atendimentos = useMemo(() => (data?.atendimentos ?? []).filter(row =>
-    (!attFilters.canal || row.canal === attFilters.canal) &&
+    (!attFilters.ticket || String(row.ticket ?? "").toLowerCase().includes(attFilters.ticket.toLowerCase())) &&\n    (!attFilters.canal || row.canal === attFilters.canal) &&
     (!attFilters.codigo || String(row.codigo ?? "").toLowerCase().includes(attFilters.codigo.toLowerCase())) &&
     (!attFilters.nome || String(row.nome ?? "").toLowerCase().includes(attFilters.nome.toLowerCase())) &&
     (!attFilters.tipo || row.tipo === attFilters.tipo) &&
