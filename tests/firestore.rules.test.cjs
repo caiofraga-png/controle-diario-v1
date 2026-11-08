@@ -8,6 +8,10 @@ const {
 const {
   doc,
   getDoc,
+  getDocs,
+  collectionGroup,
+  query,
+  where,
   setDoc,
   updateDoc,
   deleteDoc,
@@ -115,6 +119,14 @@ beforeEach(async () => {
     });
     await setDoc(doc(db, "Expediente", "alice_2026-10-28"), expediente("alice"));
     await setDoc(doc(db, "Expediente", "bob_2026-10-28"), expediente("bob"));
+    for (const uid of ["alice", "bob"]) {
+      await setDoc(doc(db, "users", uid, "operational", "currentState"), {
+        schemaVersion: 1, ownerUid: uid, estado: null,
+      });
+      await setDoc(doc(db, "users", uid, "operational", "history", "entries", "2026-10-28_R001"), {
+        schemaVersion: 1, ownerUid: uid, status: "CONCLUIDO",
+      });
+    }
   });
 });
 
@@ -166,6 +178,41 @@ test("supervisor lê expedientes e históricos de outros colaboradores, mas mant
   }
   await assertSucceeds(getDoc(doc(supervisor, "users/alice/operational/currentState")));
   await assertSucceeds(getDoc(doc(supervisor, "users/alice/operational/history/entries/2026-10-28_R001")));
+});
+
+test("supervisor consulta em grupo os expedientes e históricos de todos os colaboradores", async () => {
+  const db = dbAs("supervisor");
+  const currentStates = await getDocs(query(
+    collectionGroup(db, "operational"),
+    where("schemaVersion", "==", 1),
+  ));
+  const historyEntries = await getDocs(collectionGroup(db, "entries"));
+
+  assert.equal(currentStates.size, 2);
+  assert.deepEqual(currentStates.docs.map(item => item.data().ownerUid).sort(), ["alice", "bob"]);
+  assert.equal(historyEntries.size, 2);
+  assert.deepEqual(historyEntries.docs.map(item => item.data().ownerUid).sort(), ["alice", "bob"]);
+});
+
+test("colaborador só consulta em grupo os próprios expedientes e históricos", async () => {
+  const db = dbAs("alice");
+  const ownCurrentStates = await getDocs(query(
+    collectionGroup(db, "operational"),
+    where("ownerUid", "==", "alice"),
+    where("schemaVersion", "==", 1),
+  ));
+  const ownHistory = await getDocs(query(
+    collectionGroup(db, "entries"),
+    where("ownerUid", "==", "alice"),
+  ));
+
+  assert.equal(ownCurrentStates.size, 1);
+  assert.equal(ownHistory.size, 1);
+  await assertFails(getDocs(query(
+    collectionGroup(db, "operational"),
+    where("schemaVersion", "==", 1),
+  )));
+  await assertFails(getDocs(collectionGroup(db, "entries")));
 });
 
 test("administrador pode restaurar documentos privados ausentes, mas não sobrescrever nem excluir", async () => {
