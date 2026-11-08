@@ -49,7 +49,7 @@ export default function SupervisaoPanel() {
   const [expFilters, setExpFilters] = useState({ colaborador:"", setor:"", contato:"", agente:"", perfil:"", data:"" });
   const [attFilters, setAttFilters] = useState({ ticket:"", canal:"", codigo:"", nome:"", tipo:"", resolvido:"", subtipo:"", colaborador:"", setor:"", contato:"", data:"" });
   const [historyFilters, setHistoryFilters] = useState({ colaborador:"", setor:"", contato:"", agente:"", perfil:"", data:"" });
-  const [structureFilters, setStructureFilters] = useState({ colaborador:"", agente:"", setor:"", contato:"", perfis:"", status:"" });
+  const [structureFilters, setStructureFilters] = useState({ colaborador:"", agente:"", setor:"", contato:"", perfis:"", status:"" });\n  const [attendancePage, setAttendancePage] = useState(1);\n  const attendancePageSize = 30;
 
   async function refresh() {
     setBusy(true); setMessage("");
@@ -96,8 +96,8 @@ export default function SupervisaoPanel() {
     (!attFilters.data || row.data === attFilters.data)
   ), [data, attFilters]);
 
-  const setExp = (key: string, value: string) => setExpFilters(current => ({...current,[key]:value}));
-  const setAtt = (key: string, value: string) => setAttFilters(current => ({...current,[key]:value}));
+  const attendancePageCount = Math.max(1, Math.ceil(atendimentos.length / attendancePageSize));\n  const visibleAttendances = atendimentos.slice((attendancePage - 1) * attendancePageSize, attendancePage * attendancePageSize);\n  const setExp = (key: string, value: string) => setExpFilters(current => ({...current,[key]:value}));
+  const setAtt = (key: string, value: string) => { setAttendancePage(1); setAttFilters(current => ({...current,[key]:value})); };
   const setHistory = (key: string, value: string) => setHistoryFilters(current => ({...current,[key]:value}));
   const setStructure = (key: string, value: string) => setStructureFilters(current => ({...current,[key]:value}));
   const estruturaColaboradores = useMemo(() => (data?.estrutura.colaboradores ?? []).filter(row =>
@@ -149,7 +149,7 @@ export default function SupervisaoPanel() {
         {select("Contato",attFilters.contato,attOptions("contato"),v=>setAtt("contato",v))}
         <label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>Data do expediente<input style={inputStyle} type="date" value={attFilters.data} onChange={e=>setAtt("data",e.target.value)}/></label>
       </div>
-      <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><thead><tr>{["Ticket","Canal","Código","Nome","Tipo","Resolvido","Subtipo","Colaborador","Setor","Contato","Data"].map(x=><th key={x} style={{textAlign:"left",padding:9,borderBottom:"1px solid var(--border, #ccd8d0)"}}>{x}</th>)}</tr></thead><tbody>{atendimentos.map((row,index)=><tr key={row.id||index}>{[row.ticket,row.canal,row.codigo,row.nome,row.tipo,row.resolvido,row.subtipo,row.colaborador,row.setor,row.contato,row.data].map((value,i)=><td key={i} style={{padding:9,borderBottom:"1px solid var(--border, #e1e8e3)"}}>{String(value||"—")}</td>)}</tr>)}</tbody></table></div>
+      <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><thead><tr>{["Ticket","Canal","Código","Nome","Tipo","Resolvido","Subtipo","Colaborador","Setor","Contato","Data"].map(x=><th key={x} style={{textAlign:"left",padding:9,borderBottom:"1px solid var(--border, #ccd8d0)"}}>{x}</th>)}</tr></thead><tbody>{visibleAttendances.map((row,index)=><tr key={row.id||index}>{[row.ticket,row.canal,row.codigo,row.nome,row.tipo,row.resolvido,row.subtipo,row.colaborador,row.setor,row.contato,row.data].map((value,i)=><td key={i} style={{padding:9,borderBottom:"1px solid var(--border, #e1e8e3)"}}>{String(value||"—")}</td>)}</tr>)}</tbody></table></div>
     </> : section==="estrutura" ? <>
       <h3>Estrutura organizacional</h3>
       <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"end"}}>
