@@ -250,16 +250,21 @@ export async function loadManagementOverview() {
   const sectors = new Map(sectorsSnapshot.docs.map(item => [item.id, String(item.data().name ?? "")] as const));
   const contacts = new Map(contactsSnapshot.docs.map(item => [item.id, String(item.data().name ?? "")] as const));
   const profileNames = new Map((catalog?.perfis.perfis ?? []).map(profile => [profile.id, profile.nome] as const));
-  const assignments = (uid: string) => {
+  const assignments = (uid: string, snapshot?: Record<string, unknown>) => {
     const user = managers.get(uid);
+    // Prefer the assignment saved with the historical record. Older records
+    // do not contain this snapshot, so they fall back to the current user data.
+    const source = snapshot && typeof snapshot === "object" ? snapshot : {};
+    const sectorId = String(source.sectorId ?? user?.sectorId ?? "");
+    const contactId = String(source.contactId ?? user?.contactId ?? "");
     return {
       uid,
-      colaborador: user?.login || user?.email || uid,
-      setor: sectors.get(user?.sectorId ?? "") ?? "",
-      setorId: user?.sectorId ?? "",
-      contato: contacts.get(user?.contactId ?? "") ?? "",
-      contatoId: user?.contactId ?? "",
-      agente: user?.agent ?? "",
+      colaborador: String(source.login ?? user?.login ?? user?.email ?? uid),
+      setor: String(source.sectorName ?? sectors.get(sectorId) ?? ""),
+      setorId,
+      contato: String(source.contactName ?? contacts.get(contactId) ?? ""),
+      contatoId,
+      agente: String(source.agent ?? user?.agent ?? ""),
     };
   };
 
@@ -289,7 +294,7 @@ export async function loadManagementOverview() {
     if (!managers.has(uid)) continue;
     const record = item.data();
     if (record.status !== "CONCLUIDO") continue;
-    const assignment = assignments(uid);
+    const assignment = assignments(uid, record.assignment);
     expedientes.push({
       id: item.ref.path, ...assignment, perfil: String(record.perfil?.nome ?? ""),
       perfilId: String(record.perfil?.id ?? ""), data: String(record.data ?? ""),
