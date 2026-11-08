@@ -49,6 +49,7 @@ export default function SupervisaoPanel() {
   const [expFilters, setExpFilters] = useState({ colaborador:"", setor:"", contato:"", agente:"", perfil:"", data:"" });
   const [attFilters, setAttFilters] = useState({ canal:"", codigo:"", nome:"", tipo:"", resolvido:"", subtipo:"", colaborador:"", setor:"", contato:"", data:"" });
   const [historyFilters, setHistoryFilters] = useState({ colaborador:"", setor:"", contato:"", agente:"", perfil:"", data:"" });
+  const [structureFilters, setStructureFilters] = useState({ colaborador:"", agente:"", setor:"", contato:"", perfis:"", status:"" });
 
   async function refresh() {
     setBusy(true); setMessage("");
@@ -97,6 +98,13 @@ export default function SupervisaoPanel() {
   const setExp = (key: string, value: string) => setExpFilters(current => ({...current,[key]:value}));
   const setAtt = (key: string, value: string) => setAttFilters(current => ({...current,[key]:value}));
   const setHistory = (key: string, value: string) => setHistoryFilters(current => ({...current,[key]:value}));
+  const setStructure = (key: string, value: string) => setStructureFilters(current => ({...current,[key]:value}));
+  const estruturaColaboradores = useMemo(() => (data?.estrutura.colaboradores ?? []).filter(row =>
+    Object.entries(structureFilters).every(([key,value]) => !value || String(row[key] ?? "").toLocaleLowerCase("pt-BR").includes(value.toLocaleLowerCase("pt-BR")))
+  ), [data, structureFilters]);
+  const structureOptions = (key: string) => [...new Set((data?.estrutura.colaboradores ?? [])
+    .filter(row => Object.entries(structureFilters).every(([filterKey,value]) => filterKey === key || !value || String(row[filterKey] ?? "").toLocaleLowerCase("pt-BR").includes(value.toLocaleLowerCase("pt-BR"))))
+    .map(row => String(row[key] ?? "")).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"pt-BR"));
   const options = (key: string) => unique(data?.expedientes ?? [], key);
   const attOptions = (key: string) => unique(data?.atendimentos ?? [], key);
   const select = (label: string, value: string, values: string[], onChange: (value:string)=>void) => <label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>{label}<select style={selectStyle} value={value} onChange={event=>onChange(event.target.value)}><option value="">Todos</option>{values.map(item=><option key={item} value={item}>{item}</option>)}</select></label>;
@@ -143,8 +151,15 @@ export default function SupervisaoPanel() {
       <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><thead><tr>{["Ticket","Canal","Código","Nome","Tipo","Resolvido","Subtipo","Colaborador","Setor","Contato","Data"].map(x=><th key={x} style={{textAlign:"left",padding:9,borderBottom:"1px solid var(--border, #ccd8d0)"}}>{x}</th>)}</tr></thead><tbody>{atendimentos.map((row,index)=><tr key={row.id||index}>{[row.ticket,row.canal,row.codigo,row.nome,row.tipo,row.resolvido,row.subtipo,row.colaborador,row.setor,row.contato,row.data].map((value,i)=><td key={i} style={{padding:9,borderBottom:"1px solid var(--border, #e1e8e3)"}}>{String(value||"—")}</td>)}</tr>)}</tbody></table></div>
     </> : section==="estrutura" ? <>
       <h3>Estrutura organizacional</h3>
-      <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><strong>Colaboradores ({data.estrutura.colaboradores.length})</strong><button type="button" disabled={!data.estrutura.colaboradores.length} onClick={()=>exportCsv("estrutura-colaboradores.xlsx",["Colaborador","E-mail","Agente","Setor","Contato","Perfis vinculados","Status"],data.estrutura.colaboradores,["colaborador","email","agente","setor","contato","perfis","status"])}>EXPORTAR PARA EXCEL (CSV)</button></div>
-      <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><thead><tr>{["Colaborador","Agente","Setor","Contato","Perfis vinculados","Status"].map(x=><th key={x} style={{textAlign:"left",padding:9,borderBottom:"1px solid var(--border, #ccd8d0)"}}>{x}</th>)}</tr></thead><tbody>{data.estrutura.colaboradores.map(row=><tr key={row.uid}>{[row.colaborador,row.agente,row.setor,row.contato,row.perfis,row.status].map((value,i)=><td key={i} style={{padding:9,borderBottom:"1px solid var(--border, #e1e8e3)"}}>{String(value||"—")}</td>)}</tr>)}</tbody></table></div>
+      <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"end"}}>
+        {select("Login",structureFilters.colaborador,structureOptions("colaborador"),v=>setStructure("colaborador",v))}
+        {select("Agente",structureFilters.agente,structureOptions("agente"),v=>setStructure("agente",v))}
+        {select("Setor",structureFilters.setor,structureOptions("setor"),v=>setStructure("setor",v))}
+        {select("Contato",structureFilters.contato,structureOptions("contato"),v=>setStructure("contato",v))}
+        {select("Perfil",structureFilters.perfis,[...new Set((data.estrutura.colaboradores??[]).flatMap(row=>String(row.perfis??"").split(", ").filter(Boolean)))].sort((a,b)=>a.localeCompare(b,"pt-BR")),v=>setStructure("perfis",v))}
+        {select("Status",structureFilters.status,structureOptions("status"),v=>setStructure("status",v))}
+      </div><div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><strong>Colaboradores ({estruturaColaboradores.length})</strong><button type="button" disabled={!data.estrutura.colaboradores.length} onClick={()=>exportCsv("estrutura-colaboradores.xlsx",["Colaborador","E-mail","Agente","Setor","Contato","Perfis vinculados","Status"],estruturaColaboradores,["colaborador","email","agente","setor","contato","perfis","status"])}>EXPORTAR PARA EXCEL (CSV)</button></div>
+      <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><thead><tr>{["Colaborador","Agente","Setor","Contato","Perfis vinculados","Status"].map(x=><th key={x} style={{textAlign:"left",padding:9,borderBottom:"1px solid var(--border, #ccd8d0)"}}>{x}</th>)}</tr></thead><tbody>{estruturaColaboradores.map(row=><tr key={row.uid}>{[row.colaborador,row.agente,row.setor,row.contato,row.perfis,row.status].map((value,i)=><td key={i} style={{padding:9,borderBottom:"1px solid var(--border, #e1e8e3)"}}>{String(value||"—")}</td>)}</tr>)}</tbody></table></div>
       <div style={{display:"flex",gap:8,flexWrap:"wrap"}}><button type="button" disabled={!data.estrutura.setores.length} onClick={()=>exportCsv("estrutura-setores.xlsx",["Setor","Status"],data.estrutura.setores,["nome","ativo"])}>EXPORTAR SETORES (CSV)</button><button type="button" disabled={!data.estrutura.contatos.length} onClick={()=>exportCsv("estrutura-contatos.xlsx",["Contato","Setor","Status"],data.estrutura.contatos,["nome","setor","ativo"])}>EXPORTAR CONTATOS (CSV)</button><button type="button" disabled={!data.estrutura.agentes.length} onClick={()=>exportCsv("estrutura-agentes.xlsx",["Agente","Colaboradores vinculados"],data.estrutura.agentes,["nome","colaboradores"])}>EXPORTAR AGENTES (CSV)</button><button type="button" disabled={!data.estrutura.perfis.length} onClick={()=>exportCsv("estrutura-perfis.xlsx",["Perfil","Colaboradores vinculados"],data.estrutura.perfis,["nome","colaboradores"])}>EXPORTAR PERFIS (CSV)</button></div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16}}>
         <div><strong>Setores ({data.estrutura.setores.length})</strong><ul>{data.estrutura.setores.map(row=><li key={row.id}>{row.nome} · {row.ativo?"Ativo":"Inativo"}</li>)}</ul></div>
