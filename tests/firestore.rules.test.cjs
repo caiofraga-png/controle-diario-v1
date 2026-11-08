@@ -119,14 +119,6 @@ beforeEach(async () => {
     });
     await setDoc(doc(db, "Expediente", "alice_2026-10-28"), expediente("alice"));
     await setDoc(doc(db, "Expediente", "bob_2026-10-28"), expediente("bob"));
-    for (const uid of ["alice", "bob"]) {
-      await setDoc(doc(db, "users", uid, "operational", "currentState"), {
-        schemaVersion: 1, ownerUid: uid, estado: null,
-      });
-      await setDoc(doc(db, "users", uid, "operational", "history", "entries", "2026-10-28_R001"), {
-        schemaVersion: 1, ownerUid: uid, status: "CONCLUIDO",
-      });
-    }
   });
 });
 
@@ -180,7 +172,26 @@ test("supervisor lê expedientes e históricos de outros colaboradores, mas mant
   await assertSucceeds(getDoc(doc(supervisor, "users/alice/operational/history/entries/2026-10-28_R001")));
 });
 
+async function seedOperationalQueryFixtures() {
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    for (const uid of ["alice", "bob"]) {
+      await setDoc(doc(db, "users", uid, "operational", "currentState"), {
+        schemaVersion: 1, ownerUid: uid, estado: null,
+      });
+      await setDoc(doc(db, "users", uid, "operational", "history", "entries", `fixture-${uid}`), {
+        schemaVersion: 1, ownerUid: uid, id: `fixture-${uid}`, versao: 1,
+        data: "2026-10-28", perfil: { id: "P001", nome: "MÍDIAS" },
+        tarefas: [], emailsGlobais: [], observacao: "", status: "CONCLUIDO",
+        criadoEm: "2026-10-28T08:00:00Z", concluidoEm: "2026-10-28T12:00:00Z",
+        ultimaAlteracao: "2026-10-28T12:00:00Z", origemVersao: null,
+      });
+    }
+  });
+}
+
 test("supervisor consulta em grupo os expedientes e históricos de todos os colaboradores", async () => {
+  await seedOperationalQueryFixtures();
   const db = dbAs("supervisor");
   const currentStates = await getDocs(query(
     collectionGroup(db, "operational"),
@@ -195,6 +206,7 @@ test("supervisor consulta em grupo os expedientes e históricos de todos os cola
 });
 
 test("colaborador só consulta em grupo os próprios expedientes e históricos", async () => {
+  await seedOperationalQueryFixtures();
   const db = dbAs("alice");
   const ownCurrentStates = await getDocs(query(
     collectionGroup(db, "operational"),
