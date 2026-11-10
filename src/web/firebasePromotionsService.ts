@@ -81,7 +81,7 @@ export async function savePromotions(promotions: Promotion[]): Promise<void> {
   const eligibleToday=(item:Promotion)=>(!item.startDate||item.startDate<=todayBrazil)&&(!item.endDate||item.endDate>=todayBrazil));
   for(const item of validated){
     const old=previousById.get(item.id);
-    if(old&&!manager) throw new Error("SUA PERMISSÃO PERMITE APENAS CADASTRAR NOVAS PROMOÇÕES. EDIÇÃO E ENCERRAMENTO SÃO RESTRITOS À ADMINISTRAÇÃO E SUPERVISÃO.");
+    if(old&&!manager) continue;
     const ref=doc(db,"sharedPromotions",item.id);
     await setDoc(ref,{...item,createdByUid:old?.createdByUid??user.uid,createdAt:old?.createdAt??serverTimestamp(),updatedByUid:user.uid,updatedAt:serverTimestamp()});
     if(!old&&item.status==="active"&&eligibleToday(item)){
