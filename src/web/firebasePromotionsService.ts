@@ -31,7 +31,7 @@ function validatePromotions(value: unknown): Promotion[] {
     const endDate = typeof item.endDate === "string" ? item.endDate : "";
     if ((startDate && !/^\\d{4}-\\d{2}-\\d{2}$/.test(startDate)) || (endDate && !/^\\d{4}-\\d{2}-\\d{2}$/.test(endDate))) throw new Error("AS DATAS DA PROMOÇÃO DEVEM ESTAR NO FORMATO VÁLIDO.");
     if (startDate && endDate && endDate < startDate) throw new Error("A DATA FINAL NÃO PODE SER ANTERIOR À DATA INICIAL.");
-    return { id:item.id, name:item.name.trim(), category:String(item.category??"").trim(), benefit:String(item.benefit??""), eligible:String(item.eligible??""), conditions:String(item.conditions??""), startDate, endDate, status, ...(item.createdAt !== undefined ? {createdAt:item.createdAt} : {}), ...(item.updatedAt !== undefined ? {updatedAt:item.updatedAt} : {}) };
+    return { id:item.id, name:item.name.trim(), category:String(item.category??"").trim(), benefit:String(item.benefit??""), eligible:String(item.eligible??""), conditions:String(item.conditions??""), startDate, endDate, status, ...(item.createdAt !== undefined ? {createdAt:item.createdAt} : {}), ...(item.updatedAt !== undefined ? {updatedAt:item.updatedAt} : {}), ...(typeof item.createdByUid === "string" ? {createdByUid:item.createdByUid} : {}), ...(typeof item.updatedByUid === "string" ? {updatedByUid:item.updatedByUid} : {}), ...(typeof item.createdByName === "string" ? {createdByName:item.createdByName} : {}), ...(typeof item.updatedByName === "string" ? {updatedByName:item.updatedByName} : {}) };
   });
 }
 
