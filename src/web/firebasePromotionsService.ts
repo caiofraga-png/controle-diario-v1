@@ -47,7 +47,8 @@ function validatePromotions(value: unknown): Promotion[] {
       id:item.id, name:item.name.trim(), category:String(item.category??"").trim(),
       benefit:String(item.benefit??""), eligible:String(item.eligible??""),
       conditions:String(item.conditions??""), startDate, endDate, status,
-      createdAt:item.createdAt, updatedAt:item.updatedAt,
+      ...(item.createdAt !== undefined ? { createdAt: item.createdAt } : {}),
+      ...(item.updatedAt !== undefined ? { updatedAt: item.updatedAt } : {}),
     };
   });
 }
