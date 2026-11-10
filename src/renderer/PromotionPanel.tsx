@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { canCurrentUserManagePromotions } from "../web/firebasePromotionsService";
 import AttachmentPanel from "./AttachmentPanel";
 
 type Promotion = {
@@ -6,7 +7,7 @@ type Promotion = {
   conditions?: string; startDate?: string; endDate?: string; status?: string;
   [key: string]: unknown;
 };
-type Props = { promotions: Promotion[]; message?: string; canManage: boolean; canCreate?: boolean; onSave: (items: Promotion[]) => Promise<void> };
+type Props = { promotions: Promotion[]; message?: string; canManage: boolean; onSave: (items: Promotion[]) => Promise<void> };
 const emptyPromotion = (): Promotion => ({ id: crypto.randomUUID(), name:"", category:"", benefit:"", eligible:"", conditions:"", startDate:"", endDate:"", status:"active" });
 
 function todayBrazil() {
@@ -20,7 +21,7 @@ function dateLabel(value?:string) {
   return `Validade: ${day}/${month}/${year}`;
 }
 
-export default function PromotionPanel({ promotions, message, canManage, canCreate = canManage, onSave }:Props) {
+export default function PromotionPanel({ promotions, message, canManage, onSave }:Props) {\n  const [canPublish,setCanPublish] = useState(false);\n  useEffect(()=>{let active=true; void canCurrentUserManagePromotions().then(value=>{if(active)setCanPublish(value)}).catch(()=>{if(active)setCanPublish(false)}); return ()=>{active=false}},[]);\n  const canEdit = canManage || canPublish;
   const [tab,setTab] = useState<"ongoing"|"completed">("ongoing");
   const [form,setForm] = useState<Promotion|null>(null);
   const [busy,setBusy] = useState(false);
@@ -51,7 +52,7 @@ export default function PromotionPanel({ promotions, message, canManage, canCrea
   }
   const items=tab==="ongoing"?classified.ongoing:classified.completed;
   return <section className="maintenance-workspace promotions-workspace">
-    <div className="workspace-intro maintenance-intro"><div><h2>Promoções</h2><p>Consulte benefícios, produtos elegíveis e condições comerciais das promoções em andamento e concluídas.</p></div>{canCreate && !form && tab === "ongoing" && <button className="primary maintenance-new-button" type="button" onClick={()=>{setForm(emptyPromotion());setLocalMessage("");}}>＋ NOVA PROMOÇÃO</button>}</div>
+    <div className="workspace-intro maintenance-intro"><div><h2>Promoções</h2><p>Consulte benefícios, produtos elegíveis e condições comerciais das promoções em andamento e concluídas.</p></div>{canPublish && !form && tab === "ongoing" && <button className="primary maintenance-new-button" type="button" onClick={()=>{setForm(emptyPromotion());setLocalMessage("");}}>＋ NOVA PROMOÇÃO</button>}</div>
     {(localMessage||message)&&<p className="system-message">{localMessage||message}</p>}
     <div className="maintenance-view-tabs" role="tablist" aria-label="Situação das promoções">
       <button type="button" className={tab==="ongoing"?"active":""} onClick={()=>{setTab("ongoing");setForm(null);}}>EM ANDAMENTO <span>{classified.ongoing.length}</span></button>
@@ -76,10 +77,10 @@ export default function PromotionPanel({ promotions, message, canManage, canCrea
         <div className="promotion-benefit">{item.benefit}</div>
         {item.eligible&&<div className="promotion-detail"><strong>PRODUTOS / PLANOS ELEGÍVEIS</strong><p>{item.eligible}</p></div>}
         {item.conditions&&<div className="promotion-detail"><strong>CONDIÇÕES</strong><p>{item.conditions}</p></div>}
-        <div className="promotion-validity">{dateLabel(item.endDate)}</div>
+        <div className="promotion-validity">{dateLabel(item.endDate)}</div>\n        <div className="maintenance-card-meta">Criado por: {String(item.createdByName??item.createdByUid??"Não informado")} · Última alteração por: {String(item.updatedByName??item.updatedByUid??"Não informado")}</div>
         {item.status==="suspended"&&<div className="promotion-status suspended">SUSPENSA</div>}
         {item.status==="closed"&&<div className="promotion-status closed">CONCLUÍDA</div>}
-        {canManage&&<div className="maintenance-card-actions"><button type="button" className="secondary" onClick={()=>{setForm({...item});setLocalMessage("");}}>EDITAR</button>{item.status!=="closed"?<button type="button" className="primary" disabled={busy} onClick={()=>void changeStatus(item,"closed")}>CONCLUIR</button>:<button type="button" className="primary" disabled={busy} onClick={()=>void changeStatus(item,"active")}>REABRIR</button>}</div>}
+        {canEdit&&<div className="maintenance-card-actions"><button type="button" className="secondary" onClick={()=>{setForm({...item});setLocalMessage("");}}>EDITAR</button>{item.status!=="closed"?<button type="button" className="primary" disabled={busy} onClick={()=>void changeStatus(item,"closed")}>CONCLUIR</button>:<button type="button" className="primary" disabled={busy} onClick={()=>void changeStatus(item,"active")}>REABRIR</button>}</div>}
       </article>)}</div>
       {items.length===0&&<div className="maintenance-empty">{tab==="ongoing"?"NÃO HÁ PROMOÇÕES EM ANDAMENTO." :"NÃO HÁ PROMOÇÕES CONCLUÍDAS NO HISTÓRICO."}</div>}
     </>}
