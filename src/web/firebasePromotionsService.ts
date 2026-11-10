@@ -98,7 +98,7 @@ export async function savePromotions(promotions: Promotion[]): Promise<void> {
   else if(legacySnapshot.exists()) previous=validatePromotions(legacySnapshot.data().promotions);
   const previousById=new Map(previous.map(item=>[item.id,item]));
   const todayBrazil=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
-  const eligibleToday=(item:Promotion)=>(!item.startDate||item.startDate<=todayBrazil)&&(!item.endDate||item.endDate>=todayBrazil));
+  const eligibleToday=(item:Promotion)=>(!item.startDate||item.startDate<=todayBrazil)&&(!item.endDate||item.endDate>=todayBrazil);
   for(const item of validated){
     const old=previousById.get(item.id);
     if(!manager && !publisher) throw new Error("VOCÊ NÃO POSSUI PERMISSÃO PARA ALTERAR PROMOÇÕES.");
