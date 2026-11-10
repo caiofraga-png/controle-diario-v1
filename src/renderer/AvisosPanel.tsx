@@ -1,8 +1,8 @@
 import type { OverviewNoticeId } from "../web/overviewNoticesAccess";
 
 const cards:{id:OverviewNoticeId;title:string;description:string}[]=[
-  {id:"longCalls",title:"LIGAÇÕES PROLONGADAS",description:"Acompanhamento de ligações que exigem atenção."},
-  {id:"googleChat",title:"SOLICITAÇÕES NO GOOGLE CHAT",description:"Pedidos recebidos pelos canais internos do Google Chat."},
+  {id:"longCalls",title:"LIGAÇÕES PROLONGADAS",description:"Acompanhamento de ligações longas e que exigem atenção."},
+  {id:"googleChat",title:"SOLICITAÇÕES NO GOOGLE CHAT",description:"Acompanhamento de pedidos de urgência e análises de aparelhos."},
   {id:"otherHelp",title:"OUTROS PEDIDOS DE AJUDA",description:"Outras solicitações de apoio operacional."},
 ];
 export default function AvisosPanel({allowed}:{allowed:OverviewNoticeId[]}){
