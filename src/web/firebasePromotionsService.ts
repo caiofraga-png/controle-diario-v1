@@ -39,7 +39,7 @@ function validatePromotions(value: unknown): Promotion[] {
     const status:PromotionStatus = item.status === "suspended" || item.status === "closed" ? item.status : "active";
     const startDate = typeof item.startDate === "string" ? item.startDate : "";
     const endDate = typeof item.endDate === "string" ? item.endDate : "";
-    if ((startDate && !/^\\d{4}-\\d{2}-\\d{2}$/.test(startDate)) || (endDate && !/^\\d{4}-\\d{2}-\\d{2}$/.test(endDate))) {
+    if ((startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) || (endDate && !/^\d{4}-\d{2}-\d{2}$/.test(endDate))) {
       throw new Error("AS DATAS DA PROMOÇÃO DEVEM ESTAR NO FORMATO VÁLIDO.");
     }
     if (startDate && endDate && endDate < startDate) throw new Error("A DATA FINAL NÃO PODE SER ANTERIOR À DATA INICIAL.");
