@@ -358,7 +358,7 @@ service cloud.firestore {
         && request.resource.data.updatedByUid == request.auth.uid
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time;
-      allow update: if activeManager()
+      allow update: if (activeManager() || promotionsPublisher())
         && request.resource.data.id == resource.data.id
         && request.resource.data.createdByUid == resource.data.createdByUid
         && request.resource.data.createdAt == resource.data.createdAt
