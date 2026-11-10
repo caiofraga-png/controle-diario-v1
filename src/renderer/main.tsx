@@ -68,9 +68,9 @@ class AppErrorBoundary extends Component<{ children: ReactNode }, { error: Error
 
 function App() {
   const [overviewNoticeAccess, setOverviewNoticeAccess] = useState<OverviewNoticeId[]>([]);
-  const isManager = firebaseAccess?.user?.role === "admin" || firebaseAccess?.user?.isSupervisor === true;
   const [tab, setTab] = useState<"tarefas" | "atendimentos" | "calendario" | "promocoes" | "inadimplencia" | "manutencoes" | "configuracao" | "sistema" | "administracao" | "supervisao">("tarefas");
   const [firebaseAccess, setFirebaseAccess] = useState<any>({ status: "checking" });
+  const isManager = firebaseAccess?.user?.role === "admin" || firebaseAccess?.user?.isSupervisor === true;
   const [firebaseBusy, setFirebaseBusy] = useState(false);
   const [themePreference, setThemePreference] = useState<"corporate-light" | "corporate-dark" | "elegant-light" | "midnight-blue" | "midnight-violet" | "blue-light" | "system">("system");
   const [themeSaving, setThemeSaving] = useState(false);
@@ -266,7 +266,7 @@ function App() {
     return () => { active = false; };
   }, [profiles, selectedStartProfile, geralHasTasks]);
   const allowedMenuTabs = new Set<string>(["sistema", "atendimentos", ...(config?.layout?.abas ?? ["tarefas","calendario","manutencoes","promocoes","meta","inadimplencia","supervisao","configuracao"])]);
-  const showMenu = (id:string) => (id === "administracao" || allowedMenuTabs.has(id)) && (id !== "administracao" || firebaseAccess?.user?.role === "admin") && (id !== "promocoes" || firebaseAccess?.status === "approved") && (id !== "supervisao" || isManager || overviewNoticeAccess.length > 0);
+  const showMenu = (id:string) => (id === "administracao" || id === "supervisao" || allowedMenuTabs.has(id)) && (id !== "administracao" || firebaseAccess?.user?.role === "admin") && (id !== "promocoes" || firebaseAccess?.status === "approved") && (id !== "supervisao" || isManager || overviewNoticeAccess.length > 0);
   useEffect(() => { if (firebaseAccess?.status === "approved" && tab !== "sistema" && !showMenu(tab)) setTab("sistema"); }, [firebaseAccess?.status, firebaseAccess?.user?.role, config?.layout?.abas?.join("|"), tab, overviewNoticeAccess.join("|")]);
   const expansionMode = config?.layout?.criacaoRoteiro?.modo ?? "POPUP";
   const expansionPosition = config?.layout?.expansaoLateral?.posicao ?? "direita";
