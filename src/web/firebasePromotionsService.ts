@@ -109,7 +109,7 @@ export async function savePromotions(promotions: Promotion[]): Promise<void> {
       const notificationRef=doc(collection(db,"sharedNotifications"));
       await setDoc(notificationRef,{category:"promocoes",message:`Promoção - ${item.name} - Em Andamento`,target:"promocoes",referenceId:item.id,createdByUid:user.uid,createdAt:serverTimestamp()});
     }
-    if(manager&&old&&item.status==="closed"&&old.status!=="closed"){
+    if(old&&item.status==="closed"&&old.status!=="closed"){
       const notificationRef=doc(collection(db,"sharedNotifications"));
       await setDoc(notificationRef,{category:"promocoes",message:`Promoção - ${item.name} - Encerrado`,target:"promocoes",referenceId:item.id,createdByUid:user.uid,createdAt:serverTimestamp()});
     }
