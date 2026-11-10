@@ -35,6 +35,26 @@ function validatePromotions(value: unknown): Promotion[] {
   });
 }
 
+export async function canCurrentUserManagePromotions(): Promise<boolean> {
+  const {auth,db}=requireFirebase();
+  const user=auth.currentUser;
+  if(!user) return false;
+  const [userSnapshot,permissionSnapshot]=await Promise.all([
+    getDoc(doc(db,"users",user.uid)),
+    getDoc(doc(db,"featurePermissions","promotions")),
+  ]);
+  if(!userSnapshot.exists()) return false;
+  const profile=userSnapshot.data();
+  if(profile.status!=="approved") return false;
+  if(profile.role==="admin"||profile.isSupervisor===true) return true;
+  if(!permissionSnapshot.exists()) return false;
+  const permission=permissionSnapshot.data();
+  return permission.enabled===true
+    && ((Array.isArray(permission.wholeSectorIds)&&permission.wholeSectorIds.includes(profile.sectorId))
+      || (Array.isArray(permission.contactIds)&&permission.contactIds.includes(profile.contactId))
+      || (Array.isArray(permission.agentIds)&&permission.agentIds.includes(user.uid)));
+}
+
 export async function loadPromotions(): Promise<Promotion[]> {
   const {db}=requireFirebase();
   const snapshot=await getDocs(collection(db,"sharedPromotions"));
