@@ -76,8 +76,9 @@ export async function savePromotions(promotions: Promotion[]): Promise<void> {
     ? validatePromotions(previousSnapshot.data().promotions) : [];
   const previouslyActive = new Set(previousItems.filter(item => item.status === "active").map(item => item.id));
   const previousById = new Map(previousItems.map(item => [item.id, item]));
-  const eligibleToday = (item:Promotion) => (!item.startDate || item.startDate <= new Date().toISOString().slice(0, 10))
-    && (!item.endDate || item.endDate >= new Date().toISOString().slice(0, 10));
+  const todayBrazil = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  const eligibleToday = (item:Promotion) => (!item.startDate || item.startDate <= todayBrazil)
+    && (!item.endDate || item.endDate >= todayBrazil);
   const newlyActive = (previousSnapshot.exists() ? validated : []).filter(item => item.status === "active" && !previouslyActive.has(item.id) && eligibleToday(item));
   const newlyClosed = validated.filter(item => item.status === "closed" && previousById.get(item.id)?.status !== "closed");
   const ids = new Set<string>();
