@@ -262,14 +262,20 @@ service cloud.firestore {
     }
 
     match /Expediente/{expedienteId} {
-      // Supervisors and administrators can consult every sector. Employees
-      // remain restricted to their own expediente.
       // A conclusão consulta o índice antes de decidir entre criar ou atualizar.
-      // Permite ao colaborador consultar apenas o caminho do próprio UID/data,
-      // inclusive quando o documento ainda não existe. Isso não libera leitura
-      // de índices de terceiros nem altera a regra de listagem.
+      // O colaborador pode obter somente o caminho do próprio UID/data,
+      // mesmo quando o documento ainda não existe.
       allow get: if approvedUser()
-        && (expedienteId.matches('^' + request.auth.uid + '_[0-9]{4}-[0-9]{2}-[0-9]{2}
+        && (expedienteId.matches(request.auth.uid + '_[0-9]{4}-[0-9]{2}-[0-9]{2}')
+          || resource.data.ownerUid == request.auth.uid
+          || activeAdmin()
+          || activeSupervisor());
+
+      // Consultas em lista continuam limitadas aos próprios registros ou gestores.
+      allow list: if approvedUser()
+        && (resource.data.ownerUid == request.auth.uid
+          || activeAdmin()
+          || activeSupervisor());
 
       allow create: if (approvedUser() && validExpedienteSnapshot())
         || (activeAdmin()
