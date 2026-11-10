@@ -185,7 +185,7 @@ export default function MaintenancePanel() {
           <h3>{item.title}</h3>
           <p className="maintenance-location">⌖ {item.location}</p>
           <p className="maintenance-description">{item.description}</p>
-          <div className="maintenance-card-meta">Atualizada em {timestampLabel(item.updatedAt)}</div>
+          <div className="maintenance-card-meta">Criada por: {item.createdByName || item.createdByUid} · Última alteração por: {item.updatedByName || item.updatedByUid}<br/>Atualizada em {timestampLabel(item.updatedAt)}</div>
           <div className="maintenance-card-actions">
             <button className="secondary" onClick={()=>void openHistory(item)}>HISTÓRICO</button>
             {canManage && <button className="primary" onClick={()=>openEdit(item)}>EDITAR</button>}
