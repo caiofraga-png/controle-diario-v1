@@ -341,11 +341,30 @@ service cloud.firestore {
       allow write: if activeManager();
     }
 
-    // Promotional campaigns are shared across approved collaborators.
-    // Only administrators and supervisors may create or change campaigns.
-    match /sharedPromotions/{document=**} {
+    // Legacy catalog remains manager-only. Individual campaign documents allow
+    // scoped publishers to create, while edits and status changes remain manager-only.
+    match /sharedPromotions/current {
       allow read: if approvedUser();
       allow write: if activeManager();
+    }
+    match /sharedPromotions/{promotionId} {
+      allow read: if approvedUser();
+      allow create: if approvedUser() && (activeManager() || promotionsPublisher())
+        && request.resource.data.id == promotionId
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.status in ["active", "suspended", "closed"]
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if activeManager()
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.createdByUid == resource.data.createdByUid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if activeManager();
     }
 
     function validDelinquencyNoticeNotification(notificationId, noticeId) {
@@ -420,7 +439,7 @@ service cloud.firestore {
     match /sharedNotifications/{notificationId} {
       allow read: if approvedUser();
       allow create: if (
-          (activeManager() && request.resource.data.category != "manutencoes")
+          ((activeManager() || (request.resource.data.category == "promocoes" && promotionsPublisher())) && request.resource.data.category != "manutencoes")
           || ((activeManager() || delinquencyPublisher())
             && request.resource.data.category == "cobranca"
             && request.resource.data.target == "inadimplencia"
