@@ -432,6 +432,13 @@ test("não permite criar expediente com setor ou contato inativo", async () => {
   await assertFails(setDoc(doc(dbAs("alice"), "Expediente", "inactive-sector"), expediente("alice")));
 });
 
+test("colaborador pode consultar o próprio índice mesmo antes de sua criação", async () => {
+  const db = dbAs("alice");
+  const ownMissingIndex = await getDoc(doc(db, "Expediente/alice_2026-11-10"));
+  assert.equal(ownMissingIndex.exists(), false);
+  await assertFails(getDoc(doc(db, "Expediente/bob_2026-11-10")));
+});
+
 test("proprietário só atualiza status e completedAt; não pode excluir índice", async () => {
   const db = dbAs("alice");
   const ref = doc(db, "Expediente/alice_2026-10-28");
