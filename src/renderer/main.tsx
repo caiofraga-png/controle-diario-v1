@@ -363,7 +363,7 @@ function App() {
     <main className="content">
       {tab==="configuracao" ? (data?.configuracao ? <ConfigurationPanel initial={data.configuracao} onSave={saveConfig} onSaveLayout={savePersonalLayout} onClose={()=>setTab("tarefas")} busy={busy} embedded canManageCatalog={firebaseAccess?.user?.role==="admin" || firebaseAccess?.user?.isSupervisor===true} canAdmin={firebaseAccess?.user?.role==="admin"} themePreference={themePreference} onThemeChange={changeThemePreference} themeSaving={themeSaving} promotions={promotions} onSavePromotions={savePromotions}/> : <section className="card"><div className="profile">CARREGANDO CONFIGURAÇÃO…</div></section>)
       : tab==="atendimentos" && firebaseAccess?.status==="approved" ? <AtendimentosPanel onSave={saveAttendance} hasExpediente={Boolean(state)} />
-      : tab==="promocoes" && firebaseAccess?.status==="approved" ? <PromotionPanel promotions={promotions} message={promotionsMessage} canManage={firebaseAccess?.user?.role==="admin" || firebaseAccess?.user?.isSupervisor===true} onSave={savePromotions}/> 
+      : tab==="promocoes" && firebaseAccess?.status==="approved" ? <PromotionPanel promotions={promotions} message={promotionsMessage} canCreate={firebaseAccess?.status==="approved"} canManage={firebaseAccess?.user?.role==="admin" || firebaseAccess?.user?.isSupervisor===true} onSave={savePromotions}/> 
       : tab==="manutencoes" && firebaseAccess?.status==="approved" ? <MaintenancePanel />
       : tab==="inadimplencia" && firebaseAccess?.status==="approved" ? <DelinquencyPanel />
       : tab==="supervisao" && firebaseAccess?.status==="approved" && (firebaseAccess?.user?.role==="admin" || firebaseAccess?.user?.isSupervisor===true) ? <SupervisaoPanel />
