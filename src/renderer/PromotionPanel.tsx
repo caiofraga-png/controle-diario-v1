@@ -6,7 +6,7 @@ type Promotion = {
   conditions?: string; startDate?: string; endDate?: string; status?: string;
   [key: string]: unknown;
 };
-type Props = { promotions: Promotion[]; message?: string; canManage: boolean; onSave: (items: Promotion[]) => Promise<void> };
+type Props = { promotions: Promotion[]; message?: string; canManage: boolean; canCreate?: boolean; onSave: (items: Promotion[]) => Promise<void> };
 const emptyPromotion = (): Promotion => ({ id: crypto.randomUUID(), name:"", category:"", benefit:"", eligible:"", conditions:"", startDate:"", endDate:"", status:"active" });
 
 function todayBrazil() {
@@ -20,7 +20,7 @@ function dateLabel(value?:string) {
   return `Validade: ${day}/${month}/${year}`;
 }
 
-export default function PromotionPanel({ promotions, message, canManage, onSave }:Props) {
+export default function PromotionPanel({ promotions, message, canManage, canCreate = canManage, onSave }:Props) {
   const [tab,setTab] = useState<"ongoing"|"completed">("ongoing");
   const [form,setForm] = useState<Promotion|null>(null);
   const [busy,setBusy] = useState(false);
@@ -51,7 +51,7 @@ export default function PromotionPanel({ promotions, message, canManage, onSave 
   }
   const items=tab==="ongoing"?classified.ongoing:classified.completed;
   return <section className="maintenance-workspace promotions-workspace">
-    <div className="workspace-intro maintenance-intro"><div><h2>Promoções</h2><p>Consulte benefícios, produtos elegíveis e condições comerciais das promoções em andamento e concluídas.</p></div>{canManage && !form && tab === "ongoing" && <button className="primary maintenance-new-button" type="button" onClick={()=>{setForm(emptyPromotion());setLocalMessage("");}}>＋ NOVA PROMOÇÃO</button>}</div>
+    <div className="workspace-intro maintenance-intro"><div><h2>Promoções</h2><p>Consulte benefícios, produtos elegíveis e condições comerciais das promoções em andamento e concluídas.</p></div>{canCreate && !form && tab === "ongoing" && <button className="primary maintenance-new-button" type="button" onClick={()=>{setForm(emptyPromotion());setLocalMessage("");}}>＋ NOVA PROMOÇÃO</button>}</div>
     {(localMessage||message)&&<p className="system-message">{localMessage||message}</p>}
     <div className="maintenance-view-tabs" role="tablist" aria-label="Situação das promoções">
       <button type="button" className={tab==="ongoing"?"active":""} onClick={()=>{setTab("ongoing");setForm(null);}}>EM ANDAMENTO <span>{classified.ongoing.length}</span></button>
