@@ -1,4 +1,5 @@
 import { Fragment, useMemo, useState, type CSSProperties } from "react";
+import AvisosPanel from "./AvisosPanel";
 import ExcelJS from "exceljs";
 import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
 
@@ -76,7 +77,7 @@ export default function SupervisaoPanel() {
   const [data, setData] = useState<Overview | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const [section, setSection] = useState<"expedientes" | "atendimentos" | "estrutura" | "historico">("expedientes");
+  const [section, setSection] = useState<"expedientes" | "atendimentos" | "estrutura" | "historico" | "avisos">("expedientes");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [status, setStatus] = useState("TODOS");
   const [expFilters, setExpFilters] = useState({ colaborador:"", setor:"", contato:"", agente:"", perfil:"", data:"" });
@@ -159,8 +160,9 @@ export default function SupervisaoPanel() {
       <button type="button" className={section==="atendimentos"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("atendimentos")}>ATENDIMENTOS</button>
       <button type="button" className={section==="estrutura"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("estrutura")}>ESTRUTURA</button>
       <button type="button" className={section==="historico"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("historico")}>HISTÓRICO</button>
+      <button type="button" className={section==="avisos"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("avisos")}>AVISOS</button>
     </div>
-    {!data ? <p>Clique em ATUALIZAR DADOS para consultar os registros.</p> : section==="expedientes" ? <>
+    {section==="avisos" ? <AvisosPanel allowed={["longCalls","googleChat","otherHelp"]} /> : !data ? <p>Clique em ATUALIZAR DADOS para consultar os registros.</p> : section==="expedientes" ? <>
       <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><h3 style={{margin:0}}>Expedientes ({expedientes.length})</h3><button type="button" disabled={!expedientes.length} onClick={()=>exportXlsx("expedientes-controle-diario.xlsx",["Login","Setor","Contato","Agente","Perfil","Data","Situação"],expedientes,["colaborador","setor","contato","agente","perfil","data","situacao"])}>EXPORTAR PARA EXCEL (.XLSX)</button><button type="button" disabled={!expedientes.length} onClick={()=>void exportExpedientesDocx(expedientes)}>EXPORTAR RELATÓRIO DETALHADO (.DOCX)</button></div>
       <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"end"}}>
         <label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>Situação<select style={selectStyle} value={status} onChange={event=>setStatus(event.target.value)}><option value="TODOS">Ambos</option><option value="NAO_CONCLUIDO">Não concluídos</option><option value="CONCLUIDO">Concluídos</option></select></label>
