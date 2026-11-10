@@ -2,13 +2,16 @@ import { collection, doc, getDoc, getDocs, query, where, setDoc, serverTimestamp
 import { requireFirebase } from "./firebaseClient";
 
 function normalizeSubtype(value: string) {
-  const name = value.trim().replace(/\\s+/g, " ");
+  const name = value.trim().replace(/\s+/g, " ");
   if (!name) throw new Error("INFORME UM SUBTIPO VÁLIDO.");
   if (name.length > 80) throw new Error("O SUBTIPO DEVE TER ATÉ 80 CARACTERES.");
   return name;
 }
 function subtypeId(value: string) {
-  return normalizeSubtype(value).normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLocaleLowerCase("pt-BR").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 90);
+  // O conteúdo do subtipo é livre: codificamos o texto completo para gerar
+  // um ID determinístico e seguro mesmo com emojis, símbolos ou barras.
+  // O prefixo evita IDs reservados como "." e "..".
+  return `subtipo-${encodeURIComponent(normalizeSubtype(value))}`;
 }
 export async function ensureAttendanceSubtype(value: string) {
   const name = normalizeSubtype(value);
