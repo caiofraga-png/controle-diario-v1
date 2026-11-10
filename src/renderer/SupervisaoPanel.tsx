@@ -1,5 +1,6 @@
 import { Fragment, useMemo, useState, type CSSProperties } from "react";
 import AvisosPanel from "./AvisosPanel";
+import OverviewNoticesPermissionPanel from "./OverviewNoticesPermissionPanel";
 import ExcelJS from "exceljs";
 import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
 
@@ -77,7 +78,7 @@ export default function SupervisaoPanel() {
   const [data, setData] = useState<Overview | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const [section, setSection] = useState<"expedientes" | "atendimentos" | "estrutura" | "historico" | "avisos">("expedientes");
+  const [section, setSection] = useState<"avisos" | "configuracaoAvisos" | "expedientes" | "atendimentos" | "estrutura" | "historico">("avisos");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [status, setStatus] = useState("TODOS");
   const [expFilters, setExpFilters] = useState({ colaborador:"", setor:"", contato:"", agente:"", perfil:"", data:"" });
@@ -149,20 +150,32 @@ export default function SupervisaoPanel() {
   const select = (label: string, value: string, values: string[], onChange: (value:string)=>void) => <label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>{label}<select style={selectStyle} value={value} onChange={event=>onChange(event.target.value)}><option value="">Todos</option>{values.map(item=><option key={item} value={item}>{item}</option>)}</select></label>;
 
   return <section className="card" style={{display:"grid",gap:16}}>
-    <div className="workspace-intro"><h2>Visão Geral</h2><p>Acompanhamento gerencial de expedientes e atendimentos de todos os colaboradores. A consulta ocorre somente quando você solicita a atualização.</p></div>
-    <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
-      <button type="button" className="primary-wide" style={{width:"auto"}} disabled={busy} onClick={()=>void refresh()}>{busy?"ATUALIZANDO…":"↻ ATUALIZAR DADOS"}</button>
-      {data&&<span style={{fontSize:12,color:"var(--muted, #60746a)"}}>Atualizado em {new Date(data.updatedAt).toLocaleString("pt-BR")} · {data.totalColaboradores} colaboradores aprovados</span>}
-    </div>
-    {message&&<p className="system-message" role="status">{message}</p>}
-    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-      <button type="button" className={section==="expedientes"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("expedientes")}>EXPEDIENTES</button>
-      <button type="button" className={section==="atendimentos"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("atendimentos")}>ATENDIMENTOS</button>
-      <button type="button" className={section==="estrutura"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("estrutura")}>ESTRUTURA</button>
-      <button type="button" className={section==="historico"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("historico")}>HISTÓRICO</button>
-      <button type="button" className={section==="avisos"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("avisos")}>AVISOS</button>
-    </div>
-    {section==="avisos" ? <AvisosPanel allowed={["longCalls","googleChat","otherHelp"]} /> : !data ? <p>Clique em ATUALIZAR DADOS para consultar os registros.</p> : section==="expedientes" ? <>
+    <div className="workspace-intro"><h2>Visão Geral</h2><p>Painel gerencial para controle diário da operação.</p></div>
+    <section style={{display:"grid",gap:10}}>
+      <div className="workspace-intro"><h3 style={{margin:0}}>AVISOS</h3><p>Receba avisos de solicitações dos colaboradores.</p></div>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+        <button type="button" className={section==="avisos"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("avisos")}>AVISOS</button>
+        <button type="button" className={section==="configuracaoAvisos"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("configuracaoAvisos")}>CONFIGURAÇÃO</button>
+      </div>
+      {section==="avisos" ? <AvisosPanel allowed={["longCalls","googleChat","otherHelp"]}/> : section==="configuracaoAvisos" ? <OverviewNoticesPermissionPanel/> : null}
+    </section>
+    <section style={{display:"grid",gap:10}}>
+      <div className="workspace-intro"><h3 style={{margin:0}}>ANÁLISE DE DADOS</h3><p>Acompanhamento gerencial de expedientes e atendimentos de todos os colaboradores.</p></div>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+        <button type="button" className={section==="expedientes"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("expedientes")}>EXPEDIENTES</button>
+        <button type="button" className={section==="atendimentos"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("atendimentos")}>ATENDIMENTOS</button>
+        <button type="button" className={section==="estrutura"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("estrutura")}>ESTRUTURA</button>
+        <button type="button" className={section==="historico"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("historico")}>HISTÓRICO</button>
+      </div>
+      {section!=="avisos"&&section!=="configuracaoAvisos"&&<>
+        <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+          <button type="button" className="primary-wide" style={{width:"auto"}} disabled={busy} onClick={()=>void refresh()}>{busy?"ATUALIZANDO…":"↻ ATUALIZAR DADOS"}</button>
+          {data&&<span style={{fontSize:12,color:"var(--muted, #60746a)"}}>Atualizado em {new Date(data.updatedAt).toLocaleString("pt-BR")} · {data.totalColaboradores} colaboradores aprovados</span>}
+        </div>
+        {message&&<p className="system-message" role="status">{message}</p>}
+      </>}
+    </section>
+    {section!=="avisos"&&section!=="configuracaoAvisos" ? !data ? <p>Clique em ATUALIZAR DADOS para consultar os registros.</p> : section==="expedientes" ? <>
       <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><h3 style={{margin:0}}>Expedientes ({expedientes.length})</h3><button type="button" disabled={!expedientes.length} onClick={()=>exportXlsx("expedientes-controle-diario.xlsx",["Login","Setor","Contato","Agente","Perfil","Data","Situação"],expedientes,["colaborador","setor","contato","agente","perfil","data","situacao"])}>EXPORTAR PARA EXCEL (.XLSX)</button><button type="button" disabled={!expedientes.length} onClick={()=>void exportExpedientesDocx(expedientes)}>EXPORTAR RELATÓRIO DETALHADO (.DOCX)</button></div>
       <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"end"}}>
         <label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>Situação<select style={selectStyle} value={status} onChange={event=>setStatus(event.target.value)}><option value="TODOS">Ambos</option><option value="NAO_CONCLUIDO">Não concluídos</option><option value="CONCLUIDO">Concluídos</option></select></label>
