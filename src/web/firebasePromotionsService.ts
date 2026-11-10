@@ -5,7 +5,7 @@ export type PromotionStatus = "active" | "suspended" | "closed";
 export interface Promotion {
   id: string; name: string; category: string; benefit: string; eligible: string;
   conditions: string; startDate: string; endDate: string; status: PromotionStatus;
-  createdAt?: unknown; updatedAt?: unknown;
+  createdAt?: unknown; updatedAt?: unknown; createdByUid?: string; updatedByUid?: string; createdByName?: string; updatedByName?: string;
 }
 
 const legacyRef = () => {
@@ -81,10 +81,10 @@ export async function savePromotions(promotions: Promotion[]): Promise<void> {
   const eligibleToday=(item:Promotion)=>(!item.startDate||item.startDate<=todayBrazil)&&(!item.endDate||item.endDate>=todayBrazil));
   for(const item of validated){
     const old=previousById.get(item.id);
+    if(!manager && !publisher) throw new Error("VOCÊ NÃO POSSUI PERMISSÃO PARA ALTERAR PROMOÇÕES.");
     if(!manager && !old && item.id.startsWith("PROMO-")) continue;
-    if(old&&!manager) continue;
     const ref=doc(db,"sharedPromotions",item.id);
-    await setDoc(ref,{...item,createdByUid:old?.createdByUid??user.uid,createdAt:old?.createdAt??serverTimestamp(),updatedByUid:user.uid,updatedAt:serverTimestamp()});
+    await setDoc(ref,{...item,createdByUid:old?.createdByUid??user.uid,createdByName:old?.createdByName??String(userData.agent??user.displayName??user.email??user.uid),createdAt:old?.createdAt??serverTimestamp(),updatedByUid:user.uid,updatedByName:String(userData.agent??user.displayName??user.email??user.uid),updatedAt:serverTimestamp()});
     if(!old&&item.status==="active"&&eligibleToday(item)){
       const notificationRef=doc(collection(db,"sharedNotifications"));
       await setDoc(notificationRef,{category:"promocoes",message:`Promoção - ${item.name} - Em Andamento`,target:"promocoes",referenceId:item.id,createdByUid:user.uid,createdAt:serverTimestamp()});
