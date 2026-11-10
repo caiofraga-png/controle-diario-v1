@@ -68,6 +68,18 @@ service cloud.firestore {
             && get(/databases/$(database)/documents/featurePermissions/maintenance).data.agentIds.hasAny([request.auth.uid])));
     }
 
+    function promotionsPublisher() {
+      return approvedUser()
+        && exists(/databases/$(database)/documents/featurePermissions/promotions)
+        && get(/databases/$(database)/documents/featurePermissions/promotions).data.enabled == true
+        && ((get(/databases/$(database)/documents/featurePermissions/promotions).data.wholeSectorIds is list
+            && get(/databases/$(database)/documents/featurePermissions/promotions).data.wholeSectorIds.hasAny([userRecord(request.auth.uid).data.sectorId]))
+          || (get(/databases/$(database)/documents/featurePermissions/promotions).data.contactIds is list
+            && get(/databases/$(database)/documents/featurePermissions/promotions).data.contactIds.hasAny([userRecord(request.auth.uid).data.contactId]))
+          || (get(/databases/$(database)/documents/featurePermissions/promotions).data.agentIds is list
+            && get(/databases/$(database)/documents/featurePermissions/promotions).data.agentIds.hasAny([request.auth.uid])));
+    }
+
     function delinquencyPublisher() {
       return approvedUser()
         && exists(/databases/$(database)/documents/featurePermissions/delinquency)
@@ -528,6 +540,23 @@ service cloud.firestore {
       allow read: if approvedUser();
       allow create, update: if activeManager()
         && featureId == "maintenance"
+        && request.resource.data.keys().hasOnly(["schemaVersion", "enabled", "sectorIds", "wholeSectorIds", "contactIds", "agentIds", "updatedAt", "updatedByUid"])
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.enabled is bool
+        && request.resource.data.sectorIds is list
+        && request.resource.data.wholeSectorIds is list
+        && request.resource.data.contactIds is list
+        && request.resource.data.agentIds is list
+        && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    // Supervisors and administrators manage scoped permissions for promotion publishers.
+    match /featurePermissions/{featureId} {
+      allow read: if approvedUser();
+      allow create, update: if activeManager()
+        && featureId == "promotions"
         && request.resource.data.keys().hasOnly(["schemaVersion", "enabled", "sectorIds", "wholeSectorIds", "contactIds", "agentIds", "updatedAt", "updatedByUid"])
         && request.resource.data.schemaVersion == 1
         && request.resource.data.enabled is bool
