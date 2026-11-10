@@ -87,7 +87,7 @@ export async function savePromotions(promotions: Promotion[]): Promise<void> {
   }
   await setDoc(promotionsRef(), {
     schemaVersion:1,
-    promotions:validated.map(item=>({...item,updatedAt:serverTimestamp()})),
+    promotions:validated,
     updatedAt:serverTimestamp(),
     updatedByUid:user.uid,
   });
