@@ -623,8 +623,8 @@ test("manutenção exige gravação atômica do histórico imutável e do aviso"
     status: "ongoing",
   };
   batch.set(maintenance, {
-    ...details, createdByUid: "alice", createdAt: serverTimestamp(),
-    updatedByUid: "alice", updatedAt: serverTimestamp(),
+    ...details, createdByUid: "alice", createdAt: serverTimestamp(), createdByName: "Alice",
+    updatedByUid: "alice", updatedAt: serverTimestamp(), updatedByName: "Alice",
     lastHistoryId: "history-1", lastNotificationId: "maintenance-notice-1",
   });
   batch.set(history, {
@@ -651,7 +651,7 @@ test("manutenção exige gravação atômica do histórico imutável e do aviso"
   const history2 = doc(db, "externalMaintenances/maintenance-1/history/history-2");
   const notification2 = doc(db, "sharedNotifications/maintenance-notice-2");
   updateBatch.update(maintenance, {
-    ...updatedDetails, updatedByUid: "alice", updatedAt: serverTimestamp(),
+    ...updatedDetails, updatedByUid: "alice", updatedAt: serverTimestamp(), updatedByName: "Alice",
     lastHistoryId: "history-2", lastNotificationId: "maintenance-notice-2",
   });
   updateBatch.set(history2, {
@@ -692,8 +692,8 @@ test("permissão de manutenção respeita contato e agente individual", async ()
     const notification = doc(db, "sharedNotifications/notice-" + id);
     const details = { title: "Manutenção " + id, date: "2026-11-04", location: "Centro", description: "Teste", status: "ongoing" };
     batch.set(maintenance, {
-      ...details, createdByUid: uid, createdAt: serverTimestamp(),
-      updatedByUid: uid, updatedAt: serverTimestamp(),
+      ...details, createdByUid: uid, createdAt: serverTimestamp(), createdByName: agent,
+      updatedByUid: uid, updatedAt: serverTimestamp(), updatedByName: agent,
       lastHistoryId: "history-" + id, lastNotificationId: "notice-" + id,
     });
     batch.set(history, {
