@@ -81,6 +81,7 @@ export async function savePromotions(promotions: Promotion[]): Promise<void> {
   const eligibleToday=(item:Promotion)=>(!item.startDate||item.startDate<=todayBrazil)&&(!item.endDate||item.endDate>=todayBrazil));
   for(const item of validated){
     const old=previousById.get(item.id);
+    if(!manager && !old && item.id.startsWith("PROMO-")) continue;
     if(old&&!manager) continue;
     const ref=doc(db,"sharedPromotions",item.id);
     await setDoc(ref,{...item,createdByUid:old?.createdByUid??user.uid,createdAt:old?.createdAt??serverTimestamp(),updatedByUid:user.uid,updatedAt:serverTimestamp()});
