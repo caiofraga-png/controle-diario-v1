@@ -82,7 +82,8 @@ export default function AtendimentosPanel({ onSave, hasExpediente }: { onSave: (
     try {
       if (!hasExpediente) throw new Error("INICIE UM EXPEDIENTE ANTES DE COPIAR O TICKET.");
       if (copied && !window.confirm("Este ticket já foi salvo neste expediente. Deseja adicioná-lo novamente à lista?")) return;
-      if (draft.subtipo.trim()) { const savedSubtype = await window.controleDiario.firebase.ensureAttendanceSubtype(draft.subtipo); setSubtypeOptions(current => current.some(item=>item.name.toLocaleLowerCase("pt-BR")===savedSubtype.toLocaleLowerCase("pt-BR"))?current:[...current,{id:savedSubtype,name:savedSubtype}].sort((a,b)=>a.name.localeCompare(b.name,"pt-BR"))); }\n      await onSave({ ...draft, tipo: normalizeSheetSymbol(draft.tipo), id: globalThis.crypto.randomUUID(), criadoEm: new Date().toISOString() });
+      if (draft.subtipo.trim()) { const savedSubtype = await window.controleDiario.firebase.ensureAttendanceSubtype(draft.subtipo); setSubtypeOptions(current => current.some(item=>item.name.toLocaleLowerCase("pt-BR")===savedSubtype.toLocaleLowerCase("pt-BR"))?current:[...current,{id:savedSubtype,name:savedSubtype}].sort((a,b)=>a.name.localeCompare(b.name,"pt-BR"))); }
+      await onSave({ ...draft, tipo: normalizeSheetSymbol(draft.tipo), id: globalThis.crypto.randomUUID(), criadoEm: new Date().toISOString() });
       const cells = fieldOrder.map(key => draft[key as keyof AttendanceDraft] ?? "");
       try { await navigator.clipboard.writeText(cells.map(normalizeSheetSymbol).join("\t")); setCopied(true); }
       catch { setCopied(true); setError("Ticket salvo no sistema. A cópia automática falhou; copie os campos manualmente."); }
