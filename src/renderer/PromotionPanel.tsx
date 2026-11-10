@@ -21,7 +21,10 @@ function dateLabel(value?:string) {
   return `Validade: ${day}/${month}/${year}`;
 }
 
-export default function PromotionPanel({ promotions, message, canManage, onSave }:Props) {\n  const [canPublish,setCanPublish] = useState(false);\n  useEffect(()=>{let active=true; void canCurrentUserManagePromotions().then(value=>{if(active)setCanPublish(value)}).catch(()=>{if(active)setCanPublish(false)}); return ()=>{active=false}},[]);\n  const canEdit = canManage || canPublish;
+export default function PromotionPanel({ promotions, message, canManage, onSave }:Props) {
+  const [canPublish,setCanPublish] = useState(false);
+  useEffect(()=>{let active=true; void canCurrentUserManagePromotions().then(value=>{if(active)setCanPublish(value)}).catch(()=>{if(active)setCanPublish(false)}); return ()=>{active=false}},[]);
+  const canEdit = canManage || canPublish;
   const [tab,setTab] = useState<"ongoing"|"completed">("ongoing");
   const [form,setForm] = useState<Promotion|null>(null);
   const [busy,setBusy] = useState(false);
@@ -77,7 +80,8 @@ export default function PromotionPanel({ promotions, message, canManage, onSave 
         <div className="promotion-benefit">{item.benefit}</div>
         {item.eligible&&<div className="promotion-detail"><strong>PRODUTOS / PLANOS ELEGÍVEIS</strong><p>{item.eligible}</p></div>}
         {item.conditions&&<div className="promotion-detail"><strong>CONDIÇÕES</strong><p>{item.conditions}</p></div>}
-        <div className="promotion-validity">{dateLabel(item.endDate)}</div>\n        <div className="maintenance-card-meta">Criado por: {String(item.createdByName??item.createdByUid??"Não informado")} · Última alteração por: {String(item.updatedByName??item.updatedByUid??"Não informado")}</div>
+        <div className="promotion-validity">{dateLabel(item.endDate)}</div>
+        <div className="maintenance-card-meta">Criado por: {String(item.createdByName??item.createdByUid??"Não informado")} · Última alteração por: {String(item.updatedByName??item.updatedByUid??"Não informado")}</div>
         {item.status==="suspended"&&<div className="promotion-status suspended">SUSPENSA</div>}
         {item.status==="closed"&&<div className="promotion-status closed">CONCLUÍDA</div>}
         {canEdit&&<div className="maintenance-card-actions"><button type="button" className="secondary" onClick={()=>{setForm({...item});setLocalMessage("");}}>EDITAR</button>{item.status!=="closed"?<button type="button" className="primary" disabled={busy} onClick={()=>void changeStatus(item,"closed")}>CONCLUIR</button>:<button type="button" className="primary" disabled={busy} onClick={()=>void changeStatus(item,"active")}>REABRIR</button>}</div>}
