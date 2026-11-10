@@ -573,6 +573,34 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    function validOverviewNoticeScope(scope) {
+      return scope is map
+        && scope.keys().hasOnly(["enabled", "wholeSectorIds", "contactIds", "agentIds"])
+        && scope.keys().hasAll(["enabled", "wholeSectorIds", "contactIds", "agentIds"])
+        && scope.enabled is bool
+        && scope.wholeSectorIds is list
+        && scope.contactIds is list
+        && scope.agentIds is list;
+    }
+
+    // Only managers can configure the three independent Visão Geral notice scopes.
+    match /featurePermissions/{featureId} {
+      allow read: if approvedUser();
+      allow create, update: if activeManager()
+        && featureId == "overviewNotices"
+        && request.resource.data.keys().hasOnly(["schemaVersion", "notices", "updatedAt", "updatedByUid"])
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.notices is map
+        && request.resource.data.notices.keys().hasOnly(["longCalls", "googleChat", "otherHelp"])
+        && request.resource.data.notices.keys().hasAll(["longCalls", "googleChat", "otherHelp"])
+        && validOverviewNoticeScope(request.resource.data.notices.longCalls)
+        && validOverviewNoticeScope(request.resource.data.notices.googleChat)
+        && validOverviewNoticeScope(request.resource.data.notices.otherHelp)
+        && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
     // Supervisors and administrators manage scoped permissions for promotion publishers.
     match /featurePermissions/{featureId} {
       allow read: if approvedUser();
