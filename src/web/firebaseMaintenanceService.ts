@@ -11,8 +11,10 @@ export interface ExternalMaintenance {
   status: MaintenanceStatus;
   createdByUid: string;
   createdAt?: unknown;
+  createdByName?: string;
   updatedByUid: string;
   updatedAt?: unknown;
+  updatedByName?: string;
 }
 export interface MaintenanceHistory {
   id: string;
@@ -90,7 +92,7 @@ export async function saveExternalMaintenance(input: ExternalMaintenanceInput, i
     if (!changed) return;
 
     const historyRef = doc(collection(db, "externalMaintenances", id, "history"));
-    batch.update(maintenanceRef, { ...input, updatedByUid: user.uid, updatedAt: now, lastHistoryId: historyRef.id, lastNotificationId: notificationRef.id });
+    batch.update(maintenanceRef, { ...input, updatedByUid: user.uid, updatedByName: changedByName, updatedAt: now, lastHistoryId: historyRef.id, lastNotificationId: notificationRef.id });
     batch.set(historyRef, {
       maintenanceId: id,
       changedByUid: user.uid,
@@ -107,8 +109,10 @@ export async function saveExternalMaintenance(input: ExternalMaintenanceInput, i
       ...input,
       createdByUid: user.uid,
       createdAt: now,
+      createdByName: changedByName,
       updatedByUid: user.uid,
       updatedAt: now,
+      updatedByName: changedByName,
       lastHistoryId: historyRef.id,
       lastNotificationId: notificationRef.id,
     });
