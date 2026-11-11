@@ -38,7 +38,7 @@ export default function DelinquencyPanel(){
           const permissionSnap=await getDoc(doc(db,"featurePermissions","delinquency"));
           const permission=permissionSnap.exists()?permissionSnap.data():{};
           permitted=profile.status==="approved"&&permission.enabled===true&&(
-            (permission.wholeSectorIds??permission.sectorIds??[]).includes(profile.sectorId)||
+            (permission.wholeSectorIds??[]).includes(profile.sectorId)||
             (permission.contactIds??[]).includes(profile.contactId)||
             (permission.agentIds??[]).includes(user.uid));
         }
