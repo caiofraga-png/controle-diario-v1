@@ -29,46 +29,9 @@ export class FirebaseWorkflowService {
   ) {}
 
   async load(): Promise<LoadedData> {
-    return diagnoseFirebaseStep("carregar configuração, calendário e estado atual do expediente", () => this.workspace.load());
+    return diagnoseFirebaseStep("carregar configuração e estado atual do expediente", () => this.workspace.load());
   }
 
-  async month(input: { year: number; month: number }) {
-    const loaded = await diagnoseFirebaseStep("carregar calendário e configuração do usuário", () => this.workspace.load());
-    const history = await diagnoseFirebaseStep(`consultar histórico operacional de ${input.year}-${String(input.month).padStart(2, "0")}`, () => this.operational.listHistoryMonth(input.year, input.month));
-    const prefix = `${input.year}-${String(input.month).padStart(2, "0")}-`;
-    const manual = loaded.calendario.datas.filter(item => item.data.startsWith(prefix));
-    const scale = loaded.configuracao.layout.escala12x36;
-    const generated: Array<{ data: string; folga: boolean; feriado: boolean; automatic: boolean }> = [];
-    if (scale?.referencias?.length) {
-      const daysInMonth = new Date(input.year, input.month, 0).getDate();
-      const references = scale.referencias.slice().sort((a, b) => a.primeiraFolga.localeCompare(b.primeiraFolga));
-      for (let day = 1; day <= daysInMonth; day++) {
-        const date = `${prefix}${String(day).padStart(2, "0")}`;
-        const reference = [...references].reverse().find(item => item.primeiraFolga <= date);
-        if (!reference) continue;
-        const brazilParts = new Intl.DateTimeFormat("en-US", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
-        const part = (type: string) => brazilParts.find(item => item.type === type)?.value ?? "00";
-        const brazilToday = `${part("year")}-${part("month")}-${part("day")}`;
-        if (!scale.habilitada && date >= brazilToday) continue;
-        const start = new Date(`${reference.primeiraFolga}T12:00:00Z`).getTime();
-        const current = new Date(`${date}T12:00:00Z`).getTime();
-        const elapsedDays = Math.round((current - start) / 86400000);
-        if (elapsedDays >= 0 && elapsedDays % 2 === 0) generated.push({ data: date, folga: true, feriado: false, automatic: true });
-      }
-    }
-    const merged = new Map<string, any>();
-    for (const item of generated) merged.set(item.data, item);
-    for (const item of manual) {
-      const automatic = merged.get(item.data);
-      merged.set(item.data, automatic
-        ? { ...automatic, feriado: Boolean(item.feriado), folga: Boolean(automatic.folga || item.folga), automatic: true }
-        : { ...item, automatic: false });
-    }
-    return {
-      special: [...merged.values()],
-      completedDates: [...new Set(history.map(item => item.data))],
-    };
-  }
 
   async versions(date: string) {
     return this.operational.listHistory(date);
@@ -253,13 +216,4 @@ export class FirebaseWorkflowService {
 
   async savePromotions(items: Promotion[]) { await savePromotions(items); return loadPromotions(); }
 
-  async saveCalendarDate(input: { data: string; folga: boolean; feriado: boolean }) {
-    const loaded = await this.workspace.load();
-    const dates = loaded.calendario.datas.filter(item => item.data !== input.data);
-    if (input.folga || input.feriado) dates.push(input);
-    dates.sort((a, b) => a.data.localeCompare(b.data));
-    const calendar = { schemaVersion: 1 as const, datas: dates };
-    await this.workspace.saveCalendar(calendar);
-    return calendar;
-  }
 }
