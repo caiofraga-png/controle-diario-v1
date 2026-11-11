@@ -699,7 +699,7 @@ test("permissão de manutenção respeita contato e agente individual", async ()
     });
   });
 
-  async function createMaintenance(uid, id, agent) {
+  async function createMaintenance(uid, id, agent, ownerScope = {}) {
     const db = dbAs(uid);
     const batch = writeBatch(db);
     const maintenance = doc(db, "externalMaintenances/" + id);
@@ -708,6 +708,8 @@ test("permissão de manutenção respeita contato e agente individual", async ()
     const details = { title: "Manutenção " + id, date: "2026-11-04", location: "Centro", description: "Teste", status: "ongoing" };
     batch.set(maintenance, {
       ...details, createdByUid: uid, createdAt: serverTimestamp(), createdByName: agent,
+      ownerSectorId: ownerScope.ownerSectorId ?? (uid === "alice" ? "suporte" : "financeiro"),
+      ownerContactId: ownerScope.ownerContactId ?? (uid === "alice" ? "equipe-a" : "equipe-b"),
       updatedByUid: uid, updatedAt: serverTimestamp(), updatedByName: agent,
       lastHistoryId: "history-" + id, lastNotificationId: "notice-" + id,
     });
@@ -723,6 +725,7 @@ test("permissão de manutenção respeita contato e agente individual", async ()
   }
 
   await assertSucceeds(createMaintenance("alice", "maintenance-contact", "Alice"));
+  await assertFails(createMaintenance("alice", "maintenance-forged-scope", "Alice", { ownerSectorId: "financeiro" }));
   await assertSucceeds(createMaintenance("bob", "maintenance-agent", "Bob"));
   await assertFails(createMaintenance("charlie", "maintenance-denied", "Charlie"));
 });
@@ -771,7 +774,7 @@ test("somente setor ou contato liberado pode publicar aviso de inadimplência co
     updatedAt: serverTimestamp(), updatedByUid: "supervisor",
   }));
 
-  const createNoticeBatch = (uid, noticeId) => {
+  const createNoticeBatch = (uid, noticeId, ownerScope = {}) => {
     const db = dbAs(uid);
     const batch = writeBatch(db);
     const noticeRef = doc(db, "delinquencyNotices", noticeId);
@@ -782,6 +785,8 @@ test("somente setor ou contato liberado pode publicar aviso de inadimplência co
       dueDate: "2026-10-20", customerCount: 12, overdueDays: 15,
       validUntil: "2026-11-10", status: "ongoing",
       notificationId: notificationRef.id,
+      ownerSectorId: ownerScope.ownerSectorId ?? (uid === "alice" ? "suporte" : "financeiro"),
+      ownerContactId: ownerScope.ownerContactId ?? (uid === "alice" ? "equipe-a" : "equipe-b"),
       createdByUid: uid, createdAt: timestamp,
       updatedByUid: uid, updatedAt: timestamp,
     });
@@ -794,6 +799,7 @@ test("somente setor ou contato liberado pode publicar aviso de inadimplência co
   };
 
   await assertSucceeds(createNoticeBatch("alice", "aviso-alice"));
+  await assertFails(createNoticeBatch("alice", "aviso-alice-escopo-falso", { ownerSectorId: "financeiro" }));
   await assertFails(createNoticeBatch("bob", "aviso-bob"));
 
   const alice = dbAs("alice");
