@@ -592,6 +592,7 @@ test("notificações de promoção exigem vínculo com campanha existente e são
   };
   await assertSucceeds(setDoc(doc(supervisor, "sharedNotifications/promo-1"), notification));
   await assertSucceeds(getDoc(doc(dbAs("alice"), "sharedNotifications/promo-1")));
+  await assertFails(setDoc(doc(supervisor, "sharedNotifications/promo-duplicate"), notification));
   await assertFails(setDoc(doc(dbAs("alice"), "sharedNotifications/forbidden"), {
     ...notification, referenceId: "campanha-inexistente", createdByUid: "alice",
   }));
