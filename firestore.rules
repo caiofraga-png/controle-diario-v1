@@ -380,7 +380,7 @@ service cloud.firestore {
         && data.keys().hasOnly([
           "id", "name", "category", "benefit", "eligible", "conditions",
           "startDate", "endDate", "status", "createdByUid", "createdByName",
-          "createdAt", "updatedByUid", "updatedByName", "updatedAt", "lastNotificationId"
+          "createdAt", "updatedByUid", "updatedByName", "updatedAt", "lastNotificationId", "ownerSectorId", "ownerContactId"
         ])
         && data.id is string && data.id.size() > 0
         && data.name is string && data.name.size() > 0
@@ -395,7 +395,9 @@ service cloud.firestore {
         && data.createdByName is string
         && data.updatedByUid is string
         && data.updatedByName is string
-        && (!data.keys().hasAny(["lastNotificationId"]) || data.lastNotificationId is string);
+        && (!data.keys().hasAny(["lastNotificationId"]) || data.lastNotificationId is string)
+        && (!data.keys().hasAny(["ownerSectorId"]) || data.ownerSectorId is string)
+        && (!data.keys().hasAny(["ownerContactId"]) || data.ownerContactId is string);
     }
 
     function validPromotionNotificationLink(promotionId) {
@@ -422,6 +424,8 @@ service cloud.firestore {
         && request.resource.data.updatedByUid == request.auth.uid
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time
+        && (!request.resource.data.keys().hasAny(["ownerSectorId"]) || request.resource.data.ownerSectorId == userRecord(request.auth.uid).data.sectorId)
+        && (!request.resource.data.keys().hasAny(["ownerContactId"]) || request.resource.data.ownerContactId == userRecord(request.auth.uid).data.contactId)
         && (!request.resource.data.keys().hasAny(["lastNotificationId"])
           || validPromotionNotificationLink(promotionId));
       allow update: if approvedUser()
@@ -435,6 +439,8 @@ service cloud.firestore {
         && request.resource.data.createdByUid == resource.data.createdByUid
         && request.resource.data.createdByName == resource.data.createdByName
         && request.resource.data.createdAt == resource.data.createdAt
+        && (!resource.data.keys().hasAny(["ownerSectorId"]) || request.resource.data.ownerSectorId == resource.data.ownerSectorId)
+        && (!resource.data.keys().hasAny(["ownerContactId"]) || request.resource.data.ownerContactId == resource.data.ownerContactId)
         && request.resource.data.updatedByUid == request.auth.uid
         && request.resource.data.updatedAt == request.time
         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(["lastNotificationId"])
@@ -459,7 +465,7 @@ service cloud.firestore {
         && (activeManager() || delinquencyPublisher())
         && request.resource.data.keys().hasAll([
           "type", "date", "title", "dueDate", "customerCount", "overdueDays",
-          "validUntil", "status", "createdByUid", "createdAt", "updatedByUid", "updatedAt", "notificationId"
+          "validUntil", "status", "createdByUid", "createdAt", "updatedByUid", "updatedAt", "notificationId", "ownerSectorId", "ownerContactId"
         ])
         && request.resource.data.keys().hasOnly([
           "type", "date", "title", "dueDate", "customerCount", "overdueDays",
@@ -475,7 +481,11 @@ service cloud.firestore {
         && request.resource.data.overdueDays >= 0
         && request.resource.data.validUntil is string
         && request.resource.data.status in ["ongoing", "completed"]
+        && (!request.resource.data.keys().hasAny(["ownerSectorId"]) || request.resource.data.ownerSectorId == userRecord(request.auth.uid).data.sectorId)
+        && (!request.resource.data.keys().hasAny(["ownerContactId"]) || request.resource.data.ownerContactId == userRecord(request.auth.uid).data.contactId)
         && request.resource.data.createdByUid == request.auth.uid
+        && (!resource.data.keys().hasAny(["ownerSectorId"]) || request.resource.data.ownerSectorId == resource.data.ownerSectorId)
+        && (!resource.data.keys().hasAny(["ownerContactId"]) || request.resource.data.ownerContactId == resource.data.ownerContactId)
         && request.resource.data.updatedByUid == request.auth.uid
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time
@@ -607,12 +617,14 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly([
           "title", "date", "location", "description", "status",
           "createdByUid", "createdAt", "createdByName", "updatedByUid", "updatedAt", "updatedByName",
-          "lastHistoryId", "lastNotificationId"
+          "lastHistoryId", "lastNotificationId", "ownerSectorId", "ownerContactId"
         ])
         && request.resource.data.createdByUid == request.auth.uid
         && request.resource.data.updatedByUid == request.auth.uid
         && request.resource.data.createdByName is string
         && request.resource.data.updatedByName is string
+        && (!request.resource.data.keys().hasAny(["ownerSectorId"]) || request.resource.data.ownerSectorId == userRecord(request.auth.uid).data.sectorId)
+        && (!request.resource.data.keys().hasAny(["ownerContactId"]) || request.resource.data.ownerContactId == userRecord(request.auth.uid).data.contactId)
         && request.resource.data.status in ["ongoing", "completed"]
         && request.resource.data.title is string
         && request.resource.data.date is string
@@ -630,6 +642,8 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasAny(["title", "date", "location", "description", "status"])
         && request.resource.data.createdByUid == resource.data.createdByUid
         && request.resource.data.createdAt == resource.data.createdAt
+        && (!resource.data.keys().hasAny(["ownerSectorId"]) || request.resource.data.ownerSectorId == resource.data.ownerSectorId)
+        && (!resource.data.keys().hasAny(["ownerContactId"]) || request.resource.data.ownerContactId == resource.data.ownerContactId)
         && request.resource.data.updatedByUid == request.auth.uid
         && request.resource.data.updatedAt == request.time
         && request.resource.data.status in ["ongoing", "completed"]
