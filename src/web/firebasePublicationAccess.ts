@@ -11,6 +11,7 @@ export type PublicationAccess = {
   uid: string;
   manager: boolean;
   canPublish: boolean;
+  enabled: boolean;
   wholeSectorIds: string[];
   contactIds: string[];
   agentIds: string[];
@@ -36,7 +37,7 @@ export async function loadPublicationAccess(feature: PublicationFeature): Promis
     && (wholeSectorIds.includes(profile.sectorId)
       || contactIds.includes(profile.contactId)
       || agentIds.includes(user.uid)));
-  return { uid: user.uid, manager, canPublish, wholeSectorIds, contactIds, agentIds };
+  return { uid: user.uid, manager, canPublish, enabled: permission.enabled === true, wholeSectorIds, contactIds, agentIds };
 }
 
 /**
@@ -49,7 +50,9 @@ export function canEditPublicationRecord(
   record: PublicationRecordScope,
 ): boolean {
   if (!access) return false;
-  if (access.manager || record.createdByUid === access.uid) return true;
+  if (access.manager) return true;
+  if (!access.enabled) return false;
+  if (record.createdByUid === access.uid) return access.canPublish;
   if (!record.ownerSectorId && !record.ownerContactId) return false;
   return (Boolean(record.ownerSectorId) && access.wholeSectorIds.includes(record.ownerSectorId!))
     || (Boolean(record.ownerContactId) && access.contactIds.includes(record.ownerContactId!))
