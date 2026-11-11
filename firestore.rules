@@ -729,26 +729,22 @@ service cloud.firestore {
     }
 
     // Task attachments are shared with every approved collaborator; only managers upload/remove.
+    // Attachments follow the scope of an existing record. A publisher may
+    // also attach files to their own not-yet-saved draft.
     match /sharedAttachments/{attachmentId} {
       allow read: if approvedUser();
       allow create: if (
-          (request.resource.data.targetType in ["task-creation", "task-roteiro", "promotion"] && activeManager())
+          activeManager()
           || (request.resource.data.targetType == "maintenance"
-            && request.resource.data.targetId is string
-            && ((exists(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.targetId))
-                && canEditScopedRecord("maintenance",
-                  get(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.targetId)).data.createdByUid))
-              || (!exists(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.targetId))
-                && (activeManager() || maintenancePublisher())
-                && request.resource.data.createdByUid == request.auth.uid)))
+            && maintenancePublisher()
+            && (!exists(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.targetId))
+              || publisherAuthorizedForOwner("maintenance",
+                get(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.targetId)).data.createdByUid)))
           || (request.resource.data.targetType == "delinquency"
-            && request.resource.data.targetId is string
-            && ((exists(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId))
-                && canEditScopedRecord("delinquency",
-                  get(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId)).data.createdByUid))
-              || (!exists(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId))
-                && (activeManager() || delinquencyPublisher())
-                && request.resource.data.createdByUid == request.auth.uid)))
+            && delinquencyPublisher()
+            && (!exists(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId))
+              || publisherAuthorizedForOwner("delinquency",
+                get(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId)).data.createdByUid)))
         )
         && request.resource.data.keys().hasAll(["targetType","targetId","name","mimeType","size","data","createdByUid","createdAt"])
         && request.resource.data.keys().hasOnly(["targetType","targetId","name","mimeType","size","data","createdByUid","createdAt"])
@@ -768,17 +764,17 @@ service cloud.firestore {
         && (request.resource.data.createdAt == request.time
           || (activeAdmin() && request.resource.data.createdAt is timestamp));
       allow update: if false;
-      allow delete: if (resource.data.targetType in ["task-creation", "task-roteiro", "promotion"] && activeManager())
+      allow delete: if activeManager()
         || (resource.data.targetType == "maintenance"
-          && (activeManager()
-            || (exists(/databases/$(database)/documents/externalMaintenances/$(resource.data.targetId))
-              && canEditScopedRecord("maintenance",
-                get(/databases/$(database)/documents/externalMaintenances/$(resource.data.targetId)).data.createdByUid))))
+          && maintenancePublisher()
+          && exists(/databases/$(database)/documents/externalMaintenances/$(resource.data.targetId))
+          && publisherAuthorizedForOwner("maintenance",
+            get(/databases/$(database)/documents/externalMaintenances/$(resource.data.targetId)).data.createdByUid))
         || (resource.data.targetType == "delinquency"
-          && (activeManager()
-            || (exists(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId))
-              && canEditScopedRecord("delinquency",
-                get(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId)).data.createdByUid))));
+          && delinquencyPublisher()
+          && exists(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId))
+          && publisherAuthorizedForOwner("delinquency",
+            get(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId)).data.createdByUid));
     }
 
     // Shared attendance subtype catalog: approved collaborators may add suggestions;
