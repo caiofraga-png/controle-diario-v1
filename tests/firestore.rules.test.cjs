@@ -821,6 +821,66 @@ test("somente setor ou contato liberado pode publicar aviso de inadimplência co
   await assertFails(batch.commit());
 });
 
+test("edição de promoções e inadimplência respeita o escopo do autor do registro", async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await setDoc(doc(db, "users/charlie"), {
+      uid: "charlie", email: "charlie@lestetelecom.net.br", login: "charlie",
+      agent: "Charlie", sectorId: "suporte", contactId: "equipe-b",
+      role: "employee", status: "approved", isSupervisor: false,
+    });
+    await setDoc(doc(db, "sharedPromotions/promo-charlie"), {
+      id: "promo-charlie", name: "Campanha Charlie", category: "Teste",
+      benefit: "Benefício", eligible: "Todos", conditions: "Condições",
+      startDate: "", endDate: "", status: "active",
+      createdByUid: "charlie", createdByName: "Charlie", createdAt: new Date(),
+      updatedByUid: "charlie", updatedByName: "Charlie", updatedAt: new Date(),
+    });
+    await setDoc(doc(db, "sharedPromotions/promo-bob"), {
+      id: "promo-bob", name: "Campanha Bob", category: "Teste",
+      benefit: "Benefício", eligible: "Todos", conditions: "Condições",
+      startDate: "", endDate: "", status: "active",
+      createdByUid: "bob", createdByName: "Bob", createdAt: new Date(),
+      updatedByUid: "bob", updatedByName: "Bob", updatedAt: new Date(),
+    });
+    for (const [id, ownerUid] of [["aviso-charlie", "charlie"], ["aviso-bob", "bob"]]) {
+      await setDoc(doc(db, "delinquencyNotices", id), {
+        type: "reducao", date: "2026-11-04", title: "Aviso " + ownerUid,
+        dueDate: "2026-10-20", customerCount: 12, overdueDays: 15,
+        validUntil: "2026-11-10", status: "ongoing",
+        notificationId: "notification-" + id,
+        createdByUid: ownerUid, createdAt: new Date(),
+        updatedByUid: ownerUid, updatedAt: new Date(),
+      });
+    }
+  });
+
+  await assertSucceeds(setDoc(doc(dbAs("supervisor"), "featurePermissions/promotions"), {
+    schemaVersion: 1, enabled: true, sectorIds: ["suporte"], wholeSectorIds: ["suporte"],
+    contactIds: [], agentIds: [], updatedAt: serverTimestamp(), updatedByUid: "supervisor",
+  }));
+  await assertSucceeds(setDoc(doc(dbAs("supervisor"), "featurePermissions/delinquency"), {
+    schemaVersion: 1, enabled: true, sectorIds: ["suporte"], wholeSectorIds: ["suporte"],
+    contactIds: [], agentIds: [], updatedAt: serverTimestamp(), updatedByUid: "supervisor",
+  }));
+
+  const alice = dbAs("alice");
+  await assertSucceeds(updateDoc(doc(alice, "sharedPromotions/promo-charlie"), {
+    benefit: "Benefício atualizado", updatedByUid: "alice",
+    updatedByName: "Alice", updatedAt: serverTimestamp(),
+  }));
+  await assertFails(updateDoc(doc(alice, "sharedPromotions/promo-bob"), {
+    benefit: "Tentativa fora do setor", updatedByUid: "alice",
+    updatedByName: "Alice", updatedAt: serverTimestamp(),
+  }));
+  await assertSucceeds(updateDoc(doc(alice, "delinquencyNotices/aviso-charlie"), {
+    status: "completed", updatedByUid: "alice", updatedAt: serverTimestamp(),
+  }));
+  await assertFails(updateDoc(doc(alice, "delinquencyNotices/aviso-bob"), {
+    status: "completed", updatedByUid: "alice", updatedAt: serverTimestamp(),
+  }));
+});
+
 test("anexos compartilhados aceitam os cinco destinos por administrador e supervisor", async () => {
   for (const uid of ["admin", "supervisor"]) {
     const db = dbAs(uid);
