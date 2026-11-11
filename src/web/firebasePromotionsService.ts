@@ -57,16 +57,24 @@ export async function canCurrentUserManagePromotions(): Promise<boolean> {
 
 export async function loadPromotions(): Promise<Promotion[]> {
   const {db}=requireFirebase();
-  const snapshot=await getDocs(collection(db,"sharedPromotions"));
-  const records=snapshot.docs.filter(item=>item.id!=="current").map(item=>({id:item.id,...item.data()}));
-  if(records.length) return validatePromotions(records);
-  const legacy=await getDoc(legacyRef());
+  const [snapshot,legacy]=await Promise.all([
+    getDocs(collection(db,"sharedPromotions")),
+    getDoc(legacyRef()),
+  ]);
+  const merged=new Map<string,Promotion>();
   if(legacy.exists()) {
     const data=legacy.data();
     if(data.schemaVersion!==1) throw new Error("A VERSÃO DO CATÁLOGO DE PROMOÇÕES É INVÁLIDA.");
-    return validatePromotions(data.promotions);
+    for(const item of validatePromotions(data.promotions)) merged.set(item.id,item);
   }
-  return initialPromotions();
+  // Registros individuais prevalecem sobre a versão legada, sem ocultar
+  // campanhas históricas que ainda não foram migradas para documentos próprios.
+  for(const snapshotItem of snapshot.docs) {
+    if(snapshotItem.id==="current") continue;
+    const item=validatePromotions([{id:snapshotItem.id,...snapshotItem.data()}])[0];
+    merged.set(item.id,item);
+  }
+  return merged.size ? [...merged.values()] : initialPromotions();
 }
 
 export async function savePromotions(promotions: Promotion[]): Promise<void> {
@@ -92,11 +100,18 @@ export async function savePromotions(promotions: Promotion[]): Promise<void> {
   const validated=validatePromotions(promotions);
   const ids=new Set<string>();
   for(const item of validated){if(ids.has(item.id))throw new Error("EXISTE UMA PROMOÇÃO COM ID DUPLICADO.");ids.add(item.id);}
-  const current=new Map(recordsSnapshot.docs.filter(item=>item.id!=="current").map(item=>[item.id,item.data() as any]));
-  let previous:Promotion[]=[];
-  if(current.size) previous=validatePromotions([...current.entries()].map(([id,data])=>({id,...data})));
-  else if(legacySnapshot.exists()) previous=validatePromotions(legacySnapshot.data().promotions);
-  const previousById=new Map(previous.map(item=>[item.id,item]));
+  const previousById=new Map<string,Promotion>();
+  if(legacySnapshot.exists()) {
+    const legacyData=legacySnapshot.data();
+    if(legacyData.schemaVersion!==1) throw new Error("A VERSÃO DO CATÁLOGO DE PROMOÇÕES É INVÁLIDA.");
+    for(const item of validatePromotions(legacyData.promotions)) previousById.set(item.id,item);
+  }
+  // Os documentos individuais têm prioridade, mas não eliminam o histórico legado.
+  for(const snapshotItem of recordsSnapshot.docs) {
+    if(snapshotItem.id==="current") continue;
+    const item=validatePromotions([{id:snapshotItem.id,...snapshotItem.data()}])[0];
+    previousById.set(item.id,item);
+  }
   const todayBrazil=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
   const eligibleToday=(item:Promotion)=>(!item.startDate||item.startDate<=todayBrazil)&&(!item.endDate||item.endDate>=todayBrazil);
   for(const item of validated){
