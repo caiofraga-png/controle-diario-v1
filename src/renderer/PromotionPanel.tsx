@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { canCurrentUserManagePromotions } from "../web/firebasePromotionsService";
+import { loadPublicationAccess, canEditPublicationRecord, type PublicationAccess } from "../web/firebasePublicationAccess";
 import AttachmentPanel from "./AttachmentPanel";
 
 type Promotion = {
-  id: string; name?: string; category?: string; benefit?: string; eligible?: string;
+  id: string; name?: string; category?: string; benefit?: string; eligible?: string; ownerSectorId?: string; ownerContactId?: string; createdByUid?: string;
   conditions?: string; startDate?: string; endDate?: string; status?: string;
   [key: string]: unknown;
 };
@@ -71,7 +71,7 @@ export default function PromotionPanel({ promotions, message, canManage, onSave 
         <label>DATA INICIAL<input type="date" value={String(form.startDate??"")} onChange={e=>update("startDate",e.target.value)}/></label>
         <label>DATA FINAL<input type="date" value={String(form.endDate??"")} onChange={e=>update("endDate",e.target.value)}/></label>
       </div>
-      <AttachmentPanel targetType="promotion" targetId={form.id} canUpload={canManage} />
+      <AttachmentPanel targetType="promotion" targetId={form.id} canUpload={promotions.some(item=>item.id===form.id) ? canEditItem(form) : canPublish} />
       <label>STATUS<select value={String(form.status??"active")} onChange={e=>update("status",e.target.value)}><option value="active">EM ANDAMENTO</option><option value="suspended">SUSPENSA</option><option value="closed">CONCLUÍDA</option></select></label>
       <div className="maintenance-form-actions"><button type="button" className="secondary" onClick={()=>setForm(null)}>CANCELAR</button><button type="button" className="primary" disabled={busy} onClick={()=>void save()}>SALVAR PROMOÇÃO</button></div>
     </div></div>:<>
@@ -84,7 +84,7 @@ export default function PromotionPanel({ promotions, message, canManage, onSave 
         <div className="maintenance-card-meta">Criado por: {String(item.createdByName??item.createdByUid??"Não informado")} · Última alteração por: {String(item.updatedByName??item.updatedByUid??"Não informado")}</div>
         {item.status==="suspended"&&<div className="promotion-status suspended">SUSPENSA</div>}
         {item.status==="closed"&&<div className="promotion-status closed">CONCLUÍDA</div>}
-        {canEdit&&<div className="maintenance-card-actions"><button type="button" className="secondary" onClick={()=>{setForm({...item});setLocalMessage("");}}>EDITAR</button>{item.status!=="closed"?<button type="button" className="primary" disabled={busy} onClick={()=>void changeStatus(item,"closed")}>CONCLUIR</button>:<button type="button" className="primary" disabled={busy} onClick={()=>void changeStatus(item,"active")}>REABRIR</button>}</div>}
+        {canEditItem(item)&&<div className="maintenance-card-actions"><button type="button" className="secondary" onClick={()=>{setForm({...item});setLocalMessage("");}}>EDITAR</button>{item.status!=="closed"?<button type="button" className="primary" disabled={busy} onClick={()=>void changeStatus(item,"closed")}>CONCLUIR</button>:<button type="button" className="primary" disabled={busy} onClick={()=>void changeStatus(item,"active")}>REABRIR</button>}</div>}
       </article>)}</div>
       {items.length===0&&<div className="maintenance-empty">{tab==="ongoing"?"NÃO HÁ PROMOÇÕES EM ANDAMENTO." :"NÃO HÁ PROMOÇÕES CONCLUÍDAS NO HISTÓRICO."}</div>}
     </>}
