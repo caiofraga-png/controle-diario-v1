@@ -788,6 +788,37 @@ test("somente setor ou contato liberado pode publicar aviso de inadimplência co
 
   await assertSucceeds(createNoticeBatch("alice", "aviso-alice"));
   await assertFails(createNoticeBatch("bob", "aviso-bob"));
+
+  const alice = dbAs("alice");
+  const notification = {
+    category: "cobranca", message: "Inadimplência - Aviso de redução",
+    target: "inadimplencia", noticeId: "aviso-alice",
+    createdByUid: "alice", createdAt: serverTimestamp(),
+  };
+  await assertFails(setDoc(doc(alice, "sharedNotifications/aviso-duplicado"), notification));
+  await assertFails(setDoc(doc(alice, "sharedNotifications/aviso-adulterado"), {
+    ...notification, message: "Inadimplência - Título falsificado",
+  }));
+  await assertFails(setDoc(doc(alice, "sharedNotifications/aviso-extra"), {
+    ...notification, campoExtra: "não permitido",
+  }));
+
+  const batch = writeBatch(alice);
+  const newNoticeId = "aviso-titulo-incorreto";
+  batch.set(doc(alice, "delinquencyNotices", newNoticeId), {
+    type: "reducao", date: "2026-11-04", title: "Título verdadeiro",
+    dueDate: "2026-10-20", customerCount: 12, overdueDays: 15,
+    validUntil: "2026-11-10", status: "ongoing",
+    notificationId: "aviso-mensagem-incorreta",
+    createdByUid: "alice", createdAt: serverTimestamp(),
+    updatedByUid: "alice", updatedAt: serverTimestamp(),
+  });
+  batch.set(doc(alice, "sharedNotifications/aviso-mensagem-incorreta"), {
+    category: "cobranca", message: "Inadimplência - Outro título",
+    target: "inadimplencia", noticeId: newNoticeId,
+    createdByUid: "alice", createdAt: serverTimestamp(),
+  });
+  await assertFails(batch.commit());
 });
 
 test("anexos compartilhados aceitam os cinco destinos por administrador e supervisor", async () => {
