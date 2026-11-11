@@ -398,6 +398,20 @@ service cloud.firestore {
         && (!data.keys().hasAny(["lastNotificationId"]) || data.lastNotificationId is string);
     }
 
+    function validPromotionNotificationLink(promotionId) {
+      let notificationId = request.resource.data.lastNotificationId;
+      let notificationPath = /databases/$(database)/documents/sharedNotifications/$(notificationId);
+      return notificationId is string
+        && existsAfter(notificationPath)
+        && getAfter(notificationPath).data.category == "promocoes"
+        && getAfter(notificationPath).data.target == "promocoes"
+        && getAfter(notificationPath).data.referenceId == promotionId
+        && getAfter(notificationPath).data.message == "Promoção - " + request.resource.data.name
+          + (request.resource.data.status == "active" ? " - Em Andamento" : " - Encerrado")
+        && getAfter(notificationPath).data.createdByUid == request.auth.uid
+        && getAfter(notificationPath).data.createdAt == request.time;
+    }
+
     match /sharedPromotions/{promotionId} {
       allow read: if approvedUser();
       allow create: if approvedUser()
@@ -407,7 +421,9 @@ service cloud.firestore {
         && request.resource.data.createdByUid == request.auth.uid
         && request.resource.data.updatedByUid == request.auth.uid
         && request.resource.data.createdAt == request.time
-        && request.resource.data.updatedAt == request.time;
+        && request.resource.data.updatedAt == request.time
+        && (!request.resource.data.keys().hasAny(["lastNotificationId"])
+          || validPromotionNotificationLink(promotionId));
       allow update: if approvedUser()
         && canEditScopedRecord("promotions", resource.data.createdByUid)
         && validPromotionFields(request.resource.data)
@@ -420,7 +436,9 @@ service cloud.firestore {
         && request.resource.data.createdByName == resource.data.createdByName
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.updatedByUid == request.auth.uid
-        && request.resource.data.updatedAt == request.time;
+        && request.resource.data.updatedAt == request.time
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(["lastNotificationId"])
+          || validPromotionNotificationLink(promotionId));
       allow delete: if activeManager();
     }
 
