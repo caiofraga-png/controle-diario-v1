@@ -65,8 +65,7 @@ export class FirebaseWorkspaceRepository {
 
   async saveLayout(layout: Configuracao["layout"]): Promise<void> {
     // Layout is always private to the authenticated user; it must not pass through shared-catalog authorization.
-    const { escala12x36: _legacyScale, ...activeLayout } = layout;
-    await this.personal.saveLayout(activeLayout);
+    await this.personal.saveLayout(layout);
   }
 
   async saveConfiguration(configuracao: Configuracao): Promise<void> {
