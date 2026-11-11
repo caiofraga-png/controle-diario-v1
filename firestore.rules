@@ -728,25 +728,8 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Task attachments are shared with every approved collaborator; only managers upload/remove.
-    // Attachments follow the scope of an existing record. A publisher may
-    // also attach files to their own not-yet-saved draft.
-    match /sharedAttachments/{attachmentId} {
-      allow read: if approvedUser();
-      allow create: if (
-          activeManager()
-          || (request.resource.data.targetType == "maintenance"
-            && maintenancePublisher()
-            && (!exists(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.targetId))
-              || publisherAuthorizedForOwner("maintenance",
-                get(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.targetId)).data.createdByUid)))
-          || (request.resource.data.targetType == "delinquency"
-            && delinquencyPublisher()
-            && (!exists(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId))
-              || publisherAuthorizedForOwner("delinquency",
-                get(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId)).data.createdByUid)))
-        )
-        && request.resource.data.keys().hasAll(["targetType","targetId","name","mimeType","size","data","createdByUid","createdAt"])
+    function validAttachmentPayload() {
+      return request.resource.data.keys().hasAll(["targetType","targetId","name","mimeType","size","data","createdByUid","createdAt"])
         && request.resource.data.keys().hasOnly(["targetType","targetId","name","mimeType","size","data","createdByUid","createdAt"])
         && request.resource.data.targetType in ["task-creation","task-roteiro","maintenance","promotion","delinquency"]
         && request.resource.data.targetId is string
@@ -758,11 +741,31 @@ service cloud.firestore {
         && request.resource.data.size > 0
         && request.resource.data.size <= 512000
         && request.resource.data.data is string
-        && request.resource.data.data.size() <= 700000
-        && (request.resource.data.createdByUid == request.auth.uid
-          || (activeAdmin() && request.resource.data.createdByUid is string))
-        && (request.resource.data.createdAt == request.time
-          || (activeAdmin() && request.resource.data.createdAt is timestamp));
+        && request.resource.data.data.size() <= 700000;
+    }
+
+    // Attachments follow the scope of an existing record. A publisher may
+    // also attach files to their own not-yet-saved draft.
+    match /sharedAttachments/{attachmentId} {
+      allow read: if approvedUser();
+      // Administrators can restore historical attachments with original authorship.
+      allow create: if activeAdmin() && validAttachmentPayload();
+      allow create: if validAttachmentPayload()
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && (
+          activeSupervisor()
+          || (request.resource.data.targetType == "maintenance"
+            && maintenancePublisher()
+            && (!exists(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.targetId))
+              || publisherAuthorizedForOwner("maintenance",
+                get(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.targetId)).data.createdByUid)))
+          || (request.resource.data.targetType == "delinquency"
+            && delinquencyPublisher()
+            && (!exists(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId))
+              || publisherAuthorizedForOwner("delinquency",
+                get(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId)).data.createdByUid)))
+        );
       allow update: if false;
       allow delete: if activeManager()
         || (resource.data.targetType == "maintenance"
