@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, setDoc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, serverTimestamp, writeBatch } from "firebase/firestore";
 import { requireFirebase } from "./firebaseClient";
 
 export type PromotionStatus = "active" | "suspended" | "closed";
@@ -103,15 +103,35 @@ export async function savePromotions(promotions: Promotion[]): Promise<void> {
     const old=previousById.get(item.id);
     if(!manager && !publisher) throw new Error("VOCÊ NÃO POSSUI PERMISSÃO PARA ALTERAR PROMOÇÕES.");
     if(!manager && !old && item.id.startsWith("PROMO-")) continue;
+    const changed= !old || ["name","category","benefit","eligible","conditions","startDate","endDate","status"]
+      .some(key=>String((old as any)?.[key]??"")!==String((item as any)[key]??""));
+    if(!changed) continue;
+
+    const batch=writeBatch(db);
     const ref=doc(db,"sharedPromotions",item.id);
-    await setDoc(ref,{...item,createdByUid:old?.createdByUid??user.uid,createdByName:old?.createdByName??String(userData.agent??user.displayName??user.email??user.uid),createdAt:old?.createdAt??serverTimestamp(),updatedByUid:user.uid,updatedByName:String(userData.agent??user.displayName??user.email??user.uid),updatedAt:serverTimestamp()});
-    if(!old&&item.status==="active"&&eligibleToday(item)){
+    const now=serverTimestamp();
+    batch.set(ref,{
+      ...item,
+      createdByUid:old?.createdByUid??user.uid,
+      createdByName:old?.createdByName??String(userData.agent??user.displayName??user.email??user.uid),
+      createdAt:old?.createdAt??now,
+      updatedByUid:user.uid,
+      updatedByName:String(userData.agent??user.displayName??user.email??user.uid),
+      updatedAt:now,
+    });
+    if((!old&&item.status==="active"&&eligibleToday(item))
+      || (old&&item.status==="closed"&&old.status!=="closed")){
       const notificationRef=doc(collection(db,"sharedNotifications"));
-      await setDoc(notificationRef,{category:"promocoes",message:`Promoção - ${item.name} - Em Andamento`,target:"promocoes",referenceId:item.id,createdByUid:user.uid,createdAt:serverTimestamp()});
+      const statusText=item.status==="closed"?"Encerrado":"Em Andamento";
+      batch.set(notificationRef,{
+        category:"promocoes",
+        message:`Promoção - ${item.name} - ${statusText}`,
+        target:"promocoes",
+        referenceId:item.id,
+        createdByUid:user.uid,
+        createdAt:now,
+      });
     }
-    if(old&&item.status==="closed"&&old.status!=="closed"){
-      const notificationRef=doc(collection(db,"sharedNotifications"));
-      await setDoc(notificationRef,{category:"promocoes",message:`Promoção - ${item.name} - Encerrado`,target:"promocoes",referenceId:item.id,createdByUid:user.uid,createdAt:serverTimestamp()});
-    }
+    await batch.commit();
   }
 }
