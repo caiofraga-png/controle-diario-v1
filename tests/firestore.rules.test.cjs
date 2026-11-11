@@ -583,7 +583,7 @@ test("notificações de promoção exigem vínculo com campanha existente e são
     eligible: "Todos", conditions: "Condições", startDate: "", endDate: "",
     status: "active", createdByUid: "supervisor", createdByName: "Supervisor",
     createdAt: serverTimestamp(), updatedByUid: "supervisor", updatedByName: "Supervisor",
-    updatedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(), lastNotificationId: "promo-1",
   }));
   const notification = {
     category: "promocoes", message: "Promoção - Campanha de teste - Em Andamento",
