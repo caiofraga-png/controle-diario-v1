@@ -246,7 +246,7 @@ function App() {
       setThemeSaving(false);
     }
   }
-  useEffect(() => { if (firebaseAccess?.status === "approved") void loadMonth(); }, [calendarCursor.year, calendarCursor.month, firebaseAccess?.status]);
+
   useEffect(() => () => { if (observationTimer.current) clearTimeout(observationTimer.current); }, []);
 
   const config = data?.configuracao, state = data?.estado;
@@ -278,7 +278,7 @@ function App() {
   function changeObservation(value:string){setObservation(value);if(observationTimer.current)clearTimeout(observationTimer.current);observationTimer.current=setTimeout(async()=>{try{const r=await window.controleDiario.firebase.workflow.observacao(value);setData((o:any)=>o?({...o,estado:r}):o);}catch(e){setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR A OBSERVAÇÃO.");}},600);}
   async function saveAttendance(record:any){ if(!state) throw new Error("INICIE UM EXPEDIENTE ANTES DE REGISTRAR TICKETS."); setBusy(true); try { const saved=await window.controleDiario.firebase.workflow.salvarAtendimento(record); setData((current:any)=>current?({...current,estado:saved}):current); } catch(e) { setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR O TICKET NO EXPEDIENTE."); throw e; } finally { setBusy(false); } }
   async function replaceAttendances(records:any[]){ if(!state) throw new Error("INICIE UM EXPEDIENTE ANTES DE ALTERAR OS TICKETS."); setBusy(true); try { const saved=await window.controleDiario.firebase.workflow.substituirAtendimentos(records); setData((current:any)=>current?({...current,estado:saved}):current); } catch(e) { setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL ATUALIZAR OS ATENDIMENTOS."); throw e; } finally { setBusy(false); } }
-  async function conclude(){if(prog.percentage!==100)return;setBusy(true);setMessage("");try{await window.controleDiario.firebase.workflow.concluir();await loadData();await loadMonth();setSuccessPopup(true);}catch(e){setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL CONCLUIR O EXPEDIENTE.");}finally{setBusy(false);}}
+  async function conclude(){if(prog.percentage!==100)return;setBusy(true);setMessage("");try{await window.controleDiario.firebase.workflow.concluir();await loadData();setSuccessPopup(true);}catch(e){setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL CONCLUIR O EXPEDIENTE.");}finally{setBusy(false);}}
   async function switchProfile(profileId:string){
     if (!state || profileId===state.perfil.id) { setProfileSwitch(false); return; }
     const pName = profileId === "GERAL" ? "GERAL" : profiles.find((p:any)=>p.id===profileId)?.nome ?? profileId;
@@ -339,7 +339,7 @@ function App() {
   }
   function editHistoryTask(taskId:string,checked:boolean){setHistoryRecord((r:any)=>({...r,tarefas:r.tarefas.map((t:any)=>t.id===taskId?{...t,concluida:checked,emailsVinculados:t.emailsVinculados.map((e:any)=>({...e,concluido:checked}))}:t),emailsGlobais:r.emailsGlobais.map((e:any)=>{const t=r.tarefas.find((x:any)=>x.id===taskId);return t?.emailsVinculados?.some((x:any)=>x.id===e.id)?{...e,concluido:checked}:e})}));}
   function editHistoryEmail(emailId:string,checked:boolean){setHistoryRecord((r:any)=>({...r,emailsGlobais:r.emailsGlobais.map((e:any)=>e.id===emailId?{...e,concluido:checked}:e),tarefas:r.tarefas.map((t:any)=>({...t,emailsVinculados:t.emailsVinculados.map((e:any)=>e.id===emailId?{...e,concluido:checked}:e)}))}));}
-  async function saveErrata(){if(!historySource||!historyRecord)return;setBusy(true);try{const saved=await window.controleDiario.firebase.workflow.errata({source:historySource,edited:{tarefas:historyRecord.tarefas,emailsGlobais:historyRecord.emailsGlobais,observacao:historyRecord.observacao}});setHistoryRecord(saved);setHistorySource(saved);setHistoryMode("view");setVersions(await window.controleDiario.firebase.workflow.versoes(dayPanel!));await loadMonth();}catch(e){setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR A ERRATA.");}finally{setBusy(false);}}
+  async function saveErrata(){if(!historySource||!historyRecord)return;setBusy(true);try{const saved=await window.controleDiario.firebase.workflow.errata({source:historySource,edited:{tarefas:historyRecord.tarefas,emailsGlobais:historyRecord.emailsGlobais,observacao:historyRecord.observacao}});setHistoryRecord(saved);setHistorySource(saved);setHistoryMode("view");setVersions(await window.controleDiario.firebase.workflow.versoes(dayPanel!));}catch(e){setMessage(e instanceof Error?e.message:"NÃO FOI POSSÍVEL SALVAR A ERRATA.");}finally{setBusy(false);}}
 
   return <div className="app app-shell">
     <img className="company-watermark" src="./leste-logo.svg" alt="" aria-hidden="true" />
