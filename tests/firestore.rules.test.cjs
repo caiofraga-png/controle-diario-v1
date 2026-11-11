@@ -576,16 +576,24 @@ test("e-mail corporativo não verificado não pode solicitar acesso", async () =
 });
 
 
-test("notificações institucionais podem ser publicadas por supervisores e lidas por todos os aprovados", async () => {
+test("notificações de promoção exigem vínculo com campanha existente e são imutáveis", async () => {
   const supervisor = dbAs("supervisor");
+  await assertSucceeds(setDoc(doc(supervisor, "sharedPromotions/promo-1"), {
+    id: "promo-1", name: "Campanha de teste", category: "Teste", benefit: "Benefício",
+    eligible: "Todos", conditions: "Condições", startDate: "", endDate: "",
+    status: "active", createdByUid: "supervisor", createdByName: "Supervisor",
+    createdAt: serverTimestamp(), updatedByUid: "supervisor", updatedByName: "Supervisor",
+    updatedAt: serverTimestamp(),
+  }));
   const notification = {
-    category: "promocoes", message: "Nova promoção ativa", target: "promocoes",
+    category: "promocoes", message: "Promoção - Campanha de teste - Em Andamento",
+    target: "promocoes", referenceId: "promo-1",
     createdByUid: "supervisor", createdAt: serverTimestamp(),
   };
   await assertSucceeds(setDoc(doc(supervisor, "sharedNotifications/promo-1"), notification));
   await assertSucceeds(getDoc(doc(dbAs("alice"), "sharedNotifications/promo-1")));
   await assertFails(setDoc(doc(dbAs("alice"), "sharedNotifications/forbidden"), {
-    ...notification, createdByUid: "alice",
+    ...notification, referenceId: "campanha-inexistente", createdByUid: "alice",
   }));
   await assertFails(updateDoc(doc(supervisor, "sharedNotifications/promo-1"), { message: "Alterada" }));
   await assertFails(deleteDoc(doc(supervisor, "sharedNotifications/promo-1")));
