@@ -92,6 +92,29 @@ service cloud.firestore {
             && get(/databases/$(database)/documents/featurePermissions/delinquency).data.agentIds.hasAny([request.auth.uid])));
     }
 
+    // A publisher may edit records created inside the organizational scope
+    // granted to that publisher. Managers retain global access.
+    function publisherAuthorizedForOwner(featureId, ownerUid) {
+      let permissionPath = /databases/$(database)/documents/featurePermissions/$(featureId);
+      let ownerPath = /databases/$(database)/documents/users/$(ownerUid);
+      return approvedUser()
+        && ownerUid is string
+        && exists(ownerPath)
+        && userRecord(ownerUid).data.status == "approved"
+        && exists(permissionPath)
+        && get(permissionPath).data.enabled == true
+        && ((get(permissionPath).data.wholeSectorIds is list
+            && get(permissionPath).data.wholeSectorIds.hasAny([userRecord(ownerUid).data.sectorId]))
+          || (get(permissionPath).data.contactIds is list
+            && get(permissionPath).data.contactIds.hasAny([userRecord(ownerUid).data.contactId]))
+          || (get(permissionPath).data.agentIds is list
+            && get(permissionPath).data.agentIds.hasAny([ownerUid])));
+    }
+
+    function canEditScopedRecord(featureId, ownerUid) {
+      return activeManager() || publisherAuthorizedForOwner(featureId, ownerUid);
+    }
+
     function allowedCorporateDomain() {
       return signedIn()
         && request.auth.token.email_verified == true
@@ -385,7 +408,7 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time;
       allow update: if approvedUser()
-        && (activeManager() || promotionsPublisher())
+        && canEditScopedRecord("promotions", resource.data.createdByUid)
         && validPromotionFields(request.resource.data)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           "name", "category", "benefit", "eligible", "conditions", "startDate",
@@ -440,7 +463,7 @@ service cloud.firestore {
         && request.resource.data.validUntil >= request.resource.data.date
         && validDelinquencyNoticeNotification(request.resource.data.notificationId, noticeId);
       allow update: if approvedUser()
-        && (activeManager() || delinquencyPublisher())
+        && canEditScopedRecord("delinquency", resource.data.createdByUid)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           "type", "date", "title", "dueDate", "customerCount", "overdueDays",
           "validUntil", "status", "updatedByUid", "updatedAt"
@@ -576,7 +599,7 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time
         && validMaintenanceHistory(maintenanceId, true)
         && validMaintenanceNotification(maintenanceId);
-      allow update: if (activeManager() || maintenancePublisher())
+      allow update: if canEditScopedRecord("maintenance", resource.data.createdByUid)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           "title", "date", "location", "description", "status",
           "updatedByUid", "updatedAt", "updatedByName", "lastHistoryId", "lastNotificationId"
@@ -596,7 +619,7 @@ service cloud.firestore {
       allow delete: if false;
       match /history/{entryId} {
         allow read: if approvedUser();
-        allow create: if (activeManager() || maintenancePublisher())
+        allow create: if canEditScopedRecord("maintenance", get(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)).data.createdByUid)
           && request.resource.data.keys().hasAll(["maintenanceId", "changedByUid", "changedByName", "changedAt", "before", "after"])
           && request.resource.data.keys().hasOnly(["maintenanceId", "changedByUid", "changedByName", "changedAt", "before", "after"])
           && request.resource.data.maintenanceId == maintenanceId
