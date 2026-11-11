@@ -495,10 +495,10 @@ service cloud.firestore {
     function validPromotionNotification() {
       let promotionPath = /databases/$(database)/documents/sharedPromotions/$(request.resource.data.referenceId);
       return request.resource.data.referenceId is string
-        && exists(promotionPath)
-        && get(promotionPath).data.status in ["active", "closed"]
-        && request.resource.data.message == "Promoção - " + get(promotionPath).data.name
-          + (get(promotionPath).data.status == "active" ? " - Em Andamento" : " - Encerrado");
+        && existsAfter(promotionPath)
+        && getAfter(promotionPath).data.status in ["active", "closed"]
+        && request.resource.data.message == "Promoção - " + getAfter(promotionPath).data.name
+          + (getAfter(promotionPath).data.status == "active" ? " - Em Andamento" : " - Encerrado");
     }
 
     match /sharedNotifications/{notificationId} {
