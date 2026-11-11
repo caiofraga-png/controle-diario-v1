@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import AttachmentPanel from "./AttachmentPanel";
 import {
-  canCurrentUserManageMaintenances,
   loadMaintenanceHistory,
   saveExternalMaintenance,
   subscribeExternalMaintenances,
@@ -9,6 +8,7 @@ import {
   type ExternalMaintenanceInput,
   type MaintenanceHistory,
 } from "../web/firebaseMaintenanceService";
+import { loadPublicationAccess, canEditPublicationRecord, type PublicationAccess } from "../web/firebasePublicationAccess";
 
 type View = "ongoing" | "completed";
 const EMPTY_FORM: ExternalMaintenanceInput = {
@@ -34,7 +34,8 @@ function statusLabel(status: string): string {
 
 export default function MaintenancePanel() {
   const [items, setItems] = useState<ExternalMaintenance[]>([]);
-  const [canManage, setCanManage] = useState(false);
+  const [access, setAccess] = useState<PublicationAccess | null>(null);
+  const canManage = Boolean(access?.canPublish);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -53,11 +54,13 @@ export default function MaintenancePanel() {
       next => { if (active) { setItems(next); setLoading(false); } },
       error => { if (active) { setMessage(error.message); setLoading(false); } },
     );
-    void canCurrentUserManageMaintenances()
-      .then(value => { if (active) setCanManage(value); })
+    void loadPublicationAccess("maintenance")
+      .then(value => { if (active) setAccess(value); })
       .catch(error => { if (active) setMessage(error instanceof Error ? error.message : "NÃO FOI POSSÍVEL VERIFICAR A PERMISSÃO."); });
     return () => { active = false; stop(); };
   }, []);
+
+  const canEditItem = (item: ExternalMaintenance) => canEditPublicationRecord(access, item);
 
   const visibleItems = useMemo(
     () => items.filter(item => item.status === view).sort((a,b) => b.date.localeCompare(a.date)),
@@ -148,7 +151,7 @@ export default function MaintenancePanel() {
           <label>LOCAL<input value={form.location} maxLength={160} required onChange={event=>setForm(current=>({...current,location:event.target.value}))} placeholder="Bairro, endereço ou referência"/></label>
         </div>
         <label>DESCRIÇÃO<textarea value={form.description} maxLength={2000} rows={4} required onChange={event=>setForm(current=>({...current,description:event.target.value}))} placeholder="Descreva o serviço, impacto e informações relevantes."/></label>
-        <AttachmentPanel targetType="maintenance" targetId={editing?.id ?? newAttachmentId} canUpload={canManage} />
+        <AttachmentPanel targetType="maintenance" targetId={editing?.id ?? newAttachmentId} canUpload={editing ? canEditItem(editing) : canManage} />
         <label>STATUS<select value={form.status} onChange={event=>setForm(current=>({...current,status:event.target.value as ExternalMaintenanceInput["status"]}))}>
           <option value="ongoing">Em andamento</option><option value="completed">Concluída</option>
         </select></label>
@@ -188,7 +191,7 @@ export default function MaintenancePanel() {
           <div className="maintenance-card-meta">Criada por: {item.createdByName || item.createdByUid} · Última alteração por: {item.updatedByName || item.updatedByUid}<br/>Atualizada em {timestampLabel(item.updatedAt)}</div>
           <div className="maintenance-card-actions">
             <button className="secondary" onClick={()=>void openHistory(item)}>HISTÓRICO</button>
-            {canManage && <button className="primary" onClick={()=>openEdit(item)}>EDITAR</button>}
+            {canEditItem(item) && <button className="primary" onClick={()=>openEdit(item)}>EDITAR</button>}
           </div>
         </article>)}</div>}
     </>}
