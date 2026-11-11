@@ -465,11 +465,12 @@ service cloud.firestore {
         && (activeManager() || delinquencyPublisher())
         && request.resource.data.keys().hasAll([
           "type", "date", "title", "dueDate", "customerCount", "overdueDays",
-          "validUntil", "status", "createdByUid", "createdAt", "updatedByUid", "updatedAt", "notificationId", "ownerSectorId", "ownerContactId"
+          "validUntil", "status", "createdByUid", "createdAt", "updatedByUid", "updatedAt", "notificationId"
         ])
         && request.resource.data.keys().hasOnly([
           "type", "date", "title", "dueDate", "customerCount", "overdueDays",
-          "validUntil", "status", "createdByUid", "createdAt", "updatedByUid", "updatedAt", "notificationId"
+          "validUntil", "status", "createdByUid", "createdAt", "updatedByUid", "updatedAt", "notificationId",
+          "ownerSectorId", "ownerContactId"
         ])
         && request.resource.data.type in ["reducao", "suspensao"]
         && request.resource.data.date is string
@@ -484,8 +485,6 @@ service cloud.firestore {
         && (!request.resource.data.keys().hasAny(["ownerSectorId"]) || request.resource.data.ownerSectorId == userRecord(request.auth.uid).data.sectorId)
         && (!request.resource.data.keys().hasAny(["ownerContactId"]) || request.resource.data.ownerContactId == userRecord(request.auth.uid).data.contactId)
         && request.resource.data.createdByUid == request.auth.uid
-        && (!resource.data.keys().hasAny(["ownerSectorId"]) || request.resource.data.ownerSectorId == resource.data.ownerSectorId)
-        && (!resource.data.keys().hasAny(["ownerContactId"]) || request.resource.data.ownerContactId == resource.data.ownerContactId)
         && request.resource.data.updatedByUid == request.auth.uid
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time
@@ -507,6 +506,8 @@ service cloud.firestore {
         && request.resource.data.overdueDays >= 0
         && request.resource.data.validUntil is string
         && request.resource.data.status in ["ongoing", "completed"]
+        && (!resource.data.keys().hasAny(["ownerSectorId"]) || request.resource.data.ownerSectorId == resource.data.ownerSectorId)
+        && (!resource.data.keys().hasAny(["ownerContactId"]) || request.resource.data.ownerContactId == resource.data.ownerContactId)
         && request.resource.data.updatedByUid == request.auth.uid
         && request.resource.data.updatedAt == request.time
         && request.resource.data.validUntil >= request.resource.data.date;
