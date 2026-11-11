@@ -489,8 +489,15 @@ service cloud.firestore {
           || ((activeManager() || delinquencyPublisher())
             && request.resource.data.category == "cobranca"
             && request.resource.data.target == "inadimplencia"
+            && request.resource.data.keys().hasAll(["category", "message", "target", "noticeId", "createdByUid", "createdAt"])
+            && request.resource.data.keys().hasOnly(["category", "message", "target", "noticeId", "createdByUid", "createdAt"])
             && request.resource.data.noticeId is string
-            && existsAfter(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.noticeId)))
+            && !exists(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.noticeId))
+            && existsAfter(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.noticeId))
+            && getAfter(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.noticeId)).data.notificationId == notificationId
+            && getAfter(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.noticeId)).data.createdByUid == request.auth.uid
+            && request.resource.data.message == "Inadimplência - "
+              + getAfter(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.noticeId)).data.title)
           || ((activeManager() || maintenancePublisher())
             && request.resource.data.category == "manutencoes"
             && request.resource.data.target == "manutencoes"
