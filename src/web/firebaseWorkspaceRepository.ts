@@ -7,7 +7,7 @@ import { requireFirebase } from "./firebaseClient";
 import { collection, deleteField, doc, getDoc, getDocs, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 
 /**
- * Shared task/profile/email catalog + private layout/calendar/operational state.
+ * Shared task/profile/email catalog + private layout and operational state.
  * Existing personal configurations remain the fallback until a manager
  * explicitly initializes the shared catalog.
  */
@@ -20,8 +20,6 @@ export class FirebaseWorkspaceRepository {
   async load(): Promise<LoadedData> {
     const loadedConfiguration = await this.personal.loadConfiguration();
     const personalConfiguration = normalizeConfiguration(loadedConfiguration ?? defaultConfiguration());
-    const savedScalePreference = await this.personal.loadScalePreference();
-    if (savedScalePreference) personalConfiguration.layout.escala12x36 = savedScalePreference;
     if (!loadedConfiguration) {
       await this.personal.saveConfiguration(personalConfiguration);
     }
@@ -56,23 +54,18 @@ export class FirebaseWorkspaceRepository {
       };
     });
 
-    const [calendar, estado] = await Promise.all([
-      this.personal.loadCalendar(),
-      this.operational.loadCurrentState(),
-    ]);
+    const estado = await this.operational.loadCurrentState();
 
     return {
       configuracao,
-      calendario: calendar ?? { schemaVersion: 1, datas: [] },
       estado,
     };
   }
 
   async saveLayout(layout: Configuracao["layout"]): Promise<void> {
     // Layout is always private to the authenticated user; it must not pass through shared-catalog authorization.
-    const scale = layout.escala12x36 ?? { habilitada: false, referencias: [] };
-    await this.personal.saveScalePreference(scale);
-    await this.personal.saveLayout({ ...layout, escala12x36: scale });
+    const { escala12x36: _legacyScale, ...activeLayout } = layout;
+    await this.personal.saveLayout(activeLayout);
   }
 
   async saveConfiguration(configuracao: Configuracao): Promise<void> {
@@ -156,9 +149,6 @@ export class FirebaseWorkspaceRepository {
     await updateDoc(ref, { [input.field]: deleteField(), updatedAt: serverTimestamp() });
   }
 
-  async saveCalendar(calendario: LoadedData["calendario"]): Promise<void> {
-    await this.personal.saveCalendar(calendario);
-  }
 
   async loadCurrentState() {
     return this.operational.loadCurrentState();
