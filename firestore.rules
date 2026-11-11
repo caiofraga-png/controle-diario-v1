@@ -735,14 +735,20 @@ service cloud.firestore {
           (request.resource.data.targetType in ["task-creation", "task-roteiro", "promotion"] && activeManager())
           || (request.resource.data.targetType == "maintenance"
             && request.resource.data.targetId is string
-            && exists(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.targetId))
-            && canEditScopedRecord("maintenance",
-              get(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.targetId)).data.createdByUid))
+            && ((exists(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.targetId))
+                && canEditScopedRecord("maintenance",
+                  get(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.targetId)).data.createdByUid))
+              || (!exists(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.targetId))
+                && (activeManager() || maintenancePublisher())
+                && request.resource.data.createdByUid == request.auth.uid)))
           || (request.resource.data.targetType == "delinquency"
             && request.resource.data.targetId is string
-            && exists(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId))
-            && canEditScopedRecord("delinquency",
-              get(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId)).data.createdByUid))
+            && ((exists(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId))
+                && canEditScopedRecord("delinquency",
+                  get(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId)).data.createdByUid))
+              || (!exists(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId))
+                && (activeManager() || delinquencyPublisher())
+                && request.resource.data.createdByUid == request.auth.uid)))
         )
         && request.resource.data.keys().hasAll(["targetType","targetId","name","mimeType","size","data","createdByUid","createdAt"])
         && request.resource.data.keys().hasOnly(["targetType","targetId","name","mimeType","size","data","createdByUid","createdAt"])
@@ -764,13 +770,15 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if (resource.data.targetType in ["task-creation", "task-roteiro", "promotion"] && activeManager())
         || (resource.data.targetType == "maintenance"
-          && exists(/databases/$(database)/documents/externalMaintenances/$(resource.data.targetId))
-          && canEditScopedRecord("maintenance",
-            get(/databases/$(database)/documents/externalMaintenances/$(resource.data.targetId)).data.createdByUid))
+          && (activeManager()
+            || (exists(/databases/$(database)/documents/externalMaintenances/$(resource.data.targetId))
+              && canEditScopedRecord("maintenance",
+                get(/databases/$(database)/documents/externalMaintenances/$(resource.data.targetId)).data.createdByUid)))
         || (resource.data.targetType == "delinquency"
-          && exists(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId))
-          && canEditScopedRecord("delinquency",
-            get(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId)).data.createdByUid));
+          && (activeManager()
+            || (exists(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId))
+              && canEditScopedRecord("delinquency",
+                get(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId)).data.createdByUid)));
     }
 
     // Shared attendance subtype catalog: approved collaborators may add suggestions;
