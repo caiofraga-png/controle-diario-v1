@@ -19,7 +19,7 @@ const firebaseWorkflow = new FirebaseWorkflowService(firebaseWorkspace, firebase
 export function installWebBridge(){
  const bridge:any={
   ready:true,
-  // Firebase is the active persistence provider for the expediente, configuration, calendar and history.
+  // Firebase is the active persistence provider for the expediente, configuration and history.
   firebase:{
    signIn:signInWithCorporateGoogle,
    restoreSession:restoreCorporateGoogleSession,
@@ -27,12 +27,9 @@ export function installWebBridge(){
    signOut:signOutCorporateGoogle,
    loadWorkspace:()=>firebaseWorkspace.load(),
    saveWorkspaceConfiguration:(config:any)=>firebaseWorkspace.saveConfiguration(config),
-   saveWorkspaceCalendar:(calendar:any)=>firebaseWorkspace.saveCalendar(calendar),
    saveWorkspaceCurrentState:(state:EstadoAtual|null)=>firebaseWorkspace.saveCurrentState(state),
    loadConfiguration:async()=>{const config=await firebasePersonalData.loadConfiguration();return config?normalizeFirebaseConfiguration(config):null;},
    saveConfiguration:(config:any)=>firebaseWorkspace.saveConfiguration(config),
-   loadCalendar:()=>firebasePersonalData.loadCalendar(),
-   saveCalendar:(calendar:any)=>firebasePersonalData.saveCalendar(calendar),
    loadThemePreference:()=>firebasePersonalData.loadThemePreference(),
    saveThemePreference:(theme:ThemePreference)=>firebasePersonalData.saveThemePreference(theme),
    loadAttendancePreferences:()=>firebasePersonalData.loadAttendancePreferences(),
@@ -75,10 +72,8 @@ export function installWebBridge(){
     novaTarefa:(input:any)=>firebaseWorkflow.addTask(input),
     novoPerfil:(input:any)=>firebaseWorkflow.addProfile(input),
     novoEmail:(input:any)=>firebaseWorkflow.addEmail(input),
-    salvarDataCalendario:(input:any)=>firebaseWorkflow.saveCalendarDate(input),
     carregarPromocoes:()=>firebaseWorkflow.promotions(),
     salvarPromocoes:(items:any[])=>firebaseWorkflow.savePromotions(items),
-    mes:(input:any)=>firebaseWorkflow.month(input),
     versoes:(date:string)=>firebaseWorkflow.versions(date),
     ler:(input:any)=>firebaseWorkflow.readVersion(input),
     errata:(input:any)=>firebaseWorkflow.saveHistoryErrata(input.source,input.edited),
