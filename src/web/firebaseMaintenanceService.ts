@@ -110,6 +110,8 @@ export async function saveExternalMaintenance(input: ExternalMaintenanceInput, i
       createdByUid: user.uid,
       createdAt: now,
       createdByName: changedByName,
+      ownerSectorId: String(userProfile.data()?.sectorId ?? ""),
+      ownerContactId: String(userProfile.data()?.contactId ?? ""),
       updatedByUid: user.uid,
       updatedAt: now,
       updatedByName: changedByName,
