@@ -341,26 +341,59 @@ service cloud.firestore {
       allow write: if activeManager();
     }
 
-    // Legacy catalog remains manager-only. Individual campaign documents allow
-    // scoped publishers to create, while edits and status changes remain manager-only.
+    // Legacy catalog remains manager-only. Scoped publishers may edit
+    // every campaign in the shared catalog while their permission is active.
     match /sharedPromotions/current {
       allow read: if approvedUser();
       allow write: if activeManager();
     }
+
+    function validPromotionFields(data) {
+      return data.keys().hasAll([
+          "id", "name", "category", "benefit", "eligible", "conditions",
+          "startDate", "endDate", "status", "createdByUid", "createdByName",
+          "createdAt", "updatedByUid", "updatedByName", "updatedAt"
+        ])
+        && data.keys().hasOnly([
+          "id", "name", "category", "benefit", "eligible", "conditions",
+          "startDate", "endDate", "status", "createdByUid", "createdByName",
+          "createdAt", "updatedByUid", "updatedByName", "updatedAt"
+        ])
+        && data.id is string && data.id.size() > 0
+        && data.name is string && data.name.size() > 0
+        && data.category is string
+        && data.benefit is string
+        && data.eligible is string
+        && data.conditions is string
+        && data.startDate is string
+        && data.endDate is string
+        && data.status in ["active", "suspended", "closed"]
+        && data.createdByUid is string
+        && data.createdByName is string
+        && data.updatedByUid is string
+        && data.updatedByName is string;
+    }
+
     match /sharedPromotions/{promotionId} {
       allow read: if approvedUser();
-      allow create: if approvedUser() && (activeManager() || promotionsPublisher())
+      allow create: if approvedUser()
+        && (activeManager() || promotionsPublisher())
+        && validPromotionFields(request.resource.data)
         && request.resource.data.id == promotionId
-        && request.resource.data.name is string
-        && request.resource.data.name.size() > 0
-        && request.resource.data.status in ["active", "suspended", "closed"]
         && request.resource.data.createdByUid == request.auth.uid
         && request.resource.data.updatedByUid == request.auth.uid
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time;
-      allow update: if (activeManager() || promotionsPublisher())
+      allow update: if approvedUser()
+        && (activeManager() || promotionsPublisher())
+        && validPromotionFields(request.resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "name", "category", "benefit", "eligible", "conditions", "startDate",
+          "endDate", "status", "updatedByUid", "updatedByName", "updatedAt"
+        ])
         && request.resource.data.id == resource.data.id
         && request.resource.data.createdByUid == resource.data.createdByUid
+        && request.resource.data.createdByName == resource.data.createdByName
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.updatedByUid == request.auth.uid
         && request.resource.data.updatedAt == request.time;
@@ -436,10 +469,23 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.maintenanceId)).data.lastNotificationId == notificationId;
     }
 
+    function validPromotionNotification() {
+      let promotionPath = /databases/$(database)/documents/sharedPromotions/$(request.resource.data.referenceId);
+      return request.resource.data.referenceId is string
+        && exists(promotionPath)
+        && get(promotionPath).data.status in ["active", "closed"]
+        && request.resource.data.message == "Promoção - " + get(promotionPath).data.name
+          + (get(promotionPath).data.status == "active" ? " - Em Andamento" : " - Encerrado");
+    }
+
     match /sharedNotifications/{notificationId} {
       allow read: if approvedUser();
       allow create: if (
-          ((activeManager() || (request.resource.data.category == "promocoes" && promotionsPublisher())) && request.resource.data.category != "manutencoes")
+          ((activeManager() || (request.resource.data.category == "promocoes" && promotionsPublisher()))
+            && request.resource.data.category == "promocoes"
+            && request.resource.data.target == "promocoes"
+            && request.resource.data.keys().hasOnly(["category", "message", "target", "referenceId", "createdByUid", "createdAt"])
+            && validPromotionNotification())
           || ((activeManager() || delinquencyPublisher())
             && request.resource.data.category == "cobranca"
             && request.resource.data.target == "inadimplencia"
