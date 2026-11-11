@@ -380,7 +380,7 @@ service cloud.firestore {
         && data.keys().hasOnly([
           "id", "name", "category", "benefit", "eligible", "conditions",
           "startDate", "endDate", "status", "createdByUid", "createdByName",
-          "createdAt", "updatedByUid", "updatedByName", "updatedAt"
+          "createdAt", "updatedByUid", "updatedByName", "updatedAt", "lastNotificationId"
         ])
         && data.id is string && data.id.size() > 0
         && data.name is string && data.name.size() > 0
@@ -394,7 +394,8 @@ service cloud.firestore {
         && data.createdByUid is string
         && data.createdByName is string
         && data.updatedByUid is string
-        && data.updatedByName is string;
+        && data.updatedByName is string
+        && (!data.keys().hasAny(["lastNotificationId"]) || data.lastNotificationId is string);
     }
 
     match /sharedPromotions/{promotionId} {
@@ -492,10 +493,14 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.maintenanceId)).data.lastNotificationId == notificationId;
     }
 
-    function validPromotionNotification() {
+    function validPromotionNotification(notificationId) {
       let promotionPath = /databases/$(database)/documents/sharedPromotions/$(request.resource.data.referenceId);
       return request.resource.data.referenceId is string
+        && notificationId is string
         && existsAfter(promotionPath)
+        && getAfter(promotionPath).data.lastNotificationId == notificationId
+        && getAfter(promotionPath).data.updatedByUid == request.auth.uid
+        && canEditScopedRecord("promotions", getAfter(promotionPath).data.createdByUid)
         && getAfter(promotionPath).data.status in ["active", "closed"]
         && request.resource.data.message == "Promoção - " + getAfter(promotionPath).data.name
           + (getAfter(promotionPath).data.status == "active" ? " - Em Andamento" : " - Encerrado");
@@ -508,7 +513,7 @@ service cloud.firestore {
             && request.resource.data.category == "promocoes"
             && request.resource.data.target == "promocoes"
             && request.resource.data.keys().hasOnly(["category", "message", "target", "referenceId", "createdByUid", "createdAt"])
-            && validPromotionNotification())
+            && validPromotionNotification(notificationId))
           || ((activeManager() || delinquencyPublisher())
             && request.resource.data.category == "cobranca"
             && request.resource.data.target == "inadimplencia"
