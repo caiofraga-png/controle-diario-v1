@@ -97,8 +97,6 @@ export class FirebaseWorkflowService {
       throw new Error("ESTE PERFIL NÃO FOI ATRIBUÍDO À SUA CONTA. SOLICITE A LIBERAÇÃO À SUPERVISÃO.");
     }
     if (loaded.estado) throw new Error("JÁ EXISTE UM EXPEDIENTE EM PRODUÇÃO.");
-    const special = loaded.calendario.datas.find(item => item.data === input.data);
-    if (special?.folga) throw new Error("ESTA DATA ESTÁ MARCADA COMO FOLGA.");
     const state = buildState(loaded, input.data, input.perfilId, allowedProfiles);
     state.catalogSnapshot = {
       tarefas: JSON.parse(JSON.stringify(loaded.configuracao.tarefas)),
