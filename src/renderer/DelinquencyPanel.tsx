@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { collection, doc, onSnapshot, orderBy, query, serverTimestamp, writeBatch, type Unsubscribe } from "firebase/firestore";
+import { collection, doc, getDoc, onSnapshot, orderBy, query, serverTimestamp, writeBatch, type Unsubscribe } from "firebase/firestore";
 import { requireFirebase } from "../web/firebaseClient";
 import AttachmentPanel from "./AttachmentPanel";
 import { loadPublicationAccess, canEditPublicationRecord, type PublicationAccess } from "../web/firebasePublicationAccess";
@@ -51,6 +51,9 @@ export default function DelinquencyPanel(){
     if(draft.validUntil<draft.date){setMessage("O PRAZO DO AVISO NÃO PODE TERMINAR ANTES DA DATA DE PUBLICAÇÃO.");return;}
     if(draft.customerCount<0||draft.overdueDays<0){setMessage("QUANTIDADES E DIAS NÃO PODEM SER NEGATIVOS.");return;}
     const {auth,db}=requireFirebase();if(!auth.currentUser)throw new Error("FAÇA LOGIN PARA PUBLICAR UM AVISO.");
+    const profileSnapshot=await getDoc(doc(db,"users",auth.currentUser.uid));
+    if(!profileSnapshot.exists())throw new Error("PERFIL DO COLABORADOR NÃO ENCONTRADO.");
+    const ownerProfile=profileSnapshot.data();
     setBusy(true);setMessage("");
     try{
       const batch=writeBatch(db);
@@ -58,7 +61,7 @@ export default function DelinquencyPanel(){
       const notificationRef=doc(collection(db,"sharedNotifications"));
       const payload={...draft,updatedByUid:auth.currentUser.uid,updatedAt:serverTimestamp()};
       if(editingId)batch.update(noticeRef,payload);
-      else batch.set(noticeRef,{...payload,notificationId:notificationRef.id,createdByUid:auth.currentUser.uid,createdAt:serverTimestamp()});
+      else batch.set(noticeRef,{...payload,notificationId:notificationRef.id,createdByUid:auth.currentUser.uid,ownerSectorId:String(ownerProfile.sectorId??""),ownerContactId:String(ownerProfile.contactId??""),createdAt:serverTimestamp()});
       if(!editingId)batch.set(notificationRef,{category:"cobranca",message:`Inadimplência - ${draft.title.trim()}`,target:"inadimplencia",noticeId:noticeRef.id,createdByUid:auth.currentUser.uid,createdAt:serverTimestamp()});
       await batch.commit();
       setDraft(null);setEditingId(null);setTab(draft.status==="completed"?"completed":"ongoing");setMessage(editingId?"AVISO ATUALIZADO.":"AVISO PUBLICADO E NOTIFICAÇÃO ENVIADA.");
