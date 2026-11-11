@@ -5,7 +5,7 @@ export type PromotionStatus = "active" | "suspended" | "closed";
 export interface Promotion {
   id: string; name: string; category: string; benefit: string; eligible: string;
   conditions: string; startDate: string; endDate: string; status: PromotionStatus;
-  createdAt?: unknown; updatedAt?: unknown; createdByUid?: string; updatedByUid?: string; createdByName?: string; updatedByName?: string; lastNotificationId?: string;
+  createdAt?: unknown; updatedAt?: unknown; createdByUid?: string; updatedByUid?: string; createdByName?: string; updatedByName?: string; lastNotificationId?: string; ownerSectorId?: string; ownerContactId?: string;
 }
 
 const legacyRef = () => {
@@ -31,7 +31,7 @@ function validatePromotions(value: unknown): Promotion[] {
     const endDate = typeof item.endDate === "string" ? item.endDate : "";
     if ((startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) || (endDate && !/^\d{4}-\d{2}-\d{2}$/.test(endDate))) throw new Error("AS DATAS DA PROMOÇÃO DEVEM ESTAR NO FORMATO VÁLIDO.");
     if (startDate && endDate && endDate < startDate) throw new Error("A DATA FINAL NÃO PODE SER ANTERIOR À DATA INICIAL.");
-    return { id:item.id, name:item.name.trim(), category:String(item.category??"").trim(), benefit:String(item.benefit??""), eligible:String(item.eligible??""), conditions:String(item.conditions??""), startDate, endDate, status, ...(item.createdAt !== undefined ? {createdAt:item.createdAt} : {}), ...(item.updatedAt !== undefined ? {updatedAt:item.updatedAt} : {}), ...(typeof item.createdByUid === "string" ? {createdByUid:item.createdByUid} : {}), ...(typeof item.updatedByUid === "string" ? {updatedByUid:item.updatedByUid} : {}), ...(typeof item.createdByName === "string" ? {createdByName:item.createdByName} : {}), ...(typeof item.updatedByName === "string" ? {updatedByName:item.updatedByName} : {}), ...(typeof item.lastNotificationId === "string" ? {lastNotificationId:item.lastNotificationId} : {}) };
+    return { id:item.id, name:item.name.trim(), category:String(item.category??"").trim(), benefit:String(item.benefit??""), eligible:String(item.eligible??""), conditions:String(item.conditions??""), startDate, endDate, status, ...(item.createdAt !== undefined ? {createdAt:item.createdAt} : {}), ...(item.updatedAt !== undefined ? {updatedAt:item.updatedAt} : {}), ...(typeof item.createdByUid === "string" ? {createdByUid:item.createdByUid} : {}), ...(typeof item.updatedByUid === "string" ? {updatedByUid:item.updatedByUid} : {}), ...(typeof item.createdByName === "string" ? {createdByName:item.createdByName} : {}), ...(typeof item.updatedByName === "string" ? {updatedByName:item.updatedByName} : {}), ...(typeof item.lastNotificationId === "string" ? {lastNotificationId:item.lastNotificationId} : {}), ...(typeof item.ownerSectorId === "string" ? {ownerSectorId:item.ownerSectorId} : {}), ...(typeof item.ownerContactId === "string" ? {ownerContactId:item.ownerContactId} : {}) };
   });
 }
 
@@ -118,6 +118,8 @@ export async function savePromotions(promotions: Promotion[]): Promise<void> {
       ...(notificationRef?{lastNotificationId:notificationRef.id}:{}),
       createdByUid:old?.createdByUid??user.uid,
       createdByName:old?.createdByName??String(userData.agent??user.displayName??user.email??user.uid),
+      ownerSectorId:old?.ownerSectorId??String(userData.sectorId??""),
+      ownerContactId:old?.ownerContactId??String(userData.contactId??""),
       createdAt:old?.createdAt??now,
       updatedByUid:user.uid,
       updatedByName:String(userData.agent??user.displayName??user.email??user.uid),
