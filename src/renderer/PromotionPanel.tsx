@@ -22,9 +22,10 @@ function dateLabel(value?:string) {
 }
 
 export default function PromotionPanel({ promotions, message, canManage, onSave }:Props) {
-  const [canPublish,setCanPublish] = useState(false);
-  useEffect(()=>{let active=true; void canCurrentUserManagePromotions().then(value=>{if(active)setCanPublish(value)}).catch(()=>{if(active)setCanPublish(false)}); return ()=>{active=false}},[]);
-  const canEdit = canManage || canPublish;
+  const [access,setAccess] = useState<PublicationAccess | null>(null);
+  useEffect(()=>{let active=true; void loadPublicationAccess("promotions").then(value=>{if(active)setAccess(value)}).catch(()=>{if(active)setAccess(null)}); return ()=>{active=false}},[]);
+  const canPublish = Boolean(access?.canPublish);
+  const canEditItem = (item: Promotion) => canEditPublicationRecord(access, item);
   const [tab,setTab] = useState<"ongoing"|"completed">("ongoing");
   const [form,setForm] = useState<Promotion|null>(null);
   const [busy,setBusy] = useState(false);
