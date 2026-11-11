@@ -619,7 +619,10 @@ service cloud.firestore {
       allow delete: if false;
       match /history/{entryId} {
         allow read: if approvedUser();
-        allow create: if canEditScopedRecord("maintenance", getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)).data.createdByUid)
+        allow create: if (request.resource.data.before == null
+            ? canEditScopedRecord("maintenance", request.resource.data.changedByUid)
+            : canEditScopedRecord("maintenance",
+              get(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)).data.createdByUid))
           && request.resource.data.keys().hasAll(["maintenanceId", "changedByUid", "changedByName", "changedAt", "before", "after"])
           && request.resource.data.keys().hasOnly(["maintenanceId", "changedByUid", "changedByName", "changedAt", "before", "after"])
           && request.resource.data.maintenanceId == maintenanceId
