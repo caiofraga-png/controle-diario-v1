@@ -58,6 +58,7 @@ export class FirebaseWorkspaceRepository {
 
     return {
       configuracao,
+      calendario: { schemaVersion: 1, datas: [] },
       estado,
     };
   }
