@@ -413,7 +413,7 @@ service cloud.firestore {
         && validPromotionFields(request.resource.data)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           "name", "category", "benefit", "eligible", "conditions", "startDate",
-          "endDate", "status", "updatedByUid", "updatedByName", "updatedAt"
+          "endDate", "status", "updatedByUid", "updatedByName", "updatedAt", "lastNotificationId"
         ])
         && request.resource.data.id == resource.data.id
         && request.resource.data.createdByUid == resource.data.createdByUid
