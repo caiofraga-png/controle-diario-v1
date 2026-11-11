@@ -773,12 +773,12 @@ service cloud.firestore {
           && (activeManager()
             || (exists(/databases/$(database)/documents/externalMaintenances/$(resource.data.targetId))
               && canEditScopedRecord("maintenance",
-                get(/databases/$(database)/documents/externalMaintenances/$(resource.data.targetId)).data.createdByUid)))
+                get(/databases/$(database)/documents/externalMaintenances/$(resource.data.targetId)).data.createdByUid))))
         || (resource.data.targetType == "delinquency"
           && (activeManager()
             || (exists(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId))
               && canEditScopedRecord("delinquency",
-                get(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId)).data.createdByUid)));
+                get(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId)).data.createdByUid))));
     }
 
     // Shared attendance subtype catalog: approved collaborators may add suggestions;
