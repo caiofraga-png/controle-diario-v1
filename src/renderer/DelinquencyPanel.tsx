@@ -96,7 +96,7 @@ export default function DelinquencyPanel(){
           <label>DIAS VENCIDOS<input type="number" min="0" step="1" value={draft.overdueDays} onChange={e=>update("overdueDays",Number(e.target.value))}/></label>
         </div>
         <label>PRAZO DO AVISO<input type="date" value={draft.validUntil} onChange={e=>update("validUntil",e.target.value)}/></label>
-        <AttachmentPanel targetType="delinquency" targetId={draftAttachmentId} canUpload={editingId ? canEditItem(items.find(item=>item.id===editingId) ?? {createdByUid:""}) : canManage} />
+        <AttachmentPanel targetType="delinquency" targetId={draftAttachmentId} canUpload={editingId ? Boolean(items.find(item=>item.id===editingId && canEditItem(item))) : canManage} />
         <label>SITUAÇÃO<select value={draft.status} onChange={e=>update("status",e.target.value as Draft["status"])}><option value="ongoing">EM ANDAMENTO</option><option value="completed">CONCLUÍDO</option></select></label>
         <div className="maintenance-form-actions"><button className="secondary" type="button" onClick={()=>{setDraft(null);setEditingId(null);}}>CANCELAR</button><button className="primary" type="button" disabled={busy} onClick={()=>void save()}>PUBLICAR AVISO</button></div>
       </div>
