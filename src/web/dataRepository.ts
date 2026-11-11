@@ -10,7 +10,6 @@ export interface LayoutConfig {
   painelLateral: { largura: number };
   expansaoLateral?: { posicao: "esquerda" | "direita" };
   criacaoRoteiro?: { modo: "POPUP" | "EXPANSÃO" };
-  escala12x36?: { habilitada: boolean; referencias: Array<{ primeiraFolga: string }> };
   atalhosCabecalho?: { email: boolean; chat: boolean; keep: boolean; wiki: boolean; calendario: boolean; flit: boolean; youk: boolean };
   atalhosPersonalizados?: Array<{ id: string; nome: string; url: string; ativo: boolean }>;
 }
@@ -527,7 +526,7 @@ export function normalizeConfiguration(config: Configuracao): Configuracao {
   const reconciled = JSON.parse(JSON.stringify(roteiro.config)) as Configuracao;
   const profileIds = new Set(reconciled.perfis.perfis.map(profile => profile.id));
   const taskIds = new Set(reconciled.tarefas.tarefas.map(task => task.id));
-  reconciled.layout.abas = Array.from(new Set([...(reconciled.layout.abas ?? []), "tarefas", "calendario", "manutencoes", "promocoes", "meta", "inadimplencia", "supervisao", "configuracao"]));
+  reconciled.layout.abas = Array.from(new Set([...(reconciled.layout.abas ?? []), "tarefas", "manutencoes", "promocoes", "meta", "inadimplencia", "supervisao", "configuracao"]));
   reconciled.layout.escala12x36 = { habilitada: Boolean(reconciled.layout.escala12x36?.habilitada), referencias: (reconciled.layout.escala12x36?.referencias ?? []).filter((item: any) => item && typeof item.primeiraFolga === "string" && /^\d{4}-\d{2}-\d{2}$/.test(item.primeiraFolga)).sort((a: any, b: any) => a.primeiraFolga.localeCompare(b.primeiraFolga)) };
   reconciled.layout.atalhosCabecalho = { email: true, chat: true, keep: true, wiki: true, calendario: true, flit: true, youk: true, ...(reconciled.layout.atalhosCabecalho ?? {}) };
   reconciled.layout.atalhosPersonalizados = (reconciled.layout.atalhosPersonalizados ?? []).filter((item: any) => item && typeof item.id === "string" && typeof item.nome === "string" && typeof item.url === "string" && (item.url.startsWith("https://") || item.url.startsWith("http://"))).map((item: any) => ({ id: item.id, nome: item.nome.trim().slice(0, 32), url: item.url.trim(), ativo: item.ativo !== false })).filter((item: any) => item.nome && item.nome.length > 0);
@@ -595,7 +594,7 @@ export function defaultConfiguration(): Configuracao {
         P001: ["T001","T002","T003","T004","T005"],
         P002: ["T006","T007"]
       },
-      abas: ["tarefas","calendario"],
+      abas: ["tarefas"],
       painelLateral: { largura: 420 },
       expansaoLateral: { posicao: "direita" },
       criacaoRoteiro: { modo: "POPUP" },
