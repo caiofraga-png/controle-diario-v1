@@ -265,7 +265,8 @@ function App() {
       .catch(() => { if (active) setSelectedStartProfile(profiles[0].id); });
     return () => { active = false; };
   }, [profiles, selectedStartProfile, geralHasTasks]);
-  const allowedMenuTabs = new Set<string>(["sistema", "atendimentos", ...(config?.layout?.abas ?? ["tarefas","calendario","manutencoes","promocoes","meta","inadimplencia","supervisao","configuracao"])]);
+  const allowedMenuTabs = new Set<string>(["sistema", "atendimentos", ...(config?.layout?.abas ?? ["tarefas","manutencoes","promocoes","meta","inadimplencia","supervisao","configuracao"])]);
+  allowedMenuTabs.delete("calendario");
   const showMenu = (id:string) => (id === "administracao" || id === "supervisao" || allowedMenuTabs.has(id)) && (id !== "administracao" || firebaseAccess?.user?.role === "admin") && (id !== "promocoes" || firebaseAccess?.status === "approved") && (id !== "supervisao" || isManager || overviewNoticeAccess.length > 0);
   useEffect(() => { if (firebaseAccess?.status === "approved" && tab !== "sistema" && !showMenu(tab)) setTab("sistema"); }, [firebaseAccess?.status, firebaseAccess?.user?.role, config?.layout?.abas?.join("|"), tab, overviewNoticeAccess.join("|")]);
   const expansionMode = config?.layout?.criacaoRoteiro?.modo ?? "POPUP";
