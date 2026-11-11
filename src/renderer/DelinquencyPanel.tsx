@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { collection, doc, onSnapshot, orderBy, query, serverTimestamp, writeBatch, type Unsubscribe } from "firebase/firestore";
 import { requireFirebase } from "../web/firebaseClient";
 import AttachmentPanel from "./AttachmentPanel";
+import { loadPublicationAccess, canEditPublicationRecord, type PublicationAccess } from "../web/firebasePublicationAccess";
 
 type Notice = {
   id:string; type:"reducao"|"suspensao"; date:string; title:string;
   dueDate:string; customerCount:number; overdueDays:number; validUntil:string;
-  status:"ongoing"|"completed"; createdByUid:string; createdAt?:unknown;
+  status:"ongoing"|"completed"; createdByUid:string; ownerSectorId?:string; ownerContactId?:string; createdAt?:unknown;
 };
 type Draft = Omit<Notice,"id"|"createdByUid"|"createdAt">;
 const blank = ():Draft => ({type:"reducao",date:new Date().toLocaleDateString("en-CA",{timeZone:"America/Sao_Paulo"}),title:"",dueDate:"",customerCount:0,overdueDays:0,validUntil:"",status:"ongoing"});
@@ -18,7 +19,9 @@ export default function DelinquencyPanel(){
   const [draft,setDraft]=useState<Draft|null>(null);
   const [editingId,setEditingId]=useState<string|null>(null);
   const [draftAttachmentId,setDraftAttachmentId]=useState("");
-  const [canManage,setCanManage]=useState(false);
+  const [access,setAccess]=useState<PublicationAccess|null>(null);
+  const canManage=Boolean(access?.canPublish);
+  const canEditItem=(item:Notice)=>canEditPublicationRecord(access,item);
   const [busy,setBusy]=useState(false);
   const [loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
@@ -27,26 +30,11 @@ export default function DelinquencyPanel(){
     const user=auth.currentUser;
     if(!user){setLoading(false);return;}
     let stop:Unsubscribe|undefined;
-    void (async()=>{
-      try{
-        const {getDoc,doc}=await import("firebase/firestore");
-        const profileSnap=await getDoc(doc(db,"users",user.uid));
-        const profile=profileSnap.exists()?profileSnap.data():{};
-        const manager=profile.role==="admin"||profile.isSupervisor===true;
-        let permitted=manager;
-        if(!manager){
-          const permissionSnap=await getDoc(doc(db,"featurePermissions","delinquency"));
-          const permission=permissionSnap.exists()?permissionSnap.data():{};
-          permitted=profile.status==="approved"&&permission.enabled===true&&(
-            (permission.wholeSectorIds??[]).includes(profile.sectorId)||
-            (permission.contactIds??[]).includes(profile.contactId)||
-            (permission.agentIds??[]).includes(user.uid));
-        }
-        setCanManage(permitted);
-      }catch(error){setMessage(error instanceof Error?error.message:"NÃO FOI POSSÍVEL VERIFICAR AS PERMISSÕES.");}
-      const q=query(collection(db,"delinquencyNotices"),orderBy("createdAt","desc"));
-      stop=onSnapshot(q,snapshot=>{setItems(snapshot.docs.map(item=>({id:item.id,...item.data()} as Notice)));setLoading(false);},error=>{setMessage(error.message);setLoading(false);});
-    })();
+    void loadPublicationAccess("delinquency")
+      .then(value=>setAccess(value))
+      .catch(error=>setMessage(error instanceof Error?error.message:"NÃO FOI POSSÍVEL VERIFICAR AS PERMISSÕES."));
+    const q=query(collection(db,"delinquencyNotices"),orderBy("createdAt","desc"));
+    stop=onSnapshot(q,snapshot=>{setItems(snapshot.docs.map(item=>({id:item.id,...item.data()} as Notice)));setLoading(false);},error=>{setMessage(error.message);setLoading(false);});
     return ()=>stop?.();
   },[]);
   const today=new Date().toLocaleDateString("en-CA",{timeZone:"America/Sao_Paulo"});
@@ -105,7 +93,7 @@ export default function DelinquencyPanel(){
           <label>DIAS VENCIDOS<input type="number" min="0" step="1" value={draft.overdueDays} onChange={e=>update("overdueDays",Number(e.target.value))}/></label>
         </div>
         <label>PRAZO DO AVISO<input type="date" value={draft.validUntil} onChange={e=>update("validUntil",e.target.value)}/></label>
-        <AttachmentPanel targetType="delinquency" targetId={draftAttachmentId} canUpload={canManage} />
+        <AttachmentPanel targetType="delinquency" targetId={draftAttachmentId} canUpload={editingId ? canEditItem(items.find(item=>item.id===editingId) ?? {createdByUid:""}) : canManage} />
         <label>SITUAÇÃO<select value={draft.status} onChange={e=>update("status",e.target.value as Draft["status"])}><option value="ongoing">EM ANDAMENTO</option><option value="completed">CONCLUÍDO</option></select></label>
         <div className="maintenance-form-actions"><button className="secondary" type="button" onClick={()=>{setDraft(null);setEditingId(null);}}>CANCELAR</button><button className="primary" type="button" disabled={busy} onClick={()=>void save()}>PUBLICAR AVISO</button></div>
       </div>
@@ -114,7 +102,7 @@ export default function DelinquencyPanel(){
       <div className="delinquency-metrics"><div><small>CLIENTES</small><strong>{item.customerCount}</strong></div><div><small>DIAS VENCIDOS</small><strong>{item.overdueDays}</strong></div></div>
       <div className="promotion-detail"><strong>DATA DO AVISO</strong><p>{dateLabel(item.date)}</p></div><div className="promotion-detail"><strong>VENCIMENTO</strong><p>{dateLabel(item.dueDate)}</p></div>
       <div className="promotion-validity">AVISO VÁLIDO ATÉ {dateLabel(item.validUntil)}</div>
-      {canManage&&<div className="maintenance-card-actions"><button className="secondary" onClick={()=>{setDraft({type:item.type,date:item.date,title:item.title,dueDate:item.dueDate,customerCount:item.customerCount,overdueDays:item.overdueDays,validUntil:item.validUntil,status:item.status});setEditingId(item.id);setDraftAttachmentId(item.id);}}>EDITAR</button>{item.status!=="completed"?<button className="primary" disabled={busy} onClick={()=>void changeStatus(item,"completed")}>CONCLUIR</button>:<button className="primary" disabled={busy} onClick={()=>void changeStatus(item,"ongoing")}>REABRIR</button>}</div>}
+      {canEditItem(item)&&<div className="maintenance-card-actions"><button className="secondary" onClick={()=>{setDraft({type:item.type,date:item.date,title:item.title,dueDate:item.dueDate,customerCount:item.customerCount,overdueDays:item.overdueDays,validUntil:item.validUntil,status:item.status});setEditingId(item.id);setDraftAttachmentId(item.id);}}>EDITAR</button>{item.status!=="completed"?<button className="primary" disabled={busy} onClick={()=>void changeStatus(item,"completed")}>CONCLUIR</button>:<button className="primary" disabled={busy} onClick={()=>void changeStatus(item,"ongoing")}>REABRIR</button>}</div>}
     </article>)}{visible.length===0&&<div className="maintenance-empty">{tab==="ongoing"?"NÃO HÁ AVISOS DE INADIMPLÊNCIA EM ANDAMENTO.":"NÃO HÁ AVISOS CONCLUÍDOS NO HISTÓRICO."}</div>}</div>}
   </section>;
 }
