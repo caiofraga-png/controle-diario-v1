@@ -1249,3 +1249,30 @@ test("supervisor não pode modificar dados privados nem histórico operacional d
   }));
   await assertFails(deleteDoc(doc(supervisor, "Expediente/alice_2026-10-28")));
 });
+
+
+test("bloqueio administrativo revoga imediatamente o acesso da sessão ativa", async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await setDoc(doc(db, "sharedAttachments/anexo-sessao-ativa"), {
+      targetType: "promotion", targetId: "promo-1", name: "arquivo.pdf",
+      mimeType: "application/pdf", size: 4, data: "JVBERg==",
+      createdByUid: "admin", createdAt: new Date(),
+    });
+  });
+
+  const admin = dbAs("admin");
+  const alice = dbAs("alice");
+
+  // A conta aprovada consegue consultar os próprios dados e anexos compartilhados.
+  await assertSucceeds(getDoc(doc(alice, "users/alice/operational/currentState")));
+  await assertSucceeds(getDoc(doc(alice, "sharedAttachments/anexo-sessao-ativa")));
+
+  // O administrador bloqueia a conta sem encerrar artificialmente o token de autenticação.
+  await assertSucceeds(updateDoc(doc(admin, "users/alice"), { status: "blocked" }));
+
+  // A mesma sessão autenticada perde imediatamente as permissões baseadas em approvedUser().
+  await assertFails(getDoc(doc(alice, "users/alice/operational/currentState")));
+  await assertFails(getDoc(doc(alice, "sharedAttachments/anexo-sessao-ativa")));
+  await assertFails(updateDoc(doc(alice, "users/alice"), { status: "approved" }));
+});
