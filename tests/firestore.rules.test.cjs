@@ -1104,3 +1104,55 @@ test("configurações administrativas são exclusivas de administradores e catá
     schemaVersion: 1, perfis: [],
   }));
 });
+
+
+test("edição de publicações de terceiros respeita permissões por contato e agente", async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await setDoc(doc(db, "users/charlie"), {
+      uid: "charlie", email: "charlie@lestetelecom.net.br", login: "charlie",
+      agent: "Charlie", sectorId: "financeiro", contactId: "equipe-b",
+      role: "employee", status: "approved", isSupervisor: false,
+    });
+    const promotion = (id, ownerContactId) => ({
+      id, name: "Campanha " + id, category: "Teste", benefit: "Benefício",
+      eligible: "Todos", conditions: "Condições", startDate: "", endDate: "",
+      status: "active", createdByUid: "charlie", createdByName: "Charlie",
+      createdAt: new Date(), updatedByUid: "charlie", updatedByName: "Charlie",
+      updatedAt: new Date(), ownerSectorId: "financeiro", ownerContactId,
+    });
+    await setDoc(doc(db, "sharedPromotions/promo-contato"), promotion("promo-contato", "equipe-a"));
+    await setDoc(doc(db, "sharedPromotions/promo-agente"), promotion("promo-agente", "equipe-b"));
+  });
+
+  const supervisor = dbAs("supervisor");
+  await assertSucceeds(setDoc(doc(supervisor, "featurePermissions/promotions"), {
+    schemaVersion: 1, enabled: true, sectorIds: [], wholeSectorIds: [],
+    contactIds: ["equipe-a"], agentIds: [],
+    updatedAt: serverTimestamp(), updatedByUid: "supervisor",
+  }));
+
+  const alice = dbAs("alice");
+  await assertSucceeds(updateDoc(doc(alice, "sharedPromotions/promo-contato"), {
+    benefit: "Editada pelo contato autorizado", updatedByUid: "alice",
+    updatedByName: "Alice", updatedAt: serverTimestamp(),
+  }));
+  await assertFails(updateDoc(doc(alice, "sharedPromotions/promo-agente"), {
+    benefit: "Tentativa sem autorização", updatedByUid: "alice",
+    updatedByName: "Alice", updatedAt: serverTimestamp(),
+  }));
+
+  await assertSucceeds(setDoc(doc(supervisor, "featurePermissions/promotions"), {
+    schemaVersion: 1, enabled: true, sectorIds: [], wholeSectorIds: [],
+    contactIds: [], agentIds: ["charlie"],
+    updatedAt: serverTimestamp(), updatedByUid: "supervisor",
+  }));
+  await assertSucceeds(updateDoc(doc(alice, "sharedPromotions/promo-agente"), {
+    benefit: "Editada pelo agente autorizado", updatedByUid: "alice",
+    updatedByName: "Alice", updatedAt: serverTimestamp(),
+  }));
+  await assertFails(updateDoc(doc(alice, "sharedPromotions/promo-contato"), {
+    benefit: "Tentativa fora do agente autorizado", updatedByUid: "alice",
+    updatedByName: "Alice", updatedAt: serverTimestamp(),
+  }));
+});
