@@ -1,0 +1,111 @@
+name: Auditoria automatizada em paralelo
+
+on:
+  push:
+    branches:
+      - feature/leste-firebase-multusuario
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "firestore.rules"
+      - "firebase.json"
+      - "firestore.indexes.json"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig*.json"
+      - ".github/workflows/auditoria-paralela.yml"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: auditoria-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  compilacao:
+    name: Compilação TypeScript e Web
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Obter código
+        uses: actions/checkout@v5
+      - name: Configurar Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - name: Instalar dependências
+        run: npm ci --no-audit --no-fund
+      - name: Compilar aplicação
+        env:
+          VITE_FIREBASE_API_KEY: ${{ vars.HOMOLOGACAO_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.HOMOLOGACAO_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ vars.HOMOLOGACAO_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_APP_ID: ${{ vars.HOMOLOGACAO_FIREBASE_APP_ID }}
+        run: npm run build
+
+  regras_firestore:
+    name: Regras e isolamento do Firestore
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Obter código
+        uses: actions/checkout@v5
+      - name: Configurar Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - name: Configurar Java para o emulador
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Instalar dependências
+        run: npm ci --no-audit --no-fund
+      - name: Executar todos os testes de regras
+        run: npx firebase emulators:exec --only firestore --project demo-controle-diario-regras "npm run test:rules"
+
+  backup_unitario:
+    name: Criptografia e recuperação de backup
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Obter código
+        uses: actions/checkout@v5
+      - name: Configurar Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - name: Instalar dependências
+        run: npm ci --no-audit --no-fund
+      - name: Testar criptografia e recuperação
+        run: npm run test:backup
+
+  backup_firestore:
+    name: Restauração no emulador Firestore
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Obter código
+        uses: actions/checkout@v5
+      - name: Configurar Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - name: Configurar Java para o emulador
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Instalar dependências
+        run: npm ci --no-audit --no-fund
+      - name: Testar restauração com dados fictícios
+        run: npx firebase emulators:exec --only firestore --project demo-controle-diario-backup "npm run test:backup:firestore"
