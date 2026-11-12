@@ -519,8 +519,17 @@ test("somente gestor pode criar auditoria e colaborador não pode forjar histór
     details: {}, createdAt: serverTimestamp(),
   };
   await assertFails(setDoc(doc(dbAs("alice"), "adminAudit/forged-audit"), audit));
-  await assertSucceeds(setDoc(doc(dbAs("supervisor"), "adminAudit/supervisor-audit"), {
+  const supervisor = dbAs("supervisor");
+  await assertSucceeds(setDoc(doc(supervisor, "adminAudit/supervisor-audit"), {
     ...audit, actorUid: "supervisor",
+  }));
+  // A supervisor cannot attribute an event to another person.
+  await assertFails(setDoc(doc(supervisor, "adminAudit/forged-supervisor-audit"), {
+    ...audit, actorUid: "alice",
+  }));
+  // Nor can a supervisor backdate or forge the server timestamp.
+  await assertFails(setDoc(doc(supervisor, "adminAudit/backdated-supervisor-audit"), {
+    ...audit, actorUid: "supervisor", createdAt: new Date("2020-01-01T00:00:00Z"),
   }));
 });
 
