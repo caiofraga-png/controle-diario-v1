@@ -113,7 +113,7 @@ export async function approveAccessRequest(input: {
       actorEmail: actor.email ?? "",
       action: "ACCESS_APPROVED",
       targetUid: input.uid,
-      details: { email },
+      details: { email, sectorId: input.sectorId, contactId: input.contactId, agent: input.agent.trim() },
       createdAt: serverTimestamp(),
     });
   });
@@ -133,17 +133,45 @@ export async function updateOrganizationalUser(
   uid: string,
   changes: Pick<OrganizationalUser, "login" | "agent" | "sectorId" | "contactId" | "isSupervisor" | "allowedProfileIds">
 ) {
-  const { db } = requireFirebase();
-  await updateDoc(doc(db, "users", uid), {
-    login: changes.login.trim(),
-    agent: changes.agent.trim(),
-    sectorId: changes.sectorId,
-    contactId: changes.contactId,
-    isSupervisor: changes.isSupervisor,
-    allowedProfileIds: changes.allowedProfileIds ?? [],
-    updatedAt: new Date().toISOString(),
+  const { auth, db } = requireFirebase();
+  const actor = auth.currentUser;
+  if (!actor) throw new Error("É necessário autenticar-se para administrar o sistema.");
+  const userRef = doc(db, "users", uid);
+  const auditRef = doc(collection(db, "adminAudit"));
+  const updatedAt = new Date().toISOString();
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(userRef);
+    if (!snapshot.exists()) throw new Error("COLABORADOR NÃO ENCONTRADO.");
+    const previous = snapshot.data();
+    const next = {
+      login: changes.login.trim(),
+      agent: changes.agent.trim(),
+      sectorId: changes.sectorId,
+      contactId: changes.contactId,
+      isSupervisor: changes.isSupervisor,
+      allowedProfileIds: changes.allowedProfileIds ?? [],
+      updatedAt,
+    };
+    transaction.update(userRef, next);
+    transaction.set(auditRef, {
+      actorUid: actor.uid,
+      actorEmail: actor.email ?? "",
+      action: "ORGANIZATIONAL_PROFILE_UPDATED",
+      targetUid: uid,
+      details: {
+        before: {
+          login: String(previous.login ?? ""),
+          agent: String(previous.agent ?? ""),
+          sectorId: String(previous.sectorId ?? ""),
+          contactId: String(previous.contactId ?? ""),
+          isSupervisor: previous.isSupervisor === true,
+          allowedProfileIds: Array.isArray(previous.allowedProfileIds) ? previous.allowedProfileIds : [],
+        },
+        after: next,
+      },
+      createdAt: serverTimestamp(),
+    });
   });
-  await audit("ORGANIZATIONAL_PROFILE_UPDATED", uid, changes);
 }
 
 export async function setAccountStatus(uid: string, status: "blocked" | "approved") {
