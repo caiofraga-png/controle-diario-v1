@@ -439,6 +439,33 @@ test("colaborador pode consultar o próprio índice mesmo antes de sua criação
   await assertFails(getDoc(doc(db, "Expediente/bob_2026-11-10")));
 });
 
+test("supervisor consulta índice de outros colaboradores, mas não altera nem conclui por eles", async () => {
+  const supervisor = dbAs("supervisor");
+  const bobIndex = doc(supervisor, "Expediente/bob_2026-10-28");
+  await assertSucceeds(getDoc(bobIndex));
+  await assertFails(updateDoc(bobIndex, { status: "concluido" }));
+  await assertFails(deleteDoc(bobIndex));
+});
+
+test("atendimentos ficam isolados por colaborador e não podem ser alterados ou apagados", async () => {
+  const alice = dbAs("alice");
+  const own = doc(alice, "users/alice/attendanceRows/ticket-1");
+  await assertSucceeds(setDoc(own, {
+    ticket: "123", canal: "CHAT", codigo: "", nome: "Cliente",
+    tipo: "SUPORTE", resolvido: "SIM", subtipo: "", motivoResolucao: "",
+    ownerUid: "alice", createdAt: serverTimestamp(),
+  }));
+  await assertSucceeds(getDoc(own));
+  await assertFails(getDoc(doc(alice, "users/bob/attendanceRows/ticket-2")));
+  await assertFails(setDoc(doc(alice, "users/bob/attendanceRows/forjado"), {
+    ticket: "999", canal: "CHAT", codigo: "", nome: "Outro",
+    tipo: "SUPORTE", resolvido: "SIM", subtipo: "", motivoResolucao: "",
+    ownerUid: "alice", createdAt: serverTimestamp(),
+  }));
+  await assertFails(updateDoc(own, { nome: "Alterado" }));
+  await assertFails(deleteDoc(own));
+});
+
 test("proprietário só atualiza status e completedAt; não pode excluir índice", async () => {
   const db = dbAs("alice");
   const ref = doc(db, "Expediente/alice_2026-10-28");
