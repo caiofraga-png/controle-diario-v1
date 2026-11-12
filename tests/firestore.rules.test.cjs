@@ -461,6 +461,42 @@ test("supervisor lê expedientes de todos os setores, mas não os altera", async
   await assertFails(updateDoc(doc(db, "Expediente/alice_2026-10-28"), { status: "alterado" }));
 });
 
+test("colaborador não pode alterar o próprio vínculo organizacional ou nível de acesso", async () => {
+  const db = dbAs("alice");
+  await assertFails(updateDoc(doc(db, "users/alice"), { sectorId: "financeiro" }));
+  await assertFails(updateDoc(doc(db, "users/alice"), { contactId: "equipe-b" }));
+  await assertFails(updateDoc(doc(db, "users/alice"), { agent: "Identidade alterada" }));
+  await assertFails(updateDoc(doc(db, "users/alice"), { isSupervisor: true }));
+  await assertFails(updateDoc(doc(db, "users/alice"), { status: "blocked" }));
+  await assertFails(updateDoc(doc(db, "users/alice"), { allowedProfileIds: ["ADMIN"] }));
+});
+
+test("auditoria administrativa é consultável somente por administrador e imutável", async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "adminAudit/audit-test"), {
+      actorUid: "admin", action: "TESTE", targetUid: "alice",
+      details: {}, createdAt: new Date(),
+    });
+  });
+  await assertSucceeds(getDoc(doc(dbAs("admin"), "adminAudit/audit-test")));
+  await assertFails(getDoc(doc(dbAs("supervisor"), "adminAudit/audit-test")));
+  await assertFails(getDoc(doc(dbAs("alice"), "adminAudit/audit-test")));
+  await assertFails(updateDoc(doc(dbAs("admin"), "adminAudit/audit-test"), { action: "ALTERADO" }));
+  await assertFails(deleteDoc(doc(dbAs("admin"), "adminAudit/audit-test")));
+});
+
+test("somente gestor pode criar auditoria e colaborador não pode forjar histórico", async () => {
+  const audit = {
+    actorUid: "alice", actorEmail: "alice@lestetelecom.net.br",
+    action: "ORGANIZATIONAL_PROFILE_UPDATED", targetUid: "bob",
+    details: {}, createdAt: serverTimestamp(),
+  };
+  await assertFails(setDoc(doc(dbAs("alice"), "adminAudit/forged-audit"), audit));
+  await assertSucceeds(setDoc(doc(dbAs("supervisor"), "adminAudit/supervisor-audit"), {
+    ...audit, actorUid: "supervisor",
+  }));
+});
+
 test("supervisor pode gerenciar colaboradores comuns e catálogos globais", async () => {
   const db = dbAs("supervisor");
   await assertSucceeds(updateDoc(doc(db, "users/alice"), { login: "alice-novo" }));
