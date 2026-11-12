@@ -40,9 +40,8 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: npm
       - name: Instalar dependências
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
       - name: Compilar aplicação
         run: npm run build
 
@@ -64,7 +63,7 @@ jobs:
           distribution: temurin
           java-version: "21"
       - name: Instalar dependências
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
       - name: Executar todos os testes de regras
         run: npx firebase emulators:exec --only firestore --project demo-controle-diario-regras "npm run test:rules"
 
@@ -81,7 +80,7 @@ jobs:
           node-version: 22
           cache: npm
       - name: Instalar dependências
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
       - name: Testar criptografia e recuperação
         run: npm run test:backup
 
@@ -103,6 +102,6 @@ jobs:
           distribution: temurin
           java-version: "21"
       - name: Instalar dependências
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
       - name: Testar restauração com dados fictícios
         run: npx firebase emulators:exec --only firestore --project demo-controle-diario-backup "npm run test:backup:firestore"
