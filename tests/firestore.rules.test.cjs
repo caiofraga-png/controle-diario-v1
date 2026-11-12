@@ -1109,20 +1109,24 @@ test("configurações administrativas são exclusivas de administradores e catá
 test("edição de publicações de terceiros respeita permissões por contato e agente", async () => {
   await env.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
-    await setDoc(doc(db, "users/charlie"), {
-      uid: "charlie", email: "charlie@lestetelecom.net.br", login: "charlie",
-      agent: "Charlie", sectorId: "financeiro", contactId: "equipe-b",
-      role: "employee", status: "approved", isSupervisor: false,
-    });
-    const promotion = (id, ownerContactId) => ({
+    for (const [uid, contactId] of [["charlie", "equipe-b"], ["dana", "equipe-b"]]) {
+      await setDoc(doc(db, "users", uid), {
+        uid, email: `${uid}@lestetelecom.net.br`, login: uid,
+        agent: uid === "charlie" ? "Charlie" : "Dana",
+        sectorId: "financeiro", contactId,
+        role: "employee", status: "approved", isSupervisor: false,
+      });
+    }
+    const promotion = (id, ownerUid, ownerContactId) => ({
       id, name: "Campanha " + id, category: "Teste", benefit: "Benefício",
       eligible: "Todos", conditions: "Condições", startDate: "", endDate: "",
-      status: "active", createdByUid: "charlie", createdByName: "Charlie",
-      createdAt: new Date(), updatedByUid: "charlie", updatedByName: "Charlie",
+      status: "active", createdByUid: ownerUid, createdByName: ownerUid,
+      createdAt: new Date(), updatedByUid: ownerUid, updatedByName: ownerUid,
       updatedAt: new Date(), ownerSectorId: "financeiro", ownerContactId,
     });
-    await setDoc(doc(db, "sharedPromotions/promo-contato"), promotion("promo-contato", "equipe-a"));
-    await setDoc(doc(db, "sharedPromotions/promo-agente"), promotion("promo-agente", "equipe-b"));
+    await setDoc(doc(db, "sharedPromotions/promo-contato"), promotion("promo-contato", "charlie", "equipe-a"));
+    await setDoc(doc(db, "sharedPromotions/promo-agente"), promotion("promo-agente", "charlie", "equipe-b"));
+    await setDoc(doc(db, "sharedPromotions/promo-outro-agente"), promotion("promo-outro-agente", "dana", "equipe-b"));
   });
 
   const supervisor = dbAs("supervisor");
@@ -1151,7 +1155,7 @@ test("edição de publicações de terceiros respeita permissões por contato e 
     benefit: "Editada pelo agente autorizado", updatedByUid: "alice",
     updatedByName: "Alice", updatedAt: serverTimestamp(),
   }));
-  await assertFails(updateDoc(doc(alice, "sharedPromotions/promo-contato"), {
+  await assertFails(updateDoc(doc(alice, "sharedPromotions/promo-outro-agente"), {
     benefit: "Tentativa fora do agente autorizado", updatedByUid: "alice",
     updatedByName: "Alice", updatedAt: serverTimestamp(),
   }));
