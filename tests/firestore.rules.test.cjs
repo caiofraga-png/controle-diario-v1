@@ -1078,3 +1078,29 @@ test("colaborador aprovado pode visualizar anexos, mas não anexar ou remover", 
   await assertFails(deleteDoc(doc(alice, "sharedAttachments/existing")));
 });
 
+test("configurações administrativas são exclusivas de administradores e catálogos operacionais ficam com gestores", async () => {
+  await assertSucceeds(setDoc(doc(dbAs("admin"), "settings/allowedDomains"), {
+    domains: ["lestetelecom.net.br"],
+  }));
+  await assertFails(setDoc(doc(dbAs("supervisor"), "settings/allowedDomains"), {
+    domains: ["dominio-nao-autorizado.com"],
+  }));
+  await assertFails(setDoc(doc(dbAs("alice"), "settings/allowedDomains"), {
+    domains: ["dominio-nao-autorizado.com"],
+  }));
+
+  await assertSucceeds(setDoc(doc(dbAs("supervisor"), "settings/attendanceMotives"), {
+    schemaVersion: 1, items: ["Resolvido", "Retido"],
+    updatedByUid: "supervisor", updatedAt: serverTimestamp(),
+  }));
+  await assertFails(setDoc(doc(dbAs("alice"), "settings/attendanceMotives"), {
+    schemaVersion: 1, items: ["Motivo indevido"],
+    updatedByUid: "alice", updatedAt: serverTimestamp(),
+  }));
+  await assertFails(setDoc(doc(dbAs("alice"), "organizationSectors/novo-setor"), {
+    id: "novo-setor", name: "Novo setor", active: true,
+  }));
+  await assertFails(setDoc(doc(dbAs("alice"), "sharedTaskCatalog/current"), {
+    schemaVersion: 1, perfis: [],
+  }));
+});
