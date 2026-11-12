@@ -971,6 +971,32 @@ test("anexos compartilhados aceitam os cinco destinos por administrador e superv
   }
 });
 
+test("anexos de promoções respeitam o escopo do registro", async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await setDoc(doc(db, "featurePermissions/promotions"), {
+      enabled: true, wholeSectorIds: ["suporte"], contactIds: [], agentIds: [],
+    });
+    await setDoc(doc(db, "sharedPromotions/promo-suporte"), {
+      id: "promo-suporte", name: "Promoção", status: "active",
+      createdByUid: "bob", ownerSectorId: "suporte", ownerContactId: "equipe-a",
+    });
+    await setDoc(doc(db, "sharedPromotions/promo-financeiro"), {
+      id: "promo-financeiro", name: "Promoção", status: "active",
+      createdByUid: "bob", ownerSectorId: "financeiro", ownerContactId: "equipe-b",
+    });
+  });
+  const alice = dbAs("alice");
+  const attachment = (id, targetId) => setDoc(doc(alice, `sharedAttachments/${id}`), {
+    targetType: "promotion", targetId, name: "arquivo.pdf",
+    mimeType: "application/pdf", size: 4, data: "JVBERg==",
+    createdByUid: "alice", createdAt: serverTimestamp(),
+  });
+  await assertSucceeds(attachment("promo-dentro-escopo", "promo-suporte"));
+  await assertFails(attachment("promo-fora-escopo", "promo-financeiro"));
+  await assertSucceeds(deleteDoc(doc(alice, "sharedAttachments/promo-dentro-escopo")));
+});
+
 test("anexos de manutenção e inadimplência respeitam as permissões específicas de publicação", async () => {
   await env.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
