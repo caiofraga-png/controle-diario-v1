@@ -1160,3 +1160,49 @@ test("edição de publicações de terceiros respeita permissões por contato e 
     updatedByName: "Alice", updatedAt: serverTimestamp(),
   }));
 });
+
+
+test("revogação de permissão impede editar publicações e anexos imediatamente", async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await setDoc(doc(db, "sharedPromotions/promo-revogacao"), {
+      id: "promo-revogacao", name: "Campanha de teste", category: "Teste",
+      benefit: "Benefício", eligible: "Todos", conditions: "Condições",
+      startDate: "", endDate: "", status: "active",
+      createdByUid: "bob", createdByName: "Bob", createdAt: new Date(),
+      updatedByUid: "bob", updatedByName: "Bob", updatedAt: new Date(),
+      ownerSectorId: "suporte", ownerContactId: "equipe-a",
+    });
+  });
+
+  const supervisor = dbAs("supervisor");
+  const alice = dbAs("alice");
+  const permissionRef = doc(supervisor, "featurePermissions/promotions");
+  const permission = (enabled) => ({
+    schemaVersion: 1, enabled, sectorIds: [],
+    wholeSectorIds: ["suporte"], contactIds: [], agentIds: [],
+    updatedAt: serverTimestamp(), updatedByUid: "supervisor",
+  });
+  const edit = (benefit) => updateDoc(doc(alice, "sharedPromotions/promo-revogacao"), {
+    benefit, updatedByUid: "alice", updatedByName: "Alice",
+    updatedAt: serverTimestamp(),
+  });
+  const attachment = (id) => setDoc(doc(alice, `sharedAttachments/${id}`), {
+    targetType: "promotion", targetId: "promo-revogacao",
+    name: "arquivo.pdf", mimeType: "application/pdf", size: 4,
+    data: "JVBERg==", createdByUid: "alice", createdAt: serverTimestamp(),
+  });
+
+  await assertSucceeds(setDoc(permissionRef, permission(true)));
+  await assertSucceeds(edit("Edição antes da revogação"));
+  await assertSucceeds(attachment("anexo-antes-revogacao"));
+
+  await assertSucceeds(setDoc(permissionRef, permission(false)));
+  await assertFails(edit("Tentativa após revogação"));
+  await assertFails(attachment("anexo-depois-revogacao"));
+  await assertFails(deleteDoc(doc(alice, "sharedAttachments/anexo-antes-revogacao")));
+
+  // A revogação não impede a leitura compartilhada de documentos já publicados.
+  await assertSucceeds(getDoc(doc(alice, "sharedPromotions/promo-revogacao")));
+  await assertSucceeds(getDoc(doc(alice, "sharedAttachments/anexo-antes-revogacao")));
+});
