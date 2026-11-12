@@ -437,15 +437,16 @@ service cloud.firestore {
     function validPromotionNotificationLink(promotionId) {
       let notificationId = request.resource.data.lastNotificationId;
       let notificationPath = /databases/$(database)/documents/sharedNotifications/$(notificationId);
+      let notificationData = getAfter(notificationPath).data;
       return notificationId is string
         && existsAfter(notificationPath)
-        && getAfter(notificationPath).data.category == "promocoes"
-        && getAfter(notificationPath).data.target == "promocoes"
-        && getAfter(notificationPath).data.referenceId == promotionId
-        && getAfter(notificationPath).data.message == "Promoção - " + request.resource.data.name
+        && notificationData.category == "promocoes"
+        && notificationData.target == "promocoes"
+        && notificationData.referenceId == promotionId
+        && notificationData.message == "Promoção - " + request.resource.data.name
           + (request.resource.data.status == "active" ? " - Em Andamento" : " - Encerrado")
-        && getAfter(notificationPath).data.createdByUid == request.auth.uid
-        && getAfter(notificationPath).data.createdAt == request.time;
+        && notificationData.createdByUid == request.auth.uid
+        && notificationData.createdAt == request.time;
     }
 
     match /sharedPromotions/{promotionId} {
@@ -461,8 +462,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasAll(["ownerSectorId", "ownerContactId"])
         && request.resource.data.ownerSectorId == userRecord(request.auth.uid).data.sectorId
         && request.resource.data.ownerContactId == userRecord(request.auth.uid).data.contactId
-        && (!request.resource.data.keys().hasAny(["ownerSectorId"]) || request.resource.data.ownerSectorId == userRecord(request.auth.uid).data.sectorId)
-        && (!request.resource.data.keys().hasAny(["ownerContactId"]) || request.resource.data.ownerContactId == userRecord(request.auth.uid).data.contactId)
+
         && (!request.resource.data.keys().hasAny(["lastNotificationId"])
           || validPromotionNotificationLink(promotionId));
       allow update: if approvedUser()
@@ -519,8 +519,7 @@ service cloud.firestore {
         && request.resource.data.overdueDays >= 0
         && request.resource.data.validUntil is string
         && request.resource.data.status in ["ongoing", "completed"]
-        && (!request.resource.data.keys().hasAny(["ownerSectorId"]) || request.resource.data.ownerSectorId == userRecord(request.auth.uid).data.sectorId)
-        && (!request.resource.data.keys().hasAny(["ownerContactId"]) || request.resource.data.ownerContactId == userRecord(request.auth.uid).data.contactId)
+
         && request.resource.data.createdByUid == request.auth.uid
         && request.resource.data.updatedByUid == request.auth.uid
         && request.resource.data.createdAt == request.time
@@ -564,15 +563,16 @@ service cloud.firestore {
 
     function validPromotionNotification(notificationId) {
       let promotionPath = /databases/$(database)/documents/sharedPromotions/$(request.resource.data.referenceId);
+      let promotionData = getAfter(promotionPath).data;
       return request.resource.data.referenceId is string
         && notificationId is string
         && existsAfter(promotionPath)
-        && getAfter(promotionPath).data.lastNotificationId == notificationId
-        && getAfter(promotionPath).data.updatedByUid == request.auth.uid
-        && canEditScopedRecord("promotions", getAfter(promotionPath).data)
-        && getAfter(promotionPath).data.status in ["active", "closed"]
-        && request.resource.data.message == "Promoção - " + getAfter(promotionPath).data.name
-          + (getAfter(promotionPath).data.status == "active" ? " - Em Andamento" : " - Encerrado");
+        && promotionData.lastNotificationId == notificationId
+        && promotionData.updatedByUid == request.auth.uid
+        && canEditScopedRecord("promotions", promotionData)
+        && promotionData.status in ["active", "closed"]
+        && request.resource.data.message == "Promoção - " + promotionData.name
+          + (promotionData.status == "active" ? " - Em Andamento" : " - Encerrado");
     }
 
     match /sharedNotifications/{notificationId} {
@@ -609,47 +609,47 @@ service cloud.firestore {
 
     function validMaintenanceNotification(maintenanceId) {
       let notificationPath = /databases/$(database)/documents/sharedNotifications/$(request.resource.data.lastNotificationId);
+      let notificationData = getAfter(notificationPath).data;
+      let maintenanceData = getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)).data;
       return request.resource.data.lastNotificationId is string
         && existsAfter(notificationPath)
-        && getAfter(notificationPath).data.keys().hasOnly(["category", "message", "target", "maintenanceId", "createdByUid", "createdAt"])
-        && getAfter(notificationPath).data.category == "manutencoes"
-        && getAfter(notificationPath).data.target == "manutencoes"
-        && getAfter(notificationPath).data.message == "Manutenção - "
-          + getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)).data.title
-          + " - "
-          + (getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)).data.status == "ongoing"
-            ? "Em Andamento" : "Concluído")
-        && getAfter(notificationPath).data.maintenanceId == maintenanceId
-        && getAfter(notificationPath).data.createdByUid == request.auth.uid
-        && getAfter(notificationPath).data.createdAt == request.time;
+        && notificationData.keys().hasOnly(["category", "message", "target", "maintenanceId", "createdByUid", "createdAt"])
+        && notificationData.category == "manutencoes"
+        && notificationData.target == "manutencoes"
+        && notificationData.message == "Manutenção - " + maintenanceData.title
+          + " - " + (maintenanceData.status == "ongoing" ? "Em Andamento" : "Concluído")
+        && notificationData.maintenanceId == maintenanceId
+        && notificationData.createdByUid == request.auth.uid
+        && notificationData.createdAt == request.time;
     }
 
     function validMaintenanceHistory(maintenanceId, isCreate) {
       let historyPath = /databases/$(database)/documents/externalMaintenances/$(maintenanceId)/history/$(request.resource.data.lastHistoryId);
+      let historyData = getAfter(historyPath).data;
       return request.resource.data.lastHistoryId is string
         && existsAfter(historyPath)
-        && getAfter(historyPath).data.keys().hasAll(["maintenanceId", "changedByUid", "changedByName", "changedAt", "before", "after"])
-        && getAfter(historyPath).data.keys().hasOnly(["maintenanceId", "changedByUid", "changedByName", "changedAt", "before", "after"])
-        && getAfter(historyPath).data.maintenanceId == maintenanceId
-        && getAfter(historyPath).data.changedByUid == request.auth.uid
-        && getAfter(historyPath).data.changedByName == userRecord(request.auth.uid).data.agent
-        && getAfter(historyPath).data.changedAt == request.time
-        && getAfter(historyPath).data.after is map
-        && getAfter(historyPath).data.after.keys().hasOnly(["title", "date", "location", "description", "status"])
-        && getAfter(historyPath).data.after.title == request.resource.data.title
-        && getAfter(historyPath).data.after.date == request.resource.data.date
-        && getAfter(historyPath).data.after.location == request.resource.data.location
-        && getAfter(historyPath).data.after.description == request.resource.data.description
-        && getAfter(historyPath).data.after.status == request.resource.data.status
+        && historyData.keys().hasAll(["maintenanceId", "changedByUid", "changedByName", "changedAt", "before", "after"])
+        && historyData.keys().hasOnly(["maintenanceId", "changedByUid", "changedByName", "changedAt", "before", "after"])
+        && historyData.maintenanceId == maintenanceId
+        && historyData.changedByUid == request.auth.uid
+        && historyData.changedByName == userRecord(request.auth.uid).data.agent
+        && historyData.changedAt == request.time
+        && historyData.after is map
+        && historyData.after.keys().hasOnly(["title", "date", "location", "description", "status"])
+        && historyData.after.title == request.resource.data.title
+        && historyData.after.date == request.resource.data.date
+        && historyData.after.location == request.resource.data.location
+        && historyData.after.description == request.resource.data.description
+        && historyData.after.status == request.resource.data.status
         && (isCreate
-          ? getAfter(historyPath).data.before == null
-          : getAfter(historyPath).data.before is map
-            && getAfter(historyPath).data.before.keys().hasOnly(["title", "date", "location", "description", "status"])
-            && getAfter(historyPath).data.before.title == resource.data.title
-            && getAfter(historyPath).data.before.date == resource.data.date
-            && getAfter(historyPath).data.before.location == resource.data.location
-            && getAfter(historyPath).data.before.description == resource.data.description
-            && getAfter(historyPath).data.before.status == resource.data.status);
+          ? historyData.before == null
+          : historyData.before is map
+            && historyData.before.keys().hasOnly(["title", "date", "location", "description", "status"])
+            && historyData.before.title == resource.data.title
+            && historyData.before.date == resource.data.date
+            && historyData.before.location == resource.data.location
+            && historyData.before.description == resource.data.description
+            && historyData.before.status == resource.data.status);
     }
 
     match /externalMaintenances/{maintenanceId} {
