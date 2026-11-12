@@ -112,3 +112,19 @@ Antes de executá-los, configure no GitHub um segredo de repositório ou de ambi
 5. Não execute workflows de publicação a partir de `main` e não faça merge do PR até concluir os testes ponta a ponta.
 
 Os workflows não conseguem publicar enquanto o segredo de conta de serviço não estiver configurado. Não substitua essa credencial por uma chave privada em `VITE_*`; variáveis `VITE_*` são públicas no bundle do navegador.
+
+
+## 8. Separação da produção
+
+A produção deve usar um projeto Firebase diferente de `controle-diario-510808`.
+
+O workflow de publicação do site foi preparado para aceitar somente configurações definidas no ambiente protegido `producao`, por meio destas variáveis do GitHub Actions:
+
+- `PROD_FIREBASE_API_KEY`
+- `PROD_FIREBASE_AUTH_DOMAIN`
+- `PROD_FIREBASE_PROJECT_ID`
+- `PROD_FIREBASE_APP_ID`
+
+O workflow bloqueia explicitamente o projeto `controle-diario-510808` como destino de produção e só pode ser iniciado manualmente. Antes de habilitar a publicação, crie e configure um projeto Firebase separado, valide Authentication, Firestore, regras, índices, domínios e o primeiro administrador. Configure as variáveis acima em **GitHub → Settings → Environments → producao → Environment variables**. Não coloque credenciais administrativas ou chaves privadas nessas variáveis.
+
+A publicação de produção permanece desabilitada até que essas variáveis sejam cadastradas e o ambiente `producao` esteja configurado. A homologação continua usando exclusivamente `controle-diario-510808`.
