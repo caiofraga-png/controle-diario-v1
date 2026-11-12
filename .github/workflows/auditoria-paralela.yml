@@ -16,6 +16,7 @@ on:
       - ".github/workflows/auditoria-paralela.yml"
       - ".github/workflows/deploy-web.yml"
       - "docs/CONFIGURAR_FIREBASE_HOMOLOGACAO.md"
+      - "README.md"
   pull_request:
     branches:
       - main
