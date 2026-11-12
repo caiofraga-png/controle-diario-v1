@@ -168,6 +168,7 @@ service cloud.firestore {
           && request.resource.data.uid == uid
           && request.resource.data.role == "employee"
           && request.resource.data.status == "approved"
+          && request.resource.data.isSupervisor == false
           && existsAfter(/databases/$(database)/documents/accessRequests/$(uid))
           && getAfter(/databases/$(database)/documents/accessRequests/$(uid)).data.uid == uid
           && getAfter(/databases/$(database)/documents/accessRequests/$(uid)).data.status == "approved"
