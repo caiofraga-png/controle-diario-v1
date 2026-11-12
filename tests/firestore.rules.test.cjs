@@ -834,6 +834,32 @@ test("somente setor ou contato liberado pode publicar aviso de inadimplência co
   await assertFails(batch.commit());
 });
 
+test("escopo registrado permanece estável quando o autor muda de setor", async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await setDoc(doc(db, "featurePermissions/promotions"), {
+      enabled: true, wholeSectorIds: ["suporte"], contactIds: [], agentIds: [],
+    });
+    await setDoc(doc(db, "sharedPromotions/promo-snapshot"), {
+      id: "promo-snapshot", name: "Campanha com escopo fixo", category: "Teste",
+      benefit: "Benefício", eligible: "Todos", conditions: "Condições",
+      startDate: "", endDate: "", status: "active",
+      createdByUid: "charlie", createdByName: "Charlie", createdAt: new Date(),
+      updatedByUid: "charlie", updatedByName: "Charlie", updatedAt: new Date(),
+      ownerSectorId: "suporte", ownerContactId: "equipe-a",
+    });
+    await setDoc(doc(db, "users/charlie"), {
+      uid: "charlie", email: "charlie@lestetelecom.net.br", login: "charlie",
+      agent: "Charlie", sectorId: "financeiro", contactId: "equipe-b",
+      role: "employee", status: "approved", isSupervisor: false,
+    });
+  });
+  await assertSucceeds(updateDoc(doc(dbAs("alice"), "sharedPromotions/promo-snapshot"), {
+    benefit: "Atualizada pelo escopo original", updatedByUid: "alice",
+    updatedByName: "Alice", updatedAt: serverTimestamp(),
+  }));
+});
+
 test("edição de promoções e inadimplência respeita o escopo do autor do registro", async () => {
   await env.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
