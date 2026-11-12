@@ -530,6 +530,17 @@ test("supervisor pode aprovar solicitação vinculada em uma única operação, 
   await assertSucceeds(batch.commit());
 });
 
+test("supervisor não pode aprovar colaborador com privilégio de supervisão", async () => {
+  const db = dbAs("supervisor");
+  await env.withSecurityRulesDisabled(async (context) => {
+    await deleteDoc(doc(context.firestore(), "users/pending"));
+  });
+  const batch = writeBatch(db);
+  batch.set(doc(db, "users/pending"), { ...profiles.pending, status: "approved", isSupervisor: true });
+  batch.update(doc(db, "accessRequests/pending"), { status: "approved", decidedAt: serverTimestamp() });
+  await assertFails(batch.commit());
+});
+
 test("supervisor não pode criar colaborador sem solicitação vinculada", async () => {
   const db = dbAs("supervisor");
   await assertFails(setDoc(doc(db, "users/unrequested"), {
