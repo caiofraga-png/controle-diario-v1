@@ -458,6 +458,9 @@ service cloud.firestore {
         && request.resource.data.updatedByUid == request.auth.uid
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time
+        && request.resource.data.keys().hasAll(["ownerSectorId", "ownerContactId"])
+        && request.resource.data.ownerSectorId == userRecord(request.auth.uid).data.sectorId
+        && request.resource.data.ownerContactId == userRecord(request.auth.uid).data.contactId
         && (!request.resource.data.keys().hasAny(["ownerSectorId"]) || request.resource.data.ownerSectorId == userRecord(request.auth.uid).data.sectorId)
         && (!request.resource.data.keys().hasAny(["ownerContactId"]) || request.resource.data.ownerContactId == userRecord(request.auth.uid).data.contactId)
         && (!request.resource.data.keys().hasAny(["lastNotificationId"])
@@ -522,6 +525,9 @@ service cloud.firestore {
         && request.resource.data.updatedByUid == request.auth.uid
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time
+        && request.resource.data.keys().hasAll(["ownerSectorId", "ownerContactId"])
+        && request.resource.data.ownerSectorId == userRecord(request.auth.uid).data.sectorId
+        && request.resource.data.ownerContactId == userRecord(request.auth.uid).data.contactId
         && request.resource.data.validUntil >= request.resource.data.date
         && validDelinquencyNoticeNotification(request.resource.data.notificationId, noticeId);
       allow update: if approvedUser()
@@ -656,6 +662,9 @@ service cloud.firestore {
         ])
         && request.resource.data.createdByUid == request.auth.uid
         && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.keys().hasAll(["ownerSectorId", "ownerContactId"])
+        && request.resource.data.ownerSectorId == userRecord(request.auth.uid).data.sectorId
+        && request.resource.data.ownerContactId == userRecord(request.auth.uid).data.contactId
         && request.resource.data.createdByName is string
         && request.resource.data.updatedByName is string
         && (!request.resource.data.keys().hasAny(["ownerSectorId"]) || request.resource.data.ownerSectorId == userRecord(request.auth.uid).data.sectorId)
