@@ -335,7 +335,8 @@ function App() {
         {showMenu("configuracao")&&<button className={`sidebar-item ${tab==="configuracao"?"active":""}`} onClick={()=>setTab("configuracao")}><span className="sidebar-icon">⚙</span><span>Configuração</span></button>}
         {showMenu("administracao")&&<button className={`sidebar-item ${tab==="administracao"?"active":""}`} onClick={()=>setTab("administracao")}><span className="sidebar-icon">♙</span><span>Administração</span></button>}
       </>}
-      <button className={`sidebar-item ${tab==="sobre"?"active":""}`} onClick={()=>setTab("sobre")}><span className="sidebar-icon">ⓘ</span><span>Sobre o site</span></button>\n      <button className={`sidebar-item ${tab==="sistema"?"active":""}`} onClick={()=>setTab("sistema")}><span className="sidebar-icon">◈</span><span>Sistema</span></button>
+      <button className={`sidebar-item ${tab==="sobre"?"active":""}`} onClick={()=>setTab("sobre")}><span className="sidebar-icon">ⓘ</span><span>Sobre o site</span></button>
+      <button className={`sidebar-item ${tab==="sistema"?"active":""}`} onClick={()=>setTab("sistema")}><span className="sidebar-icon">◈</span><span>Sistema</span></button>
       <div className="sidebar-company-footer"><img src="./leste-logo.svg" alt="Leste Telecom" /></div>
       <div className="sidebar-footer"><span className={firebaseAccess?.status==="approved"?"connection-dot connected":"connection-dot"}></span><span>{firebaseAccess?.status==="approved"?"Conectado":"Não conectado"}</span></div>
     </aside>
