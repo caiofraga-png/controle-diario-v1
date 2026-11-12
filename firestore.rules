@@ -847,6 +847,11 @@ service cloud.firestore {
             && (!exists(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId))
               || publisherAuthorizedForRecord("delinquency",
                 get(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId)).data)))
+          || (request.resource.data.targetType == "promotion"
+            && promotionsPublisher()
+            && (!exists(/databases/$(database)/documents/sharedPromotions/$(request.resource.data.targetId))
+              || publisherAuthorizedForRecord("promotions",
+                get(/databases/$(database)/documents/sharedPromotions/$(request.resource.data.targetId)).data)))
         );
       allow update: if false;
       allow delete: if activeManager()
@@ -859,7 +864,12 @@ service cloud.firestore {
           && delinquencyPublisher()
           && exists(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId))
           && publisherAuthorizedForRecord("delinquency",
-            get(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId)).data));
+            get(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId)).data))
+        || (resource.data.targetType == "promotion"
+          && promotionsPublisher()
+          && exists(/databases/$(database)/documents/sharedPromotions/$(resource.data.targetId))
+          && publisherAuthorizedForRecord("promotions",
+            get(/databases/$(database)/documents/sharedPromotions/$(resource.data.targetId)).data));
     }
 
     // Shared attendance subtype catalog: approved collaborators may add suggestions;
