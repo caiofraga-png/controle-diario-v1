@@ -56,7 +56,6 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: npm
       - name: Configurar Java para o emulador
         uses: actions/setup-java@v4
         with:
@@ -78,7 +77,6 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: npm
       - name: Instalar dependências
         run: npm install --no-audit --no-fund
       - name: Testar criptografia e recuperação
@@ -95,7 +93,6 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: npm
       - name: Configurar Java para o emulador
         uses: actions/setup-java@v4
         with:
