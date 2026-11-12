@@ -1018,6 +1018,34 @@ test("anexos compartilhados aceitam os cinco destinos por administrador e superv
   }
 });
 
+test("anexos rejeitam campos extras, destinos inválidos e payloads acima do limite", async () => {
+  const supervisor = dbAs("supervisor");
+  const base = {
+    targetType: "task-creation", targetId: "registro-1", name: "arquivo.pdf",
+    mimeType: "application/pdf", size: 4, data: "JVBERg==",
+    createdByUid: "supervisor", createdAt: serverTimestamp(),
+  };
+
+  await assertFails(setDoc(doc(supervisor, "sharedAttachments/campo-extra"), {
+    ...base, permissaoElevada: true,
+  }));
+  await assertFails(setDoc(doc(supervisor, "sharedAttachments/destino-invalido"), {
+    ...base, targetType: "admin-settings",
+  }));
+  await assertFails(setDoc(doc(supervisor, "sharedAttachments/arquivo-grande"), {
+    ...base, size: 512001,
+  }));
+  await assertFails(setDoc(doc(supervisor, "sharedAttachments/conteudo-grande"), {
+    ...base, data: "x".repeat(700001),
+  }));
+  await assertFails(setDoc(doc(supervisor, "sharedAttachments/autor-falso"), {
+    ...base, createdByUid: "alice",
+  }));
+  await assertFails(setDoc(doc(supervisor, "sharedAttachments/nome-grande"), {
+    ...base, name: "x".repeat(181),
+  }));
+});
+
 test("anexos de promoções respeitam o escopo do registro", async () => {
   await env.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
