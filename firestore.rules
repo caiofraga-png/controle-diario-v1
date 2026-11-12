@@ -111,8 +111,42 @@ service cloud.firestore {
             && get(permissionPath).data.agentIds.hasAny([ownerUid])));
     }
 
-    function canEditScopedRecord(featureId, ownerUid) {
-      return activeManager() || publisherAuthorizedForOwner(featureId, ownerUid);
+    // New records use immutable organizational snapshots so later profile
+    // transfers do not silently change who may manage an existing publication.
+    // Legacy records without snapshots retain the historical profile-based rule.
+    function publisherAuthorizedForRecord(featureId, recordData) {
+      let permissionPath = /databases/$(database)/documents/featurePermissions/$(featureId);
+      let ownerUid = recordData.createdByUid;
+      let ownerPath = /databases/$(database)/documents/users/$(ownerUid);
+      let hasSectorSnapshot = recordData.keys().hasAny(["ownerSectorId"]);
+      let hasContactSnapshot = recordData.keys().hasAny(["ownerContactId"]);
+      return approvedUser()
+        && ownerUid is string
+        && exists(ownerPath)
+        && userRecord(ownerUid).data.status == "approved"
+        && exists(permissionPath)
+        && get(permissionPath).data.enabled == true
+        && (
+          (hasSectorSnapshot
+            && recordData.ownerSectorId is string
+            && get(permissionPath).data.wholeSectorIds is list
+            && get(permissionPath).data.wholeSectorIds.hasAny([recordData.ownerSectorId]))
+          || (hasContactSnapshot
+            && recordData.ownerContactId is string
+            && get(permissionPath).data.contactIds is list
+            && get(permissionPath).data.contactIds.hasAny([recordData.ownerContactId]))
+          || (get(permissionPath).data.agentIds is list
+            && get(permissionPath).data.agentIds.hasAny([ownerUid]))
+          || (!hasSectorSnapshot && !hasContactSnapshot
+            && ((get(permissionPath).data.wholeSectorIds is list
+                && get(permissionPath).data.wholeSectorIds.hasAny([userRecord(ownerUid).data.sectorId]))
+              || (get(permissionPath).data.contactIds is list
+                && get(permissionPath).data.contactIds.hasAny([userRecord(ownerUid).data.contactId]))))
+        );
+    }
+
+    function canEditScopedRecord(featureId, recordData) {
+      return activeManager() || publisherAuthorizedForRecord(featureId, recordData);
     }
 
     function allowedCorporateDomain() {
@@ -429,7 +463,7 @@ service cloud.firestore {
         && (!request.resource.data.keys().hasAny(["lastNotificationId"])
           || validPromotionNotificationLink(promotionId));
       allow update: if approvedUser()
-        && canEditScopedRecord("promotions", resource.data.createdByUid)
+        && canEditScopedRecord("promotions", resource.data)
         && validPromotionFields(request.resource.data)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           "name", "category", "benefit", "eligible", "conditions", "startDate",
@@ -491,7 +525,7 @@ service cloud.firestore {
         && request.resource.data.validUntil >= request.resource.data.date
         && validDelinquencyNoticeNotification(request.resource.data.notificationId, noticeId);
       allow update: if approvedUser()
-        && canEditScopedRecord("delinquency", resource.data.createdByUid)
+        && canEditScopedRecord("delinquency", resource.data)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           "type", "date", "title", "dueDate", "customerCount", "overdueDays",
           "validUntil", "status", "updatedByUid", "updatedAt"
@@ -529,7 +563,7 @@ service cloud.firestore {
         && existsAfter(promotionPath)
         && getAfter(promotionPath).data.lastNotificationId == notificationId
         && getAfter(promotionPath).data.updatedByUid == request.auth.uid
-        && canEditScopedRecord("promotions", getAfter(promotionPath).data.createdByUid)
+        && canEditScopedRecord("promotions", getAfter(promotionPath).data)
         && getAfter(promotionPath).data.status in ["active", "closed"]
         && request.resource.data.message == "Promoção - " + getAfter(promotionPath).data.name
           + (getAfter(promotionPath).data.status == "active" ? " - Em Andamento" : " - Encerrado");
@@ -635,7 +669,7 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time
         && validMaintenanceHistory(maintenanceId, true)
         && validMaintenanceNotification(maintenanceId);
-      allow update: if canEditScopedRecord("maintenance", resource.data.createdByUid)
+      allow update: if canEditScopedRecord("maintenance", resource.data)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           "title", "date", "location", "description", "status",
           "updatedByUid", "updatedAt", "updatedByName", "lastHistoryId", "lastNotificationId"
@@ -660,7 +694,7 @@ service cloud.firestore {
         allow create: if (request.resource.data.before == null
             ? canEditScopedRecord("maintenance", request.resource.data.changedByUid)
             : canEditScopedRecord("maintenance",
-              get(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)).data.createdByUid))
+              get(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)).data))
           && request.resource.data.keys().hasAll(["maintenanceId", "changedByUid", "changedByName", "changedAt", "before", "after"])
           && request.resource.data.keys().hasOnly(["maintenanceId", "changedByUid", "changedByName", "changedAt", "before", "after"])
           && request.resource.data.maintenanceId == maintenanceId
@@ -796,26 +830,26 @@ service cloud.firestore {
           || (request.resource.data.targetType == "maintenance"
             && maintenancePublisher()
             && (!exists(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.targetId))
-              || publisherAuthorizedForOwner("maintenance",
-                get(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.targetId)).data.createdByUid)))
+              || publisherAuthorizedForRecord("maintenance",
+                get(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.targetId)).data)))
           || (request.resource.data.targetType == "delinquency"
             && delinquencyPublisher()
             && (!exists(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId))
-              || publisherAuthorizedForOwner("delinquency",
-                get(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId)).data.createdByUid)))
+              || publisherAuthorizedForRecord("delinquency",
+                get(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId)).data)))
         );
       allow update: if false;
       allow delete: if activeManager()
         || (resource.data.targetType == "maintenance"
           && maintenancePublisher()
           && exists(/databases/$(database)/documents/externalMaintenances/$(resource.data.targetId))
-          && publisherAuthorizedForOwner("maintenance",
-            get(/databases/$(database)/documents/externalMaintenances/$(resource.data.targetId)).data.createdByUid))
+          && publisherAuthorizedForRecord("maintenance",
+            get(/databases/$(database)/documents/externalMaintenances/$(resource.data.targetId)).data))
         || (resource.data.targetType == "delinquency"
           && delinquencyPublisher()
           && exists(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId))
-          && publisherAuthorizedForOwner("delinquency",
-            get(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId)).data.createdByUid));
+          && publisherAuthorizedForRecord("delinquency",
+            get(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId)).data));
     }
 
     // Shared attendance subtype catalog: approved collaborators may add suggestions;
