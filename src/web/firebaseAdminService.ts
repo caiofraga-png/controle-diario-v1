@@ -190,11 +190,15 @@ export async function listSectors(): Promise<OrganizationalSector[]> {
 }
 
 export async function saveSector(input: Pick<OrganizationalSector, "id" | "name" | "active">) {
-  const { db } = requireFirebase();
+  const { auth, db } = requireFirebase();
+  const actor = auth.currentUser;
+  if (!actor) throw new Error("É necessário autenticar-se para administrar o sistema.");
   const id = input.id.trim() || doc(collection(db, "organizationSectors")).id;
   const now = new Date().toISOString();
-  await setDoc(doc(db, "organizationSectors", id), { ...input, id, name: input.name.trim(), updatedAt: now, createdAt: now }, { merge: true });
-  await audit("SECTOR_SAVED", id, { name: input.name.trim() });
+  const batch = writeBatch(db);
+  batch.set(doc(db, "organizationSectors", id), { ...input, id, name: input.name.trim(), updatedAt: now, createdAt: now }, { merge: true });
+  appendAudit(batch, actor, "SECTOR_SAVED", id, { name: input.name.trim() });
+  await batch.commit();
   return id;
 }
 
@@ -205,11 +209,15 @@ export async function listContacts(): Promise<OrganizationalContact[]> {
 }
 
 export async function saveContact(input: Pick<OrganizationalContact, "id" | "sectorId" | "name" | "active">) {
-  const { db } = requireFirebase();
+  const { auth, db } = requireFirebase();
+  const actor = auth.currentUser;
+  if (!actor) throw new Error("É necessário autenticar-se para administrar o sistema.");
   const id = input.id.trim() || doc(collection(db, "organizationContacts")).id;
   const now = new Date().toISOString();
-  await setDoc(doc(db, "organizationContacts", id), { ...input, id, name: input.name.trim(), updatedAt: now, createdAt: now }, { merge: true });
-  await audit("CONTACT_SAVED", id, { sectorId: input.sectorId, name: input.name.trim() });
+  const batch = writeBatch(db);
+  batch.set(doc(db, "organizationContacts", id), { ...input, id, name: input.name.trim(), updatedAt: now, createdAt: now }, { merge: true });
+  appendAudit(batch, actor, "CONTACT_SAVED", id, { sectorId: input.sectorId, name: input.name.trim() });
+  await batch.commit();
   return id;
 }
 
