@@ -192,6 +192,9 @@ function App() {
   useEffect(() => {
     const previousStatus = previousFirebaseStatus.current;
     previousFirebaseStatus.current = firebaseAccess?.status;
+    // A página pública "Sobre o site" não deve ser sobrescrita pelas
+    // transições assíncronas de autenticação.
+    if (tab === "sobre") return;
     if (firebaseAccess?.status === "approved") {
       // On refresh/login, land on the main work screen instead of Sistema.
       if (previousStatus !== "approved") setTab("tarefas");
@@ -199,7 +202,7 @@ function App() {
     } else if (firebaseAccess?.status && firebaseAccess.status !== "checking") {
       setTab("sistema");
     }
-  }, [firebaseAccess?.status, firebaseAccess?.user?.role]);
+  }, [firebaseAccess?.status, firebaseAccess?.user?.role, tab]);
   useEffect(() => {
     let active = true;
     if (firebaseAccess?.status === "approved") {
