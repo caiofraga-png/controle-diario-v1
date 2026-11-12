@@ -1206,3 +1206,46 @@ test("revogação de permissão impede editar publicações e anexos imediatamen
   await assertSucceeds(getDoc(doc(alice, "sharedPromotions/promo-revogacao")));
   await assertSucceeds(getDoc(doc(alice, "sharedAttachments/anexo-antes-revogacao")));
 });
+
+
+test("usuários pendentes e bloqueados não acessam dados operacionais nem anexos compartilhados", async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await setDoc(doc(db, "users/blocked"), {
+      uid: "blocked", email: "blocked@lestetelecom.net.br", login: "blocked",
+      agent: "Bloqueado", sectorId: "suporte", contactId: "equipe-a",
+      role: "employee", status: "blocked", isSupervisor: false,
+    });
+    await setDoc(doc(db, "sharedAttachments/arquivo-publicado"), {
+      targetType: "promotion", targetId: "promo-1", name: "arquivo.pdf",
+      mimeType: "application/pdf", size: 4, data: "JVBERg==",
+      createdByUid: "admin", createdAt: new Date(),
+    });
+  });
+
+  for (const uid of ["pending", "blocked"]) {
+    const db = dbAs(uid);
+    await assertFails(getDoc(doc(db, "Expediente/alice_2026-10-28")));
+    await assertFails(getDoc(doc(db, "sharedAttachments/arquivo-publicado")));
+    await assertFails(getDoc(doc(db, "users/alice/operational/currentState")));
+    await assertFails(setDoc(doc(db, "sharedAttachments/tentativa-" + uid), {
+      targetType: "promotion", targetId: "promo-1", name: "arquivo.pdf",
+      mimeType: "application/pdf", size: 4, data: "JVBERg==",
+      createdByUid: uid, createdAt: serverTimestamp(),
+    }));
+  }
+});
+
+test("supervisor não pode modificar dados privados nem histórico operacional de terceiros", async () => {
+  const supervisor = dbAs("supervisor");
+  await assertFails(setDoc(doc(supervisor, "users/alice/configuration/layout"), {
+    schemaVersion: 1, blocos: [],
+  }));
+  await assertFails(setDoc(doc(supervisor, "users/alice/preferences/appearance"), {
+    theme: "corporate-dark",
+  }));
+  await assertFails(setDoc(doc(supervisor, "users/alice/operational/currentState"), {
+    schemaVersion: 1, ownerUid: "alice", estado: null,
+  }));
+  await assertFails(deleteDoc(doc(supervisor, "Expediente/alice_2026-10-28")));
+});
