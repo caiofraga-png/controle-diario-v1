@@ -6,11 +6,11 @@ import {
   limit,
   orderBy,
   runTransaction,
+  writeBatch,
   query,
   serverTimestamp,
-  setDoc,
-  updateDoc,
   where,
+  type WriteBatch,
   type DocumentData,
 } from "firebase/firestore";
 import { requireFirebase } from "./firebaseClient";
@@ -34,17 +34,10 @@ function asUser(id: string, data: DocumentData): OrganizationalUser {
   };
 }
 
-async function audit(action: string, targetUid: string, details: Record<string, unknown> = {}) {
-  const { auth, db } = requireFirebase();
-  const actor = auth.currentUser;
-  if (!actor) throw new Error("É necessário autenticar-se para administrar o sistema.");
-  const auditRef = doc(collection(db, "adminAudit"));
-  await setDoc(auditRef, {
-    actorUid: actor.uid,
-    actorEmail: actor.email ?? "",
-    action,
-    targetUid,
-    details,
+function appendAudit(batch: WriteBatch, actor: { uid: string; email: string | null }, action: string, targetUid: string, details: Record<string, unknown> = {}) {
+  const { db } = requireFirebase();
+  batch.set(doc(collection(db, "adminAudit")), {
+    actorUid: actor.uid, actorEmail: actor.email ?? "", action, targetUid, details,
     createdAt: serverTimestamp(),
   });
 }
@@ -120,13 +113,13 @@ export async function approveAccessRequest(input: {
 }
 
 export async function rejectAccessRequest(uid: string, reason = "") {
-  const { db } = requireFirebase();
-  await updateDoc(doc(db, "accessRequests", uid), {
-    status: "rejected",
-    reason: reason.trim(),
-    decidedAt: serverTimestamp(),
-  });
-  await audit("ACCESS_REJECTED", uid, { reason: reason.trim() });
+  const { auth, db } = requireFirebase();
+  const actor = auth.currentUser;
+  if (!actor) throw new Error("É necessário autenticar-se para administrar o sistema.");
+  const batch = writeBatch(db);
+  batch.update(doc(db, "accessRequests", uid), { status: "rejected", reason: reason.trim(), decidedAt: serverTimestamp() });
+  appendAudit(batch, actor, "ACCESS_REJECTED", uid, { reason: reason.trim() });
+  await batch.commit();
 }
 
 export async function updateOrganizationalUser(
@@ -175,12 +168,13 @@ export async function updateOrganizationalUser(
 }
 
 export async function setAccountStatus(uid: string, status: "blocked" | "approved") {
-  const { db } = requireFirebase();
-  await updateDoc(doc(db, "users", uid), {
-    status,
-    updatedAt: new Date().toISOString(),
-  });
-  await audit(status === "blocked" ? "ACCOUNT_BLOCKED" : "ACCOUNT_REACTIVATED", uid);
+  const { auth, db } = requireFirebase();
+  const actor = auth.currentUser;
+  if (!actor) throw new Error("É necessário autenticar-se para administrar o sistema.");
+  const batch = writeBatch(db);
+  batch.update(doc(db, "users", uid), { status, updatedAt: new Date().toISOString() });
+  appendAudit(batch, actor, status === "blocked" ? "ACCOUNT_BLOCKED" : "ACCOUNT_REACTIVATED", uid);
+  await batch.commit();
 }
 
 export async function listSectors(): Promise<OrganizationalSector[]> {
@@ -229,10 +223,14 @@ export async function getAllowedDomains(): Promise<string[]> {
 }
 
 export async function saveAllowedDomains(domains: string[]) {
-  const { db } = requireFirebase();
+  const { auth, db } = requireFirebase();
+  const actor = auth.currentUser;
+  if (!actor) throw new Error("É necessário autenticar-se para administrar o sistema.");
   const normalized = [...new Set(domains.map((domain) => domain.trim().toLowerCase().replace(/^@/, "")).filter(Boolean))];
-  await setDoc(doc(db, "settings", "allowedDomains"), { domains: normalized, updatedAt: new Date().toISOString() }, { merge: true });
-  await audit("ALLOWED_DOMAINS_UPDATED", "settings/allowedDomains", { domains: normalized });
+  const batch = writeBatch(db);
+  batch.set(doc(db, "settings", "allowedDomains"), { domains: normalized, updatedAt: new Date().toISOString() }, { merge: true });
+  appendAudit(batch, actor, "ALLOWED_DOMAINS_UPDATED", "settings/allowedDomains", { domains: normalized });
+  await batch.commit();
 }
 
 export async function listRecentOperationalRecords(maxItems = 100, sectorId?: string) {
@@ -248,23 +246,29 @@ export async function listRecentOperationalRecords(maxItems = 100, sectorId?: st
 }
 
 export async function deleteSector(id: string) {
-  const { db } = requireFirebase();
-  const { deleteDoc } = await import("firebase/firestore");
+  const { auth, db } = requireFirebase();
+  const actor = auth.currentUser;
+  if (!actor) throw new Error("É necessário autenticar-se para administrar o sistema.");
   const contacts = await getDocs(query(collection(db, "organizationContacts"), where("sectorId", "==", id)));
   if (!contacts.empty) throw new Error("Não é possível excluir um setor que ainda possui contatos. Remova ou transfira os contatos primeiro.");
   const users = await getDocs(query(collection(db, "users"), where("sectorId", "==", id)));
   if (!users.empty) throw new Error("Não é possível excluir um setor utilizado por colaboradores. Reatribua os colaboradores primeiro.");
-  await deleteDoc(doc(db, "organizationSectors", id));
-  await audit("SECTOR_DELETED", id);
+  const batch = writeBatch(db);
+  batch.delete(doc(db, "organizationSectors", id));
+  appendAudit(batch, actor, "SECTOR_DELETED", id);
+  await batch.commit();
 }
 
 export async function deleteContact(id: string) {
-  const { db } = requireFirebase();
-  const { deleteDoc } = await import("firebase/firestore");
+  const { auth, db } = requireFirebase();
+  const actor = auth.currentUser;
+  if (!actor) throw new Error("É necessário autenticar-se para administrar o sistema.");
   const users = await getDocs(query(collection(db, "users"), where("contactId", "==", id)));
   if (!users.empty) throw new Error("Não é possível excluir um contato utilizado por colaboradores. Reatribua os colaboradores primeiro.");
-  await deleteDoc(doc(db, "organizationContacts", id));
-  await audit("CONTACT_DELETED", id);
+  const batch = writeBatch(db);
+  batch.delete(doc(db, "organizationContacts", id));
+  appendAudit(batch, actor, "CONTACT_DELETED", id);
+  await batch.commit();
 }
 
 /**
