@@ -42,11 +42,6 @@ jobs:
       - name: Instalar dependências
         run: npm ci --no-audit --no-fund
       - name: Compilar aplicação
-        env:
-          VITE_FIREBASE_API_KEY: ${{ vars.HOMOLOGACAO_FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.HOMOLOGACAO_FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID: ${{ vars.HOMOLOGACAO_FIREBASE_PROJECT_ID }}
-          VITE_FIREBASE_APP_ID: ${{ vars.HOMOLOGACAO_FIREBASE_APP_ID }}
         run: npm run build
 
   regras_firestore:
