@@ -1313,3 +1313,32 @@ test("bloqueio administrativo revoga imediatamente o acesso da sessão ativa", a
   await assertFails(getDoc(doc(alice, "sharedAttachments/anexo-sessao-ativa")));
   await assertFails(updateDoc(doc(alice, "users/alice"), { status: "approved" }));
 });
+
+test("alteração administrativa e auditoria são atômicas no mesmo lote", async () => {
+  const admin = dbAs("admin");
+  const userRef = doc(admin, "users/alice");
+  const validBatch = writeBatch(admin);
+  validBatch.update(userRef, { status: "blocked" });
+  validBatch.set(doc(admin, "adminAudit/bloqueio-alice"), {
+    actorUid: "admin", actorEmail: "admin@lestetelecom.net.br",
+    action: "ACCOUNT_BLOCKED", targetUid: "alice",
+    details: {}, createdAt: serverTimestamp(),
+  });
+  await assertSucceeds(validBatch.commit());
+
+  const afterValid = await getDoc(userRef);
+  assert.equal(afterValid.data().status, "blocked");
+
+  const invalidBatch = writeBatch(admin);
+  invalidBatch.update(userRef, { status: "approved" });
+  invalidBatch.set(doc(admin, "adminAudit/auditoria-invalida"), {
+    actorUid: "outro-usuario", actorEmail: "outro@lestetelecom.net.br",
+    action: "ACCOUNT_REACTIVATED", targetUid: "alice",
+    details: {}, createdAt: serverTimestamp(),
+  });
+  await assertFails(invalidBatch.commit());
+
+  const afterRejected = await getDoc(userRef);
+  assert.equal(afterRejected.data().status, "blocked");
+  await assertFails(getDoc(doc(admin, "adminAudit/auditoria-invalida")));
+});
