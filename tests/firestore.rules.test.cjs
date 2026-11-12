@@ -590,6 +590,7 @@ test("notificações de promoção exigem vínculo atômico com campanha e imped
     status: "active", createdByUid: "supervisor", createdByName: "Supervisor",
     createdAt: serverTimestamp(), updatedByUid: "supervisor", updatedByName: "Supervisor",
     updatedAt: serverTimestamp(), lastNotificationId: "promo-1",
+    ownerSectorId: "suporte", ownerContactId: "equipe-a",
   });
   batch.set(doc(supervisor, "sharedNotifications/promo-1"), notification);
   await assertSucceeds(batch.commit());
@@ -639,6 +640,7 @@ test("manutenção exige gravação atômica do histórico imutável e do aviso"
   };
   batch.set(maintenance, {
     ...details, createdByUid: "alice", createdAt: serverTimestamp(), createdByName: "Alice",
+    ownerSectorId: "suporte", ownerContactId: "equipe-a",
     updatedByUid: "alice", updatedAt: serverTimestamp(), updatedByName: "Alice",
     lastHistoryId: "history-1", lastNotificationId: "maintenance-notice-1",
   });
