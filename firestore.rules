@@ -34,6 +34,16 @@ service cloud.firestore {
       return userRecord(request.auth.uid).data.sectorId;
     }
 
+    function validOrganizationalAssignment() {
+      return request.resource.data.sectorId is string
+        && request.resource.data.contactId is string
+        && exists(/databases/$(database)/documents/organizationSectors/$(request.resource.data.sectorId))
+        && get(/databases/$(database)/documents/organizationSectors/$(request.resource.data.sectorId)).data.active == true
+        && exists(/databases/$(database)/documents/organizationContacts/$(request.resource.data.contactId))
+        && get(/databases/$(database)/documents/organizationContacts/$(request.resource.data.contactId)).data.active == true
+        && get(/databases/$(database)/documents/organizationContacts/$(request.resource.data.contactId)).data.sectorId == request.resource.data.sectorId;
+    }
+
     function canSelectProfile(uid, profileId) {
       return userRecord(uid).data.allowedProfileIds is list
         && userRecord(uid).data.allowedProfileIds.hasAny([profileId]);
@@ -162,9 +172,11 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if ownUserDocument(uid) || activeManager();
       allow create: if (activeAdmin()
+          && validOrganizationalAssignment()
           && request.resource.data.role in ["employee", "admin"]
           && request.resource.data.status in ["pending", "approved", "blocked", "rejected"])
         || (activeSupervisor()
+          && validOrganizationalAssignment()
           && request.resource.data.uid == uid
           && request.resource.data.role == "employee"
           && request.resource.data.status == "approved"
@@ -175,8 +187,9 @@ service cloud.firestore {
           && getAfter(/databases/$(database)/documents/accessRequests/$(uid)).data.email == request.resource.data.email);
       allow update: if request.resource.data.uid == resource.data.uid
         && request.resource.data.role == resource.data.role
-        && (activeAdmin()
+        && ((activeAdmin() && validOrganizationalAssignment())
           || (activeSupervisor()
+            && validOrganizationalAssignment()
             && request.auth.uid != uid
             && resource.data.role == "employee"
             && request.resource.data.isSupervisor == resource.data.isSupervisor
