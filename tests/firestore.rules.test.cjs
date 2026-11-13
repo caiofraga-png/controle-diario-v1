@@ -1377,3 +1377,23 @@ test("setores e contatos são desativados sem exclusão e novos vínculos exigem
     sectorId: "financeiro", contactId: "equipe-b",
   }));
 });
+
+test("contato não pode ser ativado enquanto seu setor estiver inativo", async () => {
+  const supervisor = dbAs("supervisor");
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await updateDoc(doc(db, "organizationSectors/suporte"), { active: false });
+    await updateDoc(doc(db, "organizationContacts/equipe-a"), { active: false });
+  });
+
+  await assertFails(updateDoc(doc(supervisor, "organizationContacts/equipe-a"), {
+    active: true,
+  }));
+  await assertFails(setDoc(doc(supervisor, "organizationContacts/novo-contato"), {
+    id: "novo-contato", name: "Contato inválido",
+    sectorId: "suporte", active: true,
+  }));
+  await assertSucceeds(updateDoc(doc(supervisor, "organizationContacts/equipe-a"), {
+    active: false, name: "Contato preservado",
+  }));
+});
