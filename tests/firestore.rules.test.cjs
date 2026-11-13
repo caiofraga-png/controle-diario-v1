@@ -1305,12 +1305,15 @@ test("somente administrador pode bloquear ou reativar contas", async () => {
   const supervisor = dbAs("supervisor");
 
   await assertFails(updateDoc(doc(supervisor, "users/alice"), { status: "blocked" }));
+  await assertSucceeds(updateDoc(doc(admin, "users/alice"), { status: "blocked" }));
+  // The reactivation attempt is tested against a genuinely blocked account,
+  // not an unchanged "approved" value (which Firestore treats as a no-op).
   await assertFails(updateDoc(doc(supervisor, "users/alice"), { status: "approved" }));
+  await assertSucceeds(updateDoc(doc(admin, "users/alice"), { status: "approved" }));
+
   // A supervisor may decide a pending request, but cannot mark it as blocked.
   await assertFails(updateDoc(doc(supervisor, "accessRequests/pending"), { status: "blocked" }));
   await assertSucceeds(updateDoc(doc(supervisor, "accessRequests/pending"), { status: "approved" }));
-  await assertSucceeds(updateDoc(doc(admin, "users/alice"), { status: "blocked" }));
-  await assertSucceeds(updateDoc(doc(admin, "users/alice"), { status: "approved" }));
   await assertSucceeds(updateDoc(doc(admin, "accessRequests/pending"), { status: "blocked" }));
 });
 
