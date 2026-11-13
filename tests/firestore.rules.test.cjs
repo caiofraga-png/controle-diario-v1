@@ -541,6 +541,37 @@ test("supervisor pode gerenciar colaboradores comuns e catálogos globais", asyn
   await assertSucceeds(setDoc(doc(db, "sharedTaskCatalog/current"), { schemaVersion: 1, perfis: [] }));
 });
 
+test("supervisor atribui perfis a colaboradores, e o acesso operacional respeita a atribuição", async () => {
+  const supervisor = dbAs("supervisor");
+  const bob = dbAs("bob");
+  const bobUserRef = doc(supervisor, "users/bob");
+
+  // O colaborador não consegue liberar um perfil para si mesmo.
+  await assertFails(updateDoc(doc(bob, "users/bob"), {
+    allowedProfileIds: ["P001"],
+  }));
+
+  // A supervisão pode atribuir o perfil ao colaborador.
+  await assertSucceeds(updateDoc(bobUserRef, {
+    allowedProfileIds: ["P001"],
+    updatedAt: new Date().toISOString(),
+  }));
+
+  // Depois da atribuição, o colaborador consegue iniciar com esse perfil.
+  await assertSucceeds(setDoc(doc(bob, "users/bob/operational/currentState"), {
+    schemaVersion: 1,
+    ownerUid: "bob",
+    estado: { id: "state-perfil-atribuido", perfil: { id: "P001" } },
+    updatedAt: "2026-10-28T12:00:00Z",
+  }));
+
+  // A tentativa de usar um perfil que não foi atribuído continua bloqueada.
+  await assertFails(updateDoc(doc(bob, "users/bob/operational/currentState"), {
+    estado: { id: "state-perfil-nao-atribuido", perfil: { id: "P002" } },
+    updatedAt: "2026-10-28T12:01:00Z",
+  }));
+});
+
 test("nenhum gestor pode alterar o papel administrativo de uma conta existente", async () => {
   const admin = dbAs("admin");
   const supervisor = dbAs("supervisor");
