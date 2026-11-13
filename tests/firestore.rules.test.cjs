@@ -1300,6 +1300,28 @@ test("supervisor não pode modificar dados privados nem histórico operacional d
 });
 
 
+test("somente administrador pode bloquear ou reativar contas", async () => {
+  const admin = dbAs("admin");
+  const supervisor = dbAs("supervisor");
+
+  await assertFails(updateDoc(doc(supervisor, "users/alice"), { status: "blocked" }));
+  await assertFails(updateDoc(doc(supervisor, "users/alice"), { status: "approved" }));
+  await assertSucceeds(updateDoc(doc(admin, "users/alice"), { status: "blocked" }));
+  await assertSucceeds(updateDoc(doc(admin, "users/alice"), { status: "approved" }));
+});
+
+test("administrador pode atualizar status de conta histórica sem vínculo organizacional ativo", async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "users/legacy-user"), {
+      uid: "legacy-user", email: "legacy@lestetelecom.net.br",
+      role: "employee", status: "blocked", isSupervisor: false,
+    });
+  });
+  await assertSucceeds(updateDoc(doc(dbAs("admin"), "users/legacy-user"), {
+    status: "approved",
+  }));
+});
+
 test("bloqueio administrativo revoga imediatamente o acesso da sessão ativa", async () => {
   await env.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
