@@ -592,9 +592,22 @@ service cloud.firestore {
     // Shared notifications are visible to every approved collaborator.
     // Only administrators and supervisors may publish institutional notices.
     function validMaintenanceNotificationLink(notificationId) {
-      return request.resource.data.maintenanceId is string
-        && existsAfter(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.maintenanceId))
-        && getAfter(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.maintenanceId)).data.lastNotificationId == notificationId;
+      let maintenanceId = request.resource.data.maintenanceId;
+      let maintenancePath = /databases/$(database)/documents/externalMaintenances/$(maintenanceId);
+      let maintenanceData = getAfter(maintenancePath).data;
+      return maintenanceId is string
+        && notificationId is string
+        && request.resource.data.keys().hasOnly([
+          "category", "message", "target", "maintenanceId", "createdByUid", "createdAt"
+        ])
+        && existsAfter(maintenancePath)
+        && maintenanceData.lastNotificationId == notificationId
+        && maintenanceData.updatedByUid == request.auth.uid
+        && canEditScopedRecord("maintenance", maintenanceData)
+        && request.resource.data.category == "manutencoes"
+        && request.resource.data.target == "manutencoes"
+        && request.resource.data.message == "Manutenção - " + maintenanceData.title
+          + " - " + (maintenanceData.status == "ongoing" ? "Em Andamento" : "Concluído");
     }
 
     function validPromotionNotification(notificationId) {
