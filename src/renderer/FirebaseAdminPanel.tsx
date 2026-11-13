@@ -233,7 +233,7 @@ export default function FirebaseAdminPanel() {
     setBusy(true);
     try {
       const editId = managedSectorId;
-      await saveSector({ id: editId, name: sectorName.trim(), active: true });
+      await saveSector({ id: editId, name: sectorName.trim(), active: sectors.find((sector) => sector.id === editId)?.active ?? true });
       setSectorName("");
       setManagedSectorId("");
       await refresh();
@@ -246,7 +246,7 @@ export default function FirebaseAdminPanel() {
     setBusy(true);
     try {
       const editId = managedContactId;
-      await saveContact({ id: editId, name: contactName.trim(), sectorId: contactSector, active: true });
+      await saveContact({ id: editId, name: contactName.trim(), sectorId: contactSector, active: contacts.find((contact) => contact.id === editId)?.active ?? true });
       setContactName("");
       setManagedContactId("");
       await refresh();
@@ -470,7 +470,7 @@ export default function FirebaseAdminPanel() {
         <label>Login <input value={login} onChange={(event) => setLogin(event.target.value)} /></label>
         <label>Agente <input value={agent} onChange={(event) => setAgent(event.target.value)} /></label>
         <label>Setor <select value={sectorId} onChange={(event) => { setSectorId(event.target.value); setContactId(""); }}>
-          <option value="">Selecione</option>{sectors.filter((sector) => sector.active).map((sector) => <option key={sector.id} value={sector.id}>{sector.name}</option>)}
+          <option value="">Selecione</option>{sectors.filter((sector) => sector.active || sector.id === contactSector).map((sector) => <option key={sector.id} value={sector.id}>{sector.name}{sector.active ? "" : " (inativo)"}</option>)}
         </select></label>
         <label>Contato <select value={contactId} onChange={(event) => setContactId(event.target.value)}>
           <option value="">Selecione</option>{contacts.filter((contact) => contact.active && contact.sectorId === sectorId).map((contact) => <option key={contact.id} value={contact.id}>{contact.name}</option>)}
@@ -557,6 +557,7 @@ export default function FirebaseAdminPanel() {
         <input aria-label="Nome do setor" placeholder="Nome do novo setor ou edição" value={sectorName} onChange={(event) => setSectorName(event.target.value)} />
         <button type="button" disabled={busy || !sectorName.trim()} onClick={() => void addSector()}>{managedSectorId ? "Salvar setor" : "Adicionar setor"}</button>
         {managedSectorId && sectors.find((sector) => sector.id === managedSectorId)?.active && <button type="button" disabled={busy} onClick={() => { if (window.confirm("Desativar este setor? O cadastro e o histórico serão preservados. Colaboradores vinculados precisarão ser transferidos para um setor ativo para iniciar novos expedientes.")) void deactivateSector(managedSectorId).then(() => { setManagedSectorId(""); setSectorName(""); setMessage("Setor desativado. O histórico foi preservado."); return refresh(); }).catch(e => setMessage(e instanceof Error ? e.message : "Falha ao desativar setor.")); }}>Desativar setor</button>}
+         {managedSectorId && !sectors.find((sector) => sector.id === managedSectorId)?.active && <button type="button" disabled={busy} onClick={() => { if (window.confirm("Reativar este setor? Ele voltará a ficar disponível para novos vínculos.")) void saveSector({ id: managedSectorId, name: sectorName.trim(), active: true }).then(() => { setManagedSectorId(""); setSectorName(""); setMessage("Setor reativado."); return refresh(); }).catch(e => setMessage(e instanceof Error ? e.message : "Falha ao reativar setor.")); }}>Reativar setor</button>}
         {managedSectorId && <button type="button" disabled={busy} onClick={() => { setManagedSectorId(""); setSectorName(""); }}>Cancelar</button>}
       </div>
     </section>
@@ -576,6 +577,7 @@ export default function FirebaseAdminPanel() {
         <input aria-label="Nome do contato" placeholder="Nome do novo contato ou edição" value={contactName} onChange={(event) => setContactName(event.target.value)} />
         <button type="button" disabled={busy || !contactName.trim() || !contactSector} onClick={() => void addContact()}>{managedContactId ? "Salvar contato" : "Adicionar contato"}</button>
         {managedContactId && contacts.find((contact) => contact.id === managedContactId)?.active && <button type="button" disabled={busy} onClick={() => { if (window.confirm("Desativar este contato? O cadastro e o histórico serão preservados. Colaboradores vinculados precisarão ser transferidos para um contato ativo para iniciar novos expedientes.")) void deactivateContact(managedContactId).then(() => { setManagedContactId(""); setContactName(""); setContactSector(""); setMessage("Contato desativado. O histórico foi preservado."); return refresh(); }).catch(e => setMessage(e instanceof Error ? e.message : "Falha ao desativar contato.")); }}>Desativar contato</button>}
+         {managedContactId && !contacts.find((contact) => contact.id === managedContactId)?.active && <button type="button" disabled={busy || !sectors.find((sector) => sector.id === contactSector)?.active} onClick={() => { if (window.confirm("Reativar este contato? Ele voltará a ficar disponível para novos vínculos.")) void saveContact({ id: managedContactId, name: contactName.trim(), sectorId: contactSector, active: true }).then(() => { setManagedContactId(""); setContactName(""); setContactSector(""); setMessage("Contato reativado."); return refresh(); }).catch(e => setMessage(e instanceof Error ? e.message : "Falha ao reativar contato.")); }}>Reativar contato</button>}
         {managedContactId && <button type="button" disabled={busy} onClick={() => { setManagedContactId(""); setContactName(""); setContactSector(""); }}>Cancelar</button>}
       </div>
     </section>
