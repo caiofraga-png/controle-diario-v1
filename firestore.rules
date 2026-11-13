@@ -118,7 +118,9 @@ service cloud.firestore {
           || (get(permissionPath).data.contactIds is list
             && get(permissionPath).data.contactIds.hasAny([userRecord(ownerUid).data.contactId]))
           || (get(permissionPath).data.agentIds is list
-            && get(permissionPath).data.agentIds.hasAny([ownerUid])));
+            && get(permissionPath).data.agentIds.hasAny([ownerUid])
+            && ((hasSectorSnapshot || hasContactSnapshot)
+              || (exists(ownerPath) && userRecord(ownerUid).data.status == "approved"))));
     }
 
     // New records use immutable organizational snapshots so later profile
