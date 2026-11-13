@@ -188,14 +188,19 @@ service cloud.firestore {
           && getAfter(/databases/$(database)/documents/accessRequests/$(uid)).data.email == request.resource.data.email);
       allow update: if request.resource.data.uid == resource.data.uid
         && request.resource.data.role == resource.data.role
-        && ((activeAdmin() && validOrganizationalAssignment())
+        && ((activeAdmin()
+            && (!request.resource.data.diff(resource.data).affectedKeys()
+                .hasAny(["sectorId", "contactId"])
+              || validOrganizationalAssignment()))
           || (activeSupervisor()
-            && validOrganizationalAssignment()
             && request.auth.uid != uid
             && resource.data.role == "employee"
             && request.resource.data.isSupervisor == resource.data.isSupervisor
             && request.resource.data.diff(resource.data).affectedKeys()
-              .hasOnly(["login", "agent", "sectorId", "contactId", "allowedProfileIds", "updatedAt"])));
+              .hasOnly(["login", "agent", "sectorId", "contactId", "allowedProfileIds", "updatedAt"])
+            && (!request.resource.data.diff(resource.data).affectedKeys()
+                .hasAny(["sectorId", "contactId"])
+              || validOrganizationalAssignment())));
       allow delete: if false;
 
       // Private per-user configuration and calendar remain isolated.
