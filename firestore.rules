@@ -404,11 +404,16 @@ service cloud.firestore {
 
     match /organizationContacts/{contactId} {
       allow read: if approvedUser();
-      allow create, update: if activeManager()
+      allow create: if activeManager()
+        && request.resource.data.sectorId is string
+        && exists(/databases/$(database)/documents/organizationSectors/$(request.resource.data.sectorId))
+        && get(/databases/$(database)/documents/organizationSectors/$(request.resource.data.sectorId)).data.active == true;
+      allow update: if activeManager()
+        && request.resource.data.sectorId == resource.data.sectorId
         && (request.resource.data.active != true
-          || (request.resource.data.sectorId is string
-            && exists(/databases/$(database)/documents/organizationSectors/$(request.resource.data.sectorId))
-            && get(/databases/$(database)/documents/organizationSectors/$(request.resource.data.sectorId)).data.active == true));
+          || (resource.data.sectorId is string
+            && exists(/databases/$(database)/documents/organizationSectors/$(resource.data.sectorId))
+            && get(/databases/$(database)/documents/organizationSectors/$(resource.data.sectorId)).data.active == true));
       allow delete: if false;
     }
 
