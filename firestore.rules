@@ -397,12 +397,14 @@ service cloud.firestore {
 
     match /organizationSectors/{sectorId} {
       allow read: if approvedUser();
-      allow write: if activeManager();
+      allow create, update: if activeManager();
+      allow delete: if false;
     }
 
     match /organizationContacts/{contactId} {
       allow read: if approvedUser();
-      allow write: if activeManager();
+      allow create, update: if activeManager();
+      allow delete: if false;
     }
 
     // Shared task/profile catalogue; each user's allowed IDs are stored on
