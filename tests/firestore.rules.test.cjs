@@ -1397,3 +1397,32 @@ test("contato não pode ser ativado enquanto seu setor estiver inativo", async (
     active: false, name: "Contato preservado",
   }));
 });
+
+test("desativar setor preserva contatos e histórico, mas bloqueia novos vínculos até reativação", async () => {
+  const supervisor = dbAs("supervisor");
+  const sectorRef = doc(supervisor, "organizationSectors/suporte");
+  const contactRef = doc(supervisor, "organizationContacts/equipe-a");
+  const historicalRef = doc(supervisor, "users/alice/operational/history/entries/historico-preservado");
+
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "users/alice/operational/history/entries/historico-preservado"), {
+      schemaVersion: 1, ownerUid: "alice", id: "historico-preservado",
+      data: "2026-10-28", status: "CONCLUIDO", perfil: { id: "P001" },
+      tarefas: [], emailsGlobais: [], observacao: "Histórico anterior",
+      criadoEm: "2026-10-28T08:00:00Z", concluidoEm: "2026-10-28T12:00:00Z",
+      ultimaAlteracao: "2026-10-28T12:00:00Z", origemVersao: null,
+    });
+  });
+
+  await assertSucceeds(updateDoc(sectorRef, { active: false }));
+  await assertSucceeds(getDoc(contactRef));
+  await assertSucceeds(getDoc(historicalRef));
+  await assertFails(updateDoc(doc(supervisor, "users/alice"), {
+    sectorId: "suporte", contactId: "equipe-a",
+  }));
+
+  await assertSucceeds(updateDoc(sectorRef, { active: true }));
+  await assertSucceeds(updateDoc(doc(supervisor, "users/alice"), {
+    sectorId: "suporte", contactId: "equipe-a",
+  }));
+});
