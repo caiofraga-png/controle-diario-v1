@@ -541,6 +541,18 @@ test("supervisor pode gerenciar colaboradores comuns e catálogos globais", asyn
   await assertSucceeds(setDoc(doc(db, "sharedTaskCatalog/current"), { schemaVersion: 1, perfis: [] }));
 });
 
+test("nenhum gestor pode alterar o papel administrativo de uma conta existente", async () => {
+  const admin = dbAs("admin");
+  const supervisor = dbAs("supervisor");
+
+  await assertFails(updateDoc(doc(admin, "users/alice"), { role: "admin" }));
+  await assertFails(updateDoc(doc(admin, "users/admin"), { role: "employee" }));
+  await assertFails(updateDoc(doc(supervisor, "users/alice"), { role: "admin" }));
+  await assertFails(updateDoc(doc(supervisor, "users/supervisor"), { role: "admin" }));
+  await assertFails(updateDoc(doc(supervisor, "users/alice"), { status: "blocked" }));
+  await assertFails(updateDoc(doc(supervisor, "users/alice"), { isSupervisor: true }));
+});
+
 test("supervisor não pode alterar nem criar administrador", async () => {
   const db = dbAs("supervisor");
   await assertFails(updateDoc(doc(db, "users/admin"), { agent: "Alterado" }));
