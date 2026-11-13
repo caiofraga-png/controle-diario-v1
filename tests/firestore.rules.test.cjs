@@ -1306,8 +1306,12 @@ test("somente administrador pode bloquear ou reativar contas", async () => {
 
   await assertFails(updateDoc(doc(supervisor, "users/alice"), { status: "blocked" }));
   await assertFails(updateDoc(doc(supervisor, "users/alice"), { status: "approved" }));
+  // A supervisor may decide a pending request, but cannot mark it as blocked.
+  await assertFails(updateDoc(doc(supervisor, "accessRequests/pending"), { status: "blocked" }));
+  await assertSucceeds(updateDoc(doc(supervisor, "accessRequests/pending"), { status: "approved" }));
   await assertSucceeds(updateDoc(doc(admin, "users/alice"), { status: "blocked" }));
   await assertSucceeds(updateDoc(doc(admin, "users/alice"), { status: "approved" }));
+  await assertSucceeds(updateDoc(doc(admin, "accessRequests/pending"), { status: "blocked" }));
 });
 
 test("administrador pode atualizar status de conta histórica sem vínculo organizacional ativo", async () => {
@@ -1451,12 +1455,20 @@ test("desativar setor preserva contatos e histórico, mas bloqueia novos víncul
   await assertSucceeds(updateDoc(sectorRef, { active: false }));
   await assertSucceeds(getDoc(contactRef));
   await assertSucceeds(getDoc(historicalRef));
-  await assertFails(updateDoc(doc(supervisor, "users/alice"), {
+  // Reenviar o vínculo atual não é uma transferência nem altera os campos.
+  await assertSucceeds(updateDoc(doc(supervisor, "users/alice"), {
+    sectorId: "suporte", contactId: "equipe-a",
+  }));
+  // Uma transferência real para o setor desativado deve ser recusada.
+  await assertFails(updateDoc(doc(supervisor, "users/bob"), {
     sectorId: "suporte", contactId: "equipe-a",
   }));
 
   await assertSucceeds(updateDoc(sectorRef, { active: true }));
   await assertSucceeds(updateDoc(doc(supervisor, "users/alice"), {
+    sectorId: "suporte", contactId: "equipe-a",
+  }));
+  await assertSucceeds(updateDoc(doc(supervisor, "users/bob"), {
     sectorId: "suporte", contactId: "equipe-a",
   }));
 });
@@ -1488,7 +1500,8 @@ test("transferência de colaborador exige setor e contato ativos e pertencentes 
     const db = context.firestore();
     await updateDoc(doc(db, "organizationSectors/suporte"), { active: false });
   });
-  await assertFails(updateDoc(aliceRef, {
+  // Bob is currently in Financeiro; moving him to the inactive Suporte sector must fail.
+  await assertFails(updateDoc(doc(supervisor, "users/bob"), {
     sectorId: "suporte", contactId: "equipe-a",
   }));
 
@@ -1497,7 +1510,8 @@ test("transferência de colaborador exige setor e contato ativos e pertencentes 
     await updateDoc(doc(db, "organizationSectors/suporte"), { active: true });
     await updateDoc(doc(db, "organizationContacts/equipe-a"), { active: false });
   });
-  await assertFails(updateDoc(aliceRef, {
+  // The sector is active, but its target contact is inactive.
+  await assertFails(updateDoc(doc(supervisor, "users/bob"), {
     sectorId: "suporte", contactId: "equipe-a",
   }));
 
