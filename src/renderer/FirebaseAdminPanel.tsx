@@ -509,10 +509,11 @@ export default function FirebaseAdminPanel() {
         <label>Contato <select value={user.contactId} onChange={(event) => setUsers((items) => items.map((item) => item.uid === user.uid ? { ...item, contactId: event.target.value } : item))}>
           <option value="">Selecione</option>{contacts.filter((contact) => contact.active && contact.sectorId === user.sectorId).map((contact) => <option key={contact.id} value={contact.id}>{contact.name}</option>)}
         </select></label>
-        <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {isAdministrator && <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <input type="checkbox" checked={Boolean(user.isSupervisor)} onChange={(event) => setUsers((items) => items.map((item) => item.uid === user.uid ? { ...item, isSupervisor: event.target.checked } : item))} />
           Supervisor — gerencia colaboradores e expedientes de todos os setores
-        </label>
+        </label>}
+        {!isAdministrator && user.isSupervisor && <small>Este colaborador também possui privilégio de supervisão. Somente um administrador pode alterar esse privilégio.</small>}
         <fieldset style={{ display: "grid", gap: 6 }}>
           <legend>Perfis que este colaborador pode selecionar</legend>
           {catalogProfiles.length === 0 ? <small>Inicialize o catálogo compartilhado para atribuir perfis.</small> : catalogProfiles.map((profile) => (
