@@ -1426,3 +1426,15 @@ test("desativar setor preserva contatos e histórico, mas bloqueia novos víncul
     sectorId: "suporte", contactId: "equipe-a",
   }));
 });
+
+test("contato existente não pode ser transferido diretamente para outro setor", async () => {
+  const supervisor = dbAs("supervisor");
+  const contactRef = doc(supervisor, "organizationContacts/equipe-a");
+
+  await assertFails(updateDoc(contactRef, { sectorId: "financeiro" }));
+  await assertSucceeds(updateDoc(contactRef, { name: "Equipe A - nome atualizado" }));
+
+  const saved = await getDoc(contactRef);
+  assert.equal(saved.data().sectorId, "suporte");
+  assert.equal(saved.data().name, "Equipe A - nome atualizado");
+});
