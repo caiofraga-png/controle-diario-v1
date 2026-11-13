@@ -395,9 +395,14 @@ service cloud.firestore {
           && request.resource.data.email == request.auth.token.email
           && request.resource.data.status == "pending");
       allow read: if ownUserDocument(uid) || activeManager();
-      allow update: if activeManager()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "decidedAt", "reason"])
-        && request.resource.data.status in ["approved", "rejected", "blocked"];
+      // Supervisors may decide pending access requests, but only administrators
+      // may mark an access request as blocked. Account status in /users is admin-only.
+      allow update: if request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["status", "decidedAt", "reason"])
+        && ((activeAdmin()
+            && request.resource.data.status in ["approved", "rejected", "blocked"])
+          || (activeSupervisor()
+            && request.resource.data.status in ["approved", "rejected"]));
       allow delete: if false;
     }
 
