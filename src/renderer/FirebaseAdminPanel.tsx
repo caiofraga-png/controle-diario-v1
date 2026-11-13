@@ -525,9 +525,10 @@ export default function FirebaseAdminPanel() {
         </fieldset>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button type="button" disabled={busy} onClick={() => void saveUser(user)}>Salvar cadastro</button>
-          {user.status === "blocked"
+          {isAdministrator && (user.status === "blocked"
             ? <button type="button" disabled={busy} onClick={() => void changeStatus(user, "approved")}>Reativar conta</button>
-            : <button type="button" disabled={busy || user.role === "admin"} onClick={() => void changeStatus(user, "blocked")}>Bloquear conta</button>}
+            : <button type="button" disabled={busy || user.role === "admin"} onClick={() => void changeStatus(user, "blocked")}>Bloquear conta</button>)}
+          {!isAdministrator && <small>Bloqueio e reativação de contas são ações exclusivas de administradores.</small>}
         </div>
       </div> : <p>Nenhum colaborador selecionado.</p>; })()}
     </section>
