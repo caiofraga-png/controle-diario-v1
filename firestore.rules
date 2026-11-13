@@ -603,7 +603,10 @@ service cloud.firestore {
         && existsAfter(maintenancePath)
         && maintenanceData.lastNotificationId == notificationId
         && maintenanceData.updatedByUid == request.auth.uid
-        && canEditScopedRecord("maintenance", maintenanceData)
+        // The maintenance write itself enforces the publisher's scope.
+        // Requiring its server timestamp here proves this notification was
+        // committed in the same atomic batch without re-evaluating the full scope tree.
+        && maintenanceData.updatedAt == request.time
         && request.resource.data.category == "manutencoes"
         && request.resource.data.target == "manutencoes"
         && request.resource.data.message == "Manutenção - " + maintenanceData.title
