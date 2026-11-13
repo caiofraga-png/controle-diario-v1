@@ -1028,6 +1028,7 @@ test("edição de promoções e inadimplência respeita o escopo do autor do reg
       startDate: "", endDate: "", status: "active",
       createdByUid: "charlie", createdByName: "Charlie", createdAt: new Date(),
       updatedByUid: "charlie", updatedByName: "Charlie", updatedAt: new Date(),
+      ownerSectorId: "suporte", ownerContactId: "equipe-b",
     });
     await setDoc(doc(db, "sharedPromotions/promo-bob"), {
       id: "promo-bob", name: "Campanha Bob", category: "Teste",
@@ -1044,6 +1045,7 @@ test("edição de promoções e inadimplência respeita o escopo do autor do reg
         notificationId: "notification-" + id,
         createdByUid: ownerUid, createdAt: new Date(),
         updatedByUid: ownerUid, updatedAt: new Date(),
+        ...(ownerUid === "charlie" ? { ownerSectorId: "suporte", ownerContactId: "equipe-b" } : {}),
       });
     }
   });
@@ -1071,6 +1073,22 @@ test("edição de promoções e inadimplência respeita o escopo do autor do reg
   }));
   await assertFails(updateDoc(doc(alice, "delinquencyNotices/aviso-bob"), {
     status: "completed", updatedByUid: "alice", updatedAt: serverTimestamp(),
+  }));
+
+  // A conta do criador pode ser bloqueada sem tornar publicações de escopo
+  // imutável impossíveis de administrar por outro publicador autorizado.
+  await assertSucceeds(updateDoc(doc(dbAs("admin"), "users/charlie"), { status: "blocked" }));
+  await assertSucceeds(updateDoc(doc(alice, "sharedPromotions/promo-charlie"), {
+    benefit: "Editada após bloqueio do criador", updatedByUid: "alice",
+    updatedByName: "Alice", updatedAt: serverTimestamp(),
+  }));
+  await assertSucceeds(updateDoc(doc(alice, "delinquencyNotices/aviso-charlie"), {
+    status: "completed", updatedByUid: "alice", updatedAt: serverTimestamp(),
+  }));
+  await assertSucceeds(setDoc(doc(alice, "sharedAttachments/anexo-criador-bloqueado"), {
+    targetType: "promotion", targetId: "promo-charlie", name: "arquivo.pdf",
+    mimeType: "application/pdf", size: 4, data: "JVBERg==",
+    createdByUid: "alice", createdAt: serverTimestamp(),
   }));
 });
 

@@ -132,8 +132,6 @@ service cloud.firestore {
       let hasContactSnapshot = recordData.keys().hasAny(["ownerContactId"]);
       return approvedUser()
         && ownerUid is string
-        && exists(ownerPath)
-        && userRecord(ownerUid).data.status == "approved"
         && exists(permissionPath)
         && get(permissionPath).data.enabled == true
         && (
@@ -147,7 +145,11 @@ service cloud.firestore {
             && get(permissionPath).data.contactIds.hasAny([recordData.ownerContactId]))
           || (get(permissionPath).data.agentIds is list
             && get(permissionPath).data.agentIds.hasAny([ownerUid]))
+          // Legacy records without immutable scope snapshots still depend on
+          // the creator's active account and current organizational assignment.
           || (!hasSectorSnapshot && !hasContactSnapshot
+            && exists(ownerPath)
+            && userRecord(ownerUid).data.status == "approved"
             && ((get(permissionPath).data.wholeSectorIds is list
                 && get(permissionPath).data.wholeSectorIds.hasAny([userRecord(ownerUid).data.sectorId]))
               || (get(permissionPath).data.contactIds is list
