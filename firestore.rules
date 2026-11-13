@@ -172,7 +172,6 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if ownUserDocument(uid) || activeManager();
       allow create: if (activeAdmin()
-          && validOrganizationalAssignment()
           && request.resource.data.role in ["employee", "admin"]
           && request.resource.data.status in ["pending", "approved", "blocked", "rejected"])
         || (activeSupervisor()
