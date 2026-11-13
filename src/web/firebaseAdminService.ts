@@ -190,7 +190,7 @@ export async function saveSector(input: Pick<OrganizationalSector, "id" | "name"
   const id = input.id.trim() || doc(collection(db, "organizationSectors")).id;
   const now = new Date().toISOString();
   const batch = writeBatch(db);
-  batch.set(doc(db, "organizationSectors", id), { ...input, id, name: input.name.trim(), updatedAt: now, createdAt: now }, { merge: true });
+  batch.set(doc(db, "organizationSectors", id), { ...input, id, name: input.name.trim(), updatedAt: now, ...(input.id.trim() ? {} : { createdAt: now }) }, { merge: true });
   appendAudit(batch, actor, "SECTOR_SAVED", id, { name: input.name.trim() });
   await batch.commit();
   return id;
@@ -209,7 +209,7 @@ export async function saveContact(input: Pick<OrganizationalContact, "id" | "sec
   const id = input.id.trim() || doc(collection(db, "organizationContacts")).id;
   const now = new Date().toISOString();
   const batch = writeBatch(db);
-  batch.set(doc(db, "organizationContacts", id), { ...input, id, name: input.name.trim(), updatedAt: now, createdAt: now }, { merge: true });
+  batch.set(doc(db, "organizationContacts", id), { ...input, id, name: input.name.trim(), updatedAt: now, ...(input.id.trim() ? {} : { createdAt: now }) }, { merge: true });
   appendAudit(batch, actor, "CONTACT_SAVED", id, { sectorId: input.sectorId, name: input.name.trim() });
   await batch.commit();
   return id;
@@ -245,29 +245,23 @@ export async function listRecentOperationalRecords(maxItems = 100, sectorId?: st
   return snapshot.docs.map((item) => ({ id: item.id, path: item.ref.path, ...item.data() }));
 }
 
-export async function deleteSector(id: string) {
+export async function deactivateSector(id: string) {
   const { auth, db } = requireFirebase();
   const actor = auth.currentUser;
   if (!actor) throw new Error("É necessário autenticar-se para administrar o sistema.");
-  const contacts = await getDocs(query(collection(db, "organizationContacts"), where("sectorId", "==", id)));
-  if (!contacts.empty) throw new Error("Não é possível excluir um setor que ainda possui contatos. Remova ou transfira os contatos primeiro.");
-  const users = await getDocs(query(collection(db, "users"), where("sectorId", "==", id)));
-  if (!users.empty) throw new Error("Não é possível excluir um setor utilizado por colaboradores. Reatribua os colaboradores primeiro.");
   const batch = writeBatch(db);
-  batch.delete(doc(db, "organizationSectors", id));
-  appendAudit(batch, actor, "SECTOR_DELETED", id);
+  batch.update(doc(db, "organizationSectors", id), { active: false, updatedAt: new Date().toISOString() });
+  appendAudit(batch, actor, "SECTOR_DEACTIVATED", id);
   await batch.commit();
 }
 
-export async function deleteContact(id: string) {
+export async function deactivateContact(id: string) {
   const { auth, db } = requireFirebase();
   const actor = auth.currentUser;
   if (!actor) throw new Error("É necessário autenticar-se para administrar o sistema.");
-  const users = await getDocs(query(collection(db, "users"), where("contactId", "==", id)));
-  if (!users.empty) throw new Error("Não é possível excluir um contato utilizado por colaboradores. Reatribua os colaboradores primeiro.");
   const batch = writeBatch(db);
-  batch.delete(doc(db, "organizationContacts", id));
-  appendAudit(batch, actor, "CONTACT_DELETED", id);
+  batch.update(doc(db, "organizationContacts", id), { active: false, updatedAt: new Date().toISOString() });
+  appendAudit(batch, actor, "CONTACT_DEACTIVATED", id);
   await batch.commit();
 }
 
