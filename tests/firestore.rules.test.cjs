@@ -1342,3 +1342,38 @@ test("alteração administrativa e auditoria são atômicas no mesmo lote", asyn
   assert.equal(afterRejected.data().login, "alice-atualizada");
   await assertFails(getDoc(doc(supervisor, "adminAudit/auditoria-invalida")));
 });
+
+test("setores e contatos são desativados sem exclusão e novos vínculos exigem cadastros ativos", async () => {
+  const supervisor = dbAs("supervisor");
+  const sectorRef = doc(supervisor, "organizationSectors/suporte");
+  const contactRef = doc(supervisor, "organizationContacts/equipe-a");
+
+  await assertFails(deleteDoc(sectorRef));
+  await assertFails(deleteDoc(contactRef));
+  await assertSucceeds(updateDoc(sectorRef, { active: false }));
+  await assertSucceeds(updateDoc(contactRef, { active: false }));
+
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await setDoc(doc(db, "organizationSectors/inativo"), {
+      id: "inativo", name: "Setor inativo", active: false,
+    });
+    await setDoc(doc(db, "organizationContacts/contato-inativo"), {
+      id: "contato-inativo", name: "Contato inativo",
+      sectorId: "inativo", active: false,
+    });
+  });
+
+  await assertFails(updateDoc(doc(supervisor, "users/alice"), {
+    sectorId: "inativo", contactId: "contato-inativo",
+  }));
+  await assertFails(setDoc(doc(dbAs("admin"), "users/novo-colaborador"), {
+    uid: "novo-colaborador", email: "novo@lestetelecom.net.br",
+    login: "novo", agent: "Novo", sectorId: "inativo",
+    contactId: "contato-inativo", isSupervisor: false,
+    status: "approved", role: "employee",
+  }));
+  await assertSucceeds(updateDoc(doc(supervisor, "users/alice"), {
+    sectorId: "financeiro", contactId: "equipe-b",
+  }));
+});
