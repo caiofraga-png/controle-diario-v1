@@ -1438,3 +1438,39 @@ test("contato existente não pode ser transferido diretamente para outro setor",
   assert.equal(saved.data().sectorId, "suporte");
   assert.equal(saved.data().name, "Equipe A - nome atualizado");
 });
+
+test("transferência de colaborador exige setor e contato ativos e pertencentes entre si", async () => {
+  const supervisor = dbAs("supervisor");
+  const aliceRef = doc(supervisor, "users/alice");
+
+  await assertFails(updateDoc(aliceRef, {
+    sectorId: "suporte", contactId: "equipe-b",
+  }));
+  await assertFails(updateDoc(aliceRef, {
+    sectorId: "setor-inexistente", contactId: "equipe-a",
+  }));
+
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await updateDoc(doc(db, "organizationSectors/suporte"), { active: false });
+  });
+  await assertFails(updateDoc(aliceRef, {
+    sectorId: "suporte", contactId: "equipe-a",
+  }));
+
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await updateDoc(doc(db, "organizationSectors/suporte"), { active: true });
+    await updateDoc(doc(db, "organizationContacts/equipe-a"), { active: false });
+  });
+  await assertFails(updateDoc(aliceRef, {
+    sectorId: "suporte", contactId: "equipe-a",
+  }));
+
+  await assertSucceeds(updateDoc(aliceRef, {
+    sectorId: "financeiro", contactId: "equipe-b",
+  }));
+  const saved = await getDoc(aliceRef);
+  assert.equal(saved.data().sectorId, "financeiro");
+  assert.equal(saved.data().contactId, "equipe-b");
+});
