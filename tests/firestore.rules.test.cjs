@@ -783,6 +783,32 @@ test("manutenção exige gravação atômica do histórico imutável e do aviso"
   await assertSucceeds(getDoc(maintenance));
   await assertSucceeds(getDoc(history));
   await assertSucceeds(getDoc(notification));
+
+  // A publisher cannot create a standalone notification for an existing
+  // maintenance record: it must be the exact notification linked atomically
+  // to an authorized update of that record.
+  await assertFails(setDoc(doc(db, "sharedNotifications/maintenance-spoof"), {
+    category: "manutencoes", message: "Aviso falsificado",
+    target: "manutencoes", maintenanceId: "maintenance-1",
+    createdByUid: "alice", createdAt: serverTimestamp(),
+  }));
+
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "externalMaintenances/maintenance-financeiro"), {
+      title: "Manutenção financeira", date: "2026-11-04", location: "Centro",
+      description: "Registro de outro escopo", status: "ongoing",
+      createdByUid: "bob", createdAt: new Date(), createdByName: "Bob",
+      ownerSectorId: "financeiro", ownerContactId: "equipe-b",
+      updatedByUid: "bob", updatedAt: new Date(), updatedByName: "Bob",
+      lastHistoryId: "history-financeiro", lastNotificationId: "notice-financeiro",
+    });
+  });
+  await assertFails(setDoc(doc(db, "sharedNotifications/maintenance-out-of-scope"), {
+    category: "manutencoes", message: "Aviso fora do escopo",
+    target: "manutencoes", maintenanceId: "maintenance-financeiro",
+    createdByUid: "alice", createdAt: serverTimestamp(),
+  }));
+
   await assertFails(setDoc(doc(dbAs("supervisor"), "sharedNotifications/orphan-maintenance"), {
     category: "manutencoes", message: "Manutenção de rede",
     target: "manutencoes", maintenanceId: "missing-maintenance",
