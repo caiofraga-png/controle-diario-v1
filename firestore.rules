@@ -953,7 +953,7 @@ service cloud.firestore {
               && resource.data.createdByUid == request.auth.uid)
             || (exists(/databases/$(database)/documents/sharedPromotions/$(resource.data.targetId))
               && publisherAuthorizedForRecord("promotions",
-                get(/databases/$(database)/documents/sharedPromotions/$(resource.data.targetId)).data)));
+                get(/databases/$(database)/documents/sharedPromotions/$(resource.data.targetId)).data))));
     }
 
     // Shared attendance subtype catalog: approved collaborators may add suggestions;
