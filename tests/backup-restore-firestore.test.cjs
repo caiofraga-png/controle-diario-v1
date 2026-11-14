@@ -70,10 +70,14 @@ test("restaura dados fictícios no Firestore Emulator e preserva documentos exis
       size: 128, data: "ZmljdGljaW8=", createdByUid: "alice",
       createdAt: Timestamp.fromDate(new Date("2026-11-05T12:00:00.000Z")),
     } },
+    { path: "attendanceSubtypes/retencao", data: {
+      name: "Retenção", normalized: "retencao", active: false,
+      createdBy: "alice", createdAt: Timestamp.fromDate(new Date("2026-11-05T12:00:00.000Z")),
+    } },
   ];
 
   const first = await restoreIntoEmulator(db, backupDocuments);
-  assert.deepEqual(first, { restoredCount: 3, skippedCount: 1 });
+  assert.deepEqual(first, { restoredCount: 4, skippedCount: 1 });
 
   const existing = await getDoc(doc(db, "users/alice/configuration/layout"));
   assert.equal(existing.data().origem, "valor atual que não pode ser sobrescrito");
@@ -84,9 +88,12 @@ test("restaura dados fictícios no Firestore Emulator e preserva documentos exis
   const restoredAttachment = await getDoc(doc(db, "sharedAttachments/anexo_teste"));
   assert.equal(restoredAttachment.data().name, "comprovante-ficticio.pdf");
   assert.equal(restoredAttachment.data().targetId, "manutencao_teste");
+  const restoredSubtype = await getDoc(doc(db, "attendanceSubtypes/retencao"));
+  assert.equal(restoredSubtype.data().name, "Retenção");
+  assert.equal(restoredSubtype.data().active, false);
 
   const second = await restoreIntoEmulator(db, backupDocuments);
-  assert.deepEqual(second, { restoredCount: 0, skippedCount: 4 });
+  assert.deepEqual(second, { restoredCount: 0, skippedCount: 5 });
   assert.equal((await getDoc(doc(db, "users/alice/configuration/layout"))).data().origem, "valor atual que não pode ser sobrescrito");
 });
 
