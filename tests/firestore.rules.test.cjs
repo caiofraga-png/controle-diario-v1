@@ -1671,7 +1671,7 @@ test("setores e contatos são desativados sem exclusão e novos vínculos exigem
   await assertFails(updateDoc(doc(supervisor, "users/alice"), {
     sectorId: "inativo", contactId: "contato-inativo",
   }));
-  await assertFails(setDoc(doc(dbAs("admin"), "users/novo-colaborador"), {
+  await assertFails(setDoc(doc(supervisor, "users/novo-colaborador"), {
     uid: "novo-colaborador", email: "novo@lestetelecom.net.br",
     login: "novo", agent: "Novo", sectorId: "inativo",
     contactId: "contato-inativo", isSupervisor: false,
