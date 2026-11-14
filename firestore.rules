@@ -513,6 +513,14 @@ service cloud.firestore {
 
     match /sharedPromotions/{promotionId} {
       allow read: if approvedUser();
+      // Recuperação administrativa preserva autoria e datas dos registros antigos.
+      allow create: if activeAdmin()
+        && validPromotionFields(request.resource.data)
+        && request.resource.data.id == promotionId
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.ownerSectorId is string
+        && request.resource.data.ownerContactId is string;
       allow create: if approvedUser()
         && (activeManager() || promotionsPublisher())
         && validPromotionFields(request.resource.data)
@@ -560,6 +568,36 @@ service cloud.firestore {
 
     match /delinquencyNotices/{noticeId} {
       allow read: if approvedUser();
+      // Recuperação administrativa preserva autoria, datas e referências históricas.
+      allow create: if activeAdmin()
+        && request.resource.data.keys().hasAll([
+          "type", "date", "title", "dueDate", "customerCount", "overdueDays",
+          "validUntil", "status", "createdByUid", "createdAt", "updatedByUid", "updatedAt", "notificationId",
+          "ownerSectorId", "ownerContactId"
+        ])
+        && request.resource.data.keys().hasOnly([
+          "type", "date", "title", "dueDate", "customerCount", "overdueDays",
+          "validUntil", "status", "createdByUid", "createdAt", "updatedByUid", "updatedAt", "notificationId",
+          "ownerSectorId", "ownerContactId"
+        ])
+        && request.resource.data.type in ["reducao", "suspensao"]
+        && request.resource.data.date is string
+        && request.resource.data.title is string
+        && request.resource.data.dueDate is string
+        && request.resource.data.customerCount is int
+        && request.resource.data.customerCount >= 0
+        && request.resource.data.overdueDays is int
+        && request.resource.data.overdueDays >= 0
+        && request.resource.data.validUntil is string
+        && request.resource.data.status in ["ongoing", "completed"]
+        && request.resource.data.createdByUid is string
+        && request.resource.data.updatedByUid is string
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.notificationId is string
+        && request.resource.data.ownerSectorId is string
+        && request.resource.data.ownerContactId is string
+        && request.resource.data.validUntil >= request.resource.data.date;
       allow create: if approvedUser()
         && (activeManager() || delinquencyPublisher())
         && request.resource.data.keys().hasAll([
@@ -655,6 +693,30 @@ service cloud.firestore {
 
     match /sharedNotifications/{notificationId} {
       allow read: if approvedUser();
+      // Recuperação administrativa aceita metadados históricos, sem liberar edição.
+      allow create: if activeAdmin()
+        && request.resource.data.keys().hasOnly([
+          "category", "message", "target", "referenceId", "noticeId", "maintenanceId", "createdByUid", "createdAt"
+        ])
+        && request.resource.data.category in ["cobranca", "promocoes", "manutencoes"]
+        && request.resource.data.target in ["inadimplencia", "promocoes", "manutencoes"]
+        && request.resource.data.message is string
+        && request.resource.data.createdByUid is string
+        && request.resource.data.createdAt is timestamp
+        && ((request.resource.data.category == "promocoes"
+            && request.resource.data.target == "promocoes"
+            && request.resource.data.referenceId is string
+            && !request.resource.data.keys().hasAny(["noticeId", "maintenanceId"]))
+          || (request.resource.data.category == "cobranca"
+            && request.resource.data.target == "inadimplencia"
+            && request.resource.data.noticeId is string
+            && !request.resource.data.keys().hasAny(["referenceId", "maintenanceId"]))
+          || (request.resource.data.category == "manutencoes"
+            && request.resource.data.target == "manutencoes"
+            && request.resource.data.maintenanceId is string
+            && !request.resource.data.keys().hasAny(["referenceId", "noticeId"])));
+    match /sharedNotifications/{notificationId} {
+      allow read: if approvedUser();
       allow create: if (
           ((activeManager() || (request.resource.data.category == "promocoes" && promotionsPublisher()))
             && request.resource.data.category == "promocoes"
@@ -732,6 +794,35 @@ service cloud.firestore {
 
     match /externalMaintenances/{maintenanceId} {
       allow read: if approvedUser();
+      // Recuperação administrativa preserva os metadados históricos da manutenção.
+      allow create: if activeAdmin()
+        && request.resource.data.keys().hasAll([
+          "title", "date", "location", "description", "status",
+          "createdByUid", "createdAt", "createdByName", "updatedByUid", "updatedAt", "updatedByName",
+          "lastHistoryId", "lastNotificationId", "ownerSectorId", "ownerContactId"
+        ])
+        && request.resource.data.keys().hasOnly([
+          "title", "date", "location", "description", "status",
+          "createdByUid", "createdAt", "createdByName", "updatedByUid", "updatedAt", "updatedByName",
+          "lastHistoryId", "lastNotificationId", "ownerSectorId", "ownerContactId"
+        ])
+        && request.resource.data.title is string
+        && request.resource.data.date is string
+        && request.resource.data.location is string
+        && request.resource.data.description is string
+        && request.resource.data.status in ["ongoing", "completed"]
+        && request.resource.data.createdByUid is string
+        && request.resource.data.updatedByUid is string
+        && request.resource.data.createdByName is string
+        && request.resource.data.updatedByName is string
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.lastHistoryId is string
+        && request.resource.data.lastNotificationId is string
+        && request.resource.data.ownerSectorId is string
+        && request.resource.data.ownerContactId is string;
+    match /externalMaintenances/{maintenanceId} {
+      allow read: if approvedUser();
       allow create: if (activeManager() || maintenancePublisher())
         && request.resource.data.keys().hasOnly([
           "title", "date", "location", "description", "status",
@@ -778,7 +869,19 @@ service cloud.firestore {
       allow delete: if false;
       match /history/{entryId} {
         allow read: if approvedUser();
+        // Somente administradores podem recuperar entradas históricas preservadas.
+        allow create: if activeAdmin()
+            && exists(/databases/$(database)/documents/externalMaintenances/$(maintenanceId))
+            && request.resource.data.maintenanceId == maintenanceId
+            && request.resource.data.keys().hasAll(["maintenanceId", "changedByUid", "changedByName", "changedAt", "before", "after"])
+            && request.resource.data.keys().hasOnly(["maintenanceId", "changedByUid", "changedByName", "changedAt", "before", "after"])
+            && request.resource.data.changedByUid is string
+            && request.resource.data.changedByName is string
+            && request.resource.data.changedAt is timestamp
+            && (request.resource.data.before == null || request.resource.data.before is map)
+            && request.resource.data.after is map;
         allow create: if (request.resource.data.before == null
+            ? canEditScopedRecord("maintenance",        allow create: if (request.resource.data.before == null
             ? canEditScopedRecord("maintenance",
               getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)).data)
             : canEditScopedRecord("maintenance",
