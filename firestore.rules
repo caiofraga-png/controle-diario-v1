@@ -935,6 +935,21 @@ service cloud.firestore {
 
     match /featurePermissions/{featureId} {
       allow read: if approvedUser();
+      // Recuperação administrativa preserva autor e data da configuração histórica.
+      allow create: if activeAdmin()
+        && featureId == "maintenance"
+        && request.resource.data.keys().hasOnly([
+          "schemaVersion", "enabled", "sectorIds", "wholeSectorIds", "contactIds",
+          "agentIds", "updatedAt", "updatedByUid"
+        ])
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.enabled is bool
+        && request.resource.data.sectorIds is list
+        && request.resource.data.wholeSectorIds is list
+        && request.resource.data.contactIds is list
+        && request.resource.data.agentIds is list
+        && request.resource.data.updatedByUid is string
+        && request.resource.data.updatedAt is timestamp;
       allow create, update: if activeManager()
         && featureId == "maintenance"
         && request.resource.data.keys().hasOnly(["schemaVersion", "enabled", "sectorIds", "wholeSectorIds", "contactIds", "agentIds", "updatedAt", "updatedByUid"])
@@ -962,6 +977,19 @@ service cloud.firestore {
     // Only managers can configure the three independent Visão Geral notice scopes.
     match /featurePermissions/{featureId} {
       allow read: if approvedUser();
+      // Recuperação administrativa da configuração de avisos com estrutura validada.
+      allow create: if activeAdmin()
+        && featureId == "overviewNotices"
+        && request.resource.data.keys().hasOnly(["schemaVersion", "notices", "updatedAt", "updatedByUid"])
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.notices is map
+        && request.resource.data.notices.keys().hasOnly(["longCalls", "googleChat", "otherHelp"])
+        && request.resource.data.notices.keys().hasAll(["longCalls", "googleChat", "otherHelp"])
+        && validOverviewNoticeScope(request.resource.data.notices.longCalls)
+        && validOverviewNoticeScope(request.resource.data.notices.googleChat)
+        && validOverviewNoticeScope(request.resource.data.notices.otherHelp)
+        && request.resource.data.updatedByUid is string
+        && request.resource.data.updatedAt is timestamp;
       allow create, update: if activeManager()
         && featureId == "overviewNotices"
         && request.resource.data.keys().hasOnly(["schemaVersion", "notices", "updatedAt", "updatedByUid"])
@@ -980,6 +1008,21 @@ service cloud.firestore {
     // Supervisors and administrators manage scoped permissions for promotion publishers.
     match /featurePermissions/{featureId} {
       allow read: if approvedUser();
+      // Recuperação administrativa preserva autor e data da configuração histórica.
+      allow create: if activeAdmin()
+        && featureId == "promotions"
+        && request.resource.data.keys().hasOnly([
+          "schemaVersion", "enabled", "sectorIds", "wholeSectorIds", "contactIds",
+          "agentIds", "updatedAt", "updatedByUid"
+        ])
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.enabled is bool
+        && request.resource.data.sectorIds is list
+        && request.resource.data.wholeSectorIds is list
+        && request.resource.data.contactIds is list
+        && request.resource.data.agentIds is list
+        && request.resource.data.updatedByUid is string
+        && request.resource.data.updatedAt is timestamp;
       allow create, update: if activeManager()
         && featureId == "promotions"
         && request.resource.data.keys().hasOnly(["schemaVersion", "enabled", "sectorIds", "wholeSectorIds", "contactIds", "agentIds", "updatedAt", "updatedByUid"])
@@ -1112,6 +1155,23 @@ service cloud.firestore {
     // only administrators and supervisors may deactivate them.
     match /attendanceSubtypes/{subtypeId} {
       allow read: if approvedUser();
+      // Administradores podem recuperar o catálogo histórico, inclusive itens inativos.
+      allow create: if activeAdmin()
+        && request.resource.data.keys().hasAll(["name", "normalized", "active", "createdBy", "createdAt"])
+        && request.resource.data.keys().hasOnly([
+          "name", "normalized", "active", "createdBy", "createdAt", "deactivatedAt", "deactivatedBy"
+        ])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.normalized == subtypeId
+        && request.resource.data.active is bool
+        && request.resource.data.createdBy is string
+        && request.resource.data.createdAt is timestamp
+        && (!request.resource.data.keys().hasAny(["deactivatedAt"])
+          || request.resource.data.deactivatedAt is timestamp)
+        && (!request.resource.data.keys().hasAny(["deactivatedBy"])
+          || request.resource.data.deactivatedBy is string);
       allow create: if approvedUser()
         && request.resource.data.keys().hasOnly(["name", "normalized", "active", "createdBy", "createdAt"])
         && request.resource.data.name is string
