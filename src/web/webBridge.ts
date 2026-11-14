@@ -74,6 +74,7 @@ export function installWebBridge(){
     novoEmail:(input:any)=>firebaseWorkflow.addEmail(input),
     carregarPromocoes:()=>firebaseWorkflow.promotions(),
     salvarPromocoes:(items:any[])=>firebaseWorkflow.savePromotions(items),
+    historicoMensal:(year:number,month:number)=>firebaseWorkflow.historyMonth(year,month),
     versoes:(date:string)=>firebaseWorkflow.versions(date),
     ler:(input:any)=>firebaseWorkflow.readVersion(input),
     errata:(input:any)=>firebaseWorkflow.saveHistoryErrata(input.source,input.edited),
