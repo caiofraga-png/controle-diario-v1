@@ -1883,3 +1883,73 @@ test("restauração administrativa de expediente valida consistência do snapsho
     ...valid, date: "data-inválida",
   }));
 });
+
+
+test("restauração administrativa preserva catálogos, permissões e trilhas históricas", async () => {
+  const admin = dbAs("admin");
+  const supervisor = dbAs("supervisor");
+  const historicalTime = new Date("2025-04-10T12:00:00.000Z");
+
+  await assertSucceeds(setDoc(doc(admin, "attendanceSubtypes/retencao-historica"), {
+    name: "Retenção histórica", normalized: "retencao-historica",
+    active: false, createdBy: "usuario-antigo", createdAt: historicalTime,
+    deactivatedBy: "supervisor-antigo", deactivatedAt: historicalTime,
+  }));
+  await assertFails(setDoc(doc(supervisor, "attendanceSubtypes/retencao-invalida"), {
+    name: "Retenção", normalized: "retencao-invalida",
+    active: false, createdBy: "usuario-antigo", createdAt: historicalTime,
+  }));
+
+  const permission = {
+    schemaVersion: 1, enabled: true, sectorIds: ["suporte"],
+    wholeSectorIds: ["suporte"], contactIds: ["equipe-a"], agentIds: ["alice"],
+    updatedByUid: "supervisor-antigo", updatedAt: historicalTime,
+  };
+  for (const feature of ["maintenance", "promotions", "overviewNotices"]) {
+    const data = feature === "overviewNotices"
+      ? {
+          schemaVersion: 1,
+          notices: {
+            longCalls: { enabled: true, wholeSectorIds: [], contactIds: [], agentIds: [] },
+            googleChat: { enabled: false, wholeSectorIds: [], contactIds: [], agentIds: [] },
+            otherHelp: { enabled: true, wholeSectorIds: ["suporte"], contactIds: [], agentIds: [] },
+          },
+          updatedByUid: "supervisor-antigo", updatedAt: historicalTime,
+        }
+      : permission;
+    await assertSucceeds(setDoc(doc(admin, `featurePermissions/${feature}`), data));
+    await assertFails(setDoc(doc(supervisor, `featurePermissions/${feature}-historico-invalido`), data));
+  }
+
+  await assertSucceeds(setDoc(doc(admin, "adminAudit/auditoria-historica"), {
+    actorUid: "usuario-antigo", actorEmail: "antigo@example.invalid",
+    action: "ALTERACAO_HISTORICA", targetUid: "alice",
+    details: { origem: "backup" }, createdAt: historicalTime,
+  }));
+  await assertFails(setDoc(doc(supervisor, "adminAudit/auditoria-falsa"), {
+    actorUid: "usuario-antigo", actorEmail: "antigo@example.invalid",
+    action: "ALTERACAO_HISTORICA", targetUid: "alice",
+    details: {}, createdAt: historicalTime,
+  }));
+
+  await assertSucceeds(setDoc(doc(admin, "accessRequests/solicitacao-historica"), {
+    uid: "solicitante-antigo", email: "antigo@example.invalid",
+    status: "rejected", requestedAt: "2025-04-10T10:00:00.000Z",
+    decidedAt: historicalTime, reason: "Registro histórico",
+  }));
+  await assertSucceeds(setDoc(doc(admin, "settings/attendanceMotives"), {
+    schemaVersion: 1, items: ["Dúvida", "Retenção"],
+    updatedByUid: "supervisor-antigo", updatedAt: historicalTime,
+  }));
+
+  await assertSucceeds(setDoc(doc(admin, "sharedAttachments/anexo-historico"), {
+    targetType: "task-creation", targetId: "tarefa-antiga",
+    name: "arquivo.pdf", mimeType: "application/pdf", size: 4,
+    data: "JVBERg==", createdByUid: "usuario-antigo", createdAt: historicalTime,
+  }));
+  await assertFails(setDoc(doc(admin, "sharedAttachments/anexo-sem-data"), {
+    targetType: "task-creation", targetId: "tarefa-antiga",
+    name: "arquivo.pdf", mimeType: "application/pdf", size: 4,
+    data: "JVBERg==", createdByUid: "usuario-antigo", createdAt: "data-inválida",
+  }));
+});
