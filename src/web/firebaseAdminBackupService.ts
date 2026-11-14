@@ -1,7 +1,7 @@
 import { collection, doc, getDoc, getDocs, runTransaction, serverTimestamp, Timestamp, type DocumentData, type QueryDocumentSnapshot } from "firebase/firestore";
 import { requireFirebase } from "./firebaseClient";
 import { encryptBackupPayload, decryptBackupEnvelope, assertBackupProject, type EncryptedBackupEnvelope } from "./backupCrypto";
-import { assertRestoreDocumentIdentity, restoreMissingDocuments } from "./backupRestoreCore";
+import { assertBackupRelationships, assertRestoreDocumentIdentity, restoreMissingDocuments } from "./backupRestoreCore";
 
 type BackupDocument = { id: string; path: string; data: Record<string, unknown> };
 export type BackupPayload = {
@@ -230,6 +230,7 @@ export async function inspectAdministrativeBackup(file: File, password: string):
     if (uniquePaths.has(item.path)) throw new Error(`O backup contém o caminho duplicado ${item.path}.`);
     uniquePaths.add(item.path);
   }
+  if (payload.schemaVersion === 2) assertBackupRelationships(allDocuments);
   const checks = await Promise.all(allDocuments.map(async (item) => ({
     path: item.path, exists: (await getDoc(doc(db, item.path))).exists(),
   })));
@@ -322,6 +323,8 @@ export async function restoreAdministrativeBackup(
       documents.push(candidate as unknown as BackupDocument);
     }
   }
+
+  if (inspection.payload.schemaVersion === 2) assertBackupRelationships(documents);
 
   // Restaura primeiro os cadastros exigidos pelos vínculos organizacionais.
   const restorePriority = (path: string) => {
