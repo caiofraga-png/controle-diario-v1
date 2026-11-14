@@ -1095,7 +1095,7 @@ test("edição de promoções e inadimplência respeita o escopo do autor do reg
 test("anexos de tarefas são liberados à supervisão e os demais respeitam escopo de publicação", async () => {
   const admin = dbAs("admin");
   for (const targetType of ["task-creation", "task-roteiro", "maintenance", "promotion", "delinquency"]) {
-    await assertSucceeds(setDoc(doc(admin, `admin-${targetType}`), {
+    await assertSucceeds(setDoc(doc(admin, "sharedAttachments", `admin-${targetType}`), {
       targetType, targetId: "registro-1", name: "arquivo.pdf",
       mimeType: "application/pdf", size: 4, data: "JVBERg==",
       createdByUid: "admin", createdAt: serverTimestamp(),
@@ -1104,7 +1104,7 @@ test("anexos de tarefas são liberados à supervisão e os demais respeitam esco
 
   const supervisor = dbAs("supervisor");
   for (const targetType of ["task-creation", "task-roteiro"]) {
-    await assertSucceeds(setDoc(doc(supervisor, `supervisor-${targetType}`), {
+    await assertSucceeds(setDoc(doc(supervisor, "sharedAttachments", `supervisor-${targetType}`), {
       targetType, targetId: "tarefa-1", name: "arquivo.pdf",
       mimeType: "application/pdf", size: 4, data: "JVBERg==",
       createdByUid: "supervisor", createdAt: serverTimestamp(),
