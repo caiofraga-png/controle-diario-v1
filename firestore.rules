@@ -905,30 +905,32 @@ service cloud.firestore {
     // also attach files to their own not-yet-saved draft.
     match /sharedAttachments/{attachmentId} {
       allow read: if approvedUser();
-      // Administrators can restore historical attachments with original authorship.
-      allow create: if activeAdmin() && validAttachmentPayload();
+      // Keep one create expression to avoid evaluating overlapping allow
+      // statements twice. Admins may restore historical authorship; all
+      // other uploads require current identity, timestamp and scoped rights.
       allow create: if validAttachmentPayload()
-        && request.resource.data.createdByUid == request.auth.uid
-        && request.resource.data.createdAt == request.time
-        && (
-          (activeSupervisor()
-            && request.resource.data.targetType in ["task-creation", "task-roteiro"])
-          || (request.resource.data.targetType == "maintenance"
-            && maintenancePublisher()
-            && (!exists(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.targetId))
-              || publisherAuthorizedForRecord("maintenance",
-                get(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.targetId)).data)))
-          || (request.resource.data.targetType == "delinquency"
-            && delinquencyPublisher()
-            && (!exists(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId))
-              || publisherAuthorizedForRecord("delinquency",
-                get(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId)).data)))
-          || (request.resource.data.targetType == "promotion"
-            && promotionsPublisher()
-            && (!exists(/databases/$(database)/documents/sharedPromotions/$(request.resource.data.targetId))
-              || publisherAuthorizedForRecord("promotions",
-                get(/databases/$(database)/documents/sharedPromotions/$(request.resource.data.targetId)).data)))
-        );
+        && (activeAdmin()
+          || (request.resource.data.createdByUid == request.auth.uid
+            && request.resource.data.createdAt == request.time
+            && (
+              (activeSupervisor()
+                && request.resource.data.targetType in ["task-creation", "task-roteiro"])
+              || (request.resource.data.targetType == "maintenance"
+                && maintenancePublisher()
+                && (!exists(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.targetId))
+                  || publisherAuthorizedForRecord("maintenance",
+                    get(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.targetId)).data)))
+              || (request.resource.data.targetType == "delinquency"
+                && delinquencyPublisher()
+                && (!exists(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId))
+                  || publisherAuthorizedForRecord("delinquency",
+                    get(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId)).data)))
+              || (request.resource.data.targetType == "promotion"
+                && promotionsPublisher()
+                && (!exists(/databases/$(database)/documents/sharedPromotions/$(request.resource.data.targetId))
+                  || publisherAuthorizedForRecord("promotions",
+                    get(/databases/$(database)/documents/sharedPromotions/$(request.resource.data.targetId)).data)))
+            ));
       allow update: if false;
       allow delete: if activeManager()
         || (resource.data.targetType == "maintenance"

@@ -1111,7 +1111,7 @@ test("anexos de tarefas são liberados à supervisão e os demais respeitam esco
     }));
   }
   for (const targetType of ["maintenance", "promotion", "delinquency"]) {
-    await assertFails(setDoc(doc(supervisor, `supervisor-sem-escopo-${targetType}`), {
+    await assertFails(setDoc(doc(supervisor, "sharedAttachments", `supervisor-sem-escopo-${targetType}`), {
       targetType, targetId: "registro-1", name: "arquivo.pdf",
       mimeType: "application/pdf", size: 4, data: "JVBERg==",
       createdByUid: "supervisor", createdAt: serverTimestamp(),
