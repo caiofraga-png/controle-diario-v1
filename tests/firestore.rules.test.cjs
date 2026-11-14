@@ -139,6 +139,71 @@ test("usuário não acessa configuração de outra pessoa", async () => {
   await assertFails(setDoc(doc(db, "users/bob/configuration/layout"), { schemaVersion: 1 }));
 });
 
+test("administrador restaura publicações e notificações históricas preservando autoria", async () => {
+  const db = dbAs("admin");
+  await assertSucceeds(setDoc(doc(db, "sharedPromotions/promo-backup"), {
+    id: "promo-backup", name: "Promoção histórica", category: "Teste",
+    benefit: "Benefício", eligible: "Todos", conditions: "Condições",
+    startDate: "2026-11-01", endDate: "2026-11-30", status: "active",
+    createdByUid: "alice", createdByName: "Alice",
+    createdAt: new Date("2026-11-01T10:00:00.000Z"),
+    updatedByUid: "bob", updatedByName: "Bob",
+    updatedAt: new Date("2026-11-02T10:00:00.000Z"),
+    ownerSectorId: "suporte", ownerContactId: "equipe-a",
+  }));
+  await assertSucceeds(setDoc(doc(db, "delinquencyNotices/aviso-backup"), {
+    type: "reducao", date: "2026-11-01", title: "Aviso histórico",
+    dueDate: "2026-10-15", customerCount: 3, overdueDays: 15,
+    validUntil: "2026-11-30", status: "ongoing",
+    createdByUid: "alice", createdAt: new Date("2026-11-01T10:00:00.000Z"),
+    updatedByUid: "bob", updatedAt: new Date("2026-11-02T10:00:00.000Z"),
+    notificationId: "notif-cobranca-backup",
+    ownerSectorId: "suporte", ownerContactId: "equipe-a",
+  }));
+  await assertSucceeds(setDoc(doc(db, "sharedNotifications/notif-promo-backup"), {
+    category: "promocoes", target: "promocoes", referenceId: "promo-backup",
+    message: "Promoção histórica", createdByUid: "alice",
+    createdAt: new Date("2026-11-01T10:00:00.000Z"),
+  }));
+  await assertSucceeds(setDoc(doc(db, "sharedNotifications/notif-cobranca-backup"), {
+    category: "cobranca", target: "inadimplencia", noticeId: "aviso-backup",
+    message: "Inadimplência - Aviso histórico", createdByUid: "alice",
+    createdAt: new Date("2026-11-01T10:00:00.000Z"),
+  }));
+  const employee = dbAs("alice");
+  await assertFails(setDoc(doc(employee, "sharedPromotions/promo-forjada"), {
+    id: "promo-forjada", name: "Forjada", category: "Teste",
+    benefit: "", eligible: "", conditions: "", startDate: "", endDate: "",
+    status: "active", createdByUid: "bob", createdByName: "Bob",
+    createdAt: new Date(), updatedByUid: "bob", updatedByName: "Bob",
+    updatedAt: new Date(), ownerSectorId: "suporte", ownerContactId: "equipe-a",
+  }));
+});
+
+test("administrador restaura manutenção e histórico preservando autores antigos", async () => {
+  const db = dbAs("admin");
+  await assertSucceeds(setDoc(doc(db, "externalMaintenances/manut-backup"), {
+    title: "Manutenção histórica", date: "2026-11-01", location: "Unidade",
+    description: "Registro restaurado", status: "ongoing",
+    createdByUid: "alice", createdAt: new Date("2026-11-01T10:00:00.000Z"),
+    createdByName: "Alice", updatedByUid: "bob",
+    updatedAt: new Date("2026-11-02T10:00:00.000Z"), updatedByName: "Bob",
+    lastHistoryId: "hist-backup", lastNotificationId: "notif-manut-backup",
+    ownerSectorId: "suporte", ownerContactId: "equipe-a",
+  }));
+  await assertSucceeds(setDoc(doc(db, "externalMaintenances/manut-backup/history/hist-backup"), {
+    maintenanceId: "manut-backup", changedByUid: "alice", changedByName: "Alice",
+    changedAt: new Date("2026-11-01T10:00:00.000Z"), before: null,
+    after: { title: "Manutenção histórica", date: "2026-11-01", location: "Unidade",
+      description: "Registro restaurado", status: "ongoing" },
+  }));
+  await assertSucceeds(setDoc(doc(db, "sharedNotifications/notif-manut-backup"), {
+    category: "manutencoes", target: "manutencoes", maintenanceId: "manut-backup",
+    message: "Manutenção - Manutenção histórica - Em Andamento",
+    createdByUid: "alice", createdAt: new Date("2026-11-01T10:00:00.000Z"),
+  }));
+});
+
 test("administrador restaura atendimentos históricos do proprietário sem liberar gravação cruzada", async () => {
   const row = {
     ticket: "12345", canal: "CHAT", codigo: "", nome: "Cliente fictício",
