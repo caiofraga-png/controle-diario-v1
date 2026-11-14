@@ -930,7 +930,7 @@ service cloud.firestore {
                 && (!exists(/databases/$(database)/documents/sharedPromotions/$(request.resource.data.targetId))
                   || publisherAuthorizedForRecord("promotions",
                     get(/databases/$(database)/documents/sharedPromotions/$(request.resource.data.targetId)).data)))
-            ));
+            )));
       allow update: if false;
       allow delete: if activeManager()
         || (resource.data.targetType == "maintenance"
