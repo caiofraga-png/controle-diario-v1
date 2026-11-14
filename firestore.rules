@@ -44,6 +44,21 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/organizationContacts/$(request.resource.data.contactId)).data.sectorId == request.resource.data.sectorId;
     }
 
+    // Existing assignments are retained for history when a sector/contact is
+    // deactivated, but they no longer grant publishing rights until reactivated.
+    function activeUserOrganizationalAssignment() {
+      let userData = userRecord(request.auth.uid).data;
+      let sectorPath = /databases/$(database)/documents/organizationSectors/$(userData.sectorId);
+      let contactPath = /databases/$(database)/documents/organizationContacts/$(userData.contactId);
+      return userData.sectorId is string
+        && userData.contactId is string
+        && exists(sectorPath)
+        && get(sectorPath).data.active == true
+        && exists(contactPath)
+        && get(contactPath).data.active == true
+        && get(contactPath).data.sectorId == userData.sectorId;
+    }
+
     function canSelectProfile(uid, profileId) {
       return userRecord(uid).data.allowedProfileIds is list
         && userRecord(uid).data.allowedProfileIds.hasAny([profileId]);
@@ -68,6 +83,7 @@ service cloud.firestore {
 
     function maintenancePublisher() {
       return approvedUser()
+        && activeUserOrganizationalAssignment()
         && exists(/databases/$(database)/documents/featurePermissions/maintenance)
         && get(/databases/$(database)/documents/featurePermissions/maintenance).data.enabled == true
         && ((get(/databases/$(database)/documents/featurePermissions/maintenance).data.wholeSectorIds is list
@@ -80,6 +96,7 @@ service cloud.firestore {
 
     function promotionsPublisher() {
       return approvedUser()
+        && activeUserOrganizationalAssignment()
         && exists(/databases/$(database)/documents/featurePermissions/promotions)
         && get(/databases/$(database)/documents/featurePermissions/promotions).data.enabled == true
         && ((get(/databases/$(database)/documents/featurePermissions/promotions).data.wholeSectorIds is list
@@ -92,6 +109,7 @@ service cloud.firestore {
 
     function delinquencyPublisher() {
       return approvedUser()
+        && activeUserOrganizationalAssignment()
         && exists(/databases/$(database)/documents/featurePermissions/delinquency)
         && get(/databases/$(database)/documents/featurePermissions/delinquency).data.enabled == true
         && ((get(/databases/$(database)/documents/featurePermissions/delinquency).data.wholeSectorIds is list
@@ -133,6 +151,7 @@ service cloud.firestore {
       let hasSectorSnapshot = recordData.keys().hasAny(["ownerSectorId"]);
       let hasContactSnapshot = recordData.keys().hasAny(["ownerContactId"]);
       return approvedUser()
+        && activeUserOrganizationalAssignment()
         && ownerUid is string
         && exists(permissionPath)
         && get(permissionPath).data.enabled == true

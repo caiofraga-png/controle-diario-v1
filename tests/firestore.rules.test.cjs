@@ -1551,6 +1551,55 @@ test("desativar setor preserva contatos e histórico, mas bloqueia novos víncul
   }));
 });
 
+test("desativar setor ou contato suspende publicação e anexos sem apagar os vínculos", async () => {
+  const supervisor = dbAs("supervisor");
+  await assertSucceeds(setDoc(doc(supervisor, "featurePermissions/maintenance"), {
+    schemaVersion: 1, enabled: true, sectorIds: ["suporte"], wholeSectorIds: ["suporte"],
+    contactIds: [], agentIds: [], updatedAt: serverTimestamp(), updatedByUid: "supervisor",
+  }));
+  await assertSucceeds(setDoc(doc(supervisor, "featurePermissions/promotions"), {
+    schemaVersion: 1, enabled: true, sectorIds: ["suporte"], wholeSectorIds: ["suporte"],
+    contactIds: [], agentIds: [], updatedAt: serverTimestamp(), updatedByUid: "supervisor",
+  }));
+  await assertSucceeds(setDoc(doc(supervisor, "featurePermissions/delinquency"), {
+    schemaVersion: 1, enabled: true, sectorIds: ["suporte"], wholeSectorIds: ["suporte"],
+    contactIds: [], agentIds: [], updatedAt: serverTimestamp(), updatedByUid: "supervisor",
+  }));
+
+  const alice = dbAs("alice");
+  await assertSucceeds(setDoc(doc(alice, "sharedAttachments/antes-desativacao"), {
+    targetType: "promotion", targetId: "rascunho", name: "arquivo.pdf",
+    mimeType: "application/pdf", size: 4, data: "JVBERg==",
+    createdByUid: "alice", createdAt: serverTimestamp(),
+  }));
+
+  await assertSucceeds(updateDoc(doc(supervisor, "organizationSectors/suporte"), { active: false }));
+  // The historical assignment remains readable, but no longer authorizes publishing.
+  await assertSucceeds(getDoc(doc(alice, "users/alice")));
+  for (const targetType of ["maintenance", "promotion", "delinquency"]) {
+    await assertFails(setDoc(doc(alice, `sharedAttachments/setor-inativo-${targetType}`), {
+      targetType, targetId: "rascunho", name: "arquivo.pdf",
+      mimeType: "application/pdf", size: 4, data: "JVBERg==",
+      createdByUid: "alice", createdAt: serverTimestamp(),
+    }));
+  }
+
+  await assertSucceeds(updateDoc(doc(supervisor, "organizationSectors/suporte"), { active: true }));
+  await assertSucceeds(updateDoc(doc(supervisor, "organizationContacts/equipe-a"), { active: false }));
+  await assertFails(setDoc(doc(alice, "sharedAttachments/contato-inativo"), {
+    targetType: "promotion", targetId: "rascunho", name: "arquivo.pdf",
+    mimeType: "application/pdf", size: 4, data: "JVBERg==",
+    createdByUid: "alice", createdAt: serverTimestamp(),
+  }));
+
+  await assertSucceeds(updateDoc(doc(supervisor, "organizationContacts/equipe-a"), { active: true }));
+  await assertSucceeds(setDoc(doc(alice, "sharedAttachments/apos-reativacao"), {
+    targetType: "promotion", targetId: "rascunho", name: "arquivo.pdf",
+    mimeType: "application/pdf", size: 4, data: "JVBERg==",
+    createdByUid: "alice", createdAt: serverTimestamp(),
+  }));
+});
+
 test("contato existente não pode ser transferido diretamente para outro setor", async () => {
   const supervisor = dbAs("supervisor");
   const contactRef = doc(supervisor, "organizationContacts/equipe-a");
