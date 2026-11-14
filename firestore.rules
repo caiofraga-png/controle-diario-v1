@@ -1081,7 +1081,9 @@ service cloud.firestore {
         && request.resource.data.size > 0
         && request.resource.data.size <= 512000
         && request.resource.data.data is string
-        && request.resource.data.data.size() <= 700000;
+        && request.resource.data.data.size() <= 700000
+        && request.resource.data.createdByUid is string
+        && request.resource.data.createdAt is timestamp;
     }
 
     // Attachments follow the scope of an existing record. A publisher may
