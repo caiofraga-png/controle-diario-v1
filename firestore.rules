@@ -44,6 +44,14 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/organizationContacts/$(request.resource.data.contactId)).data.sectorId == request.resource.data.sectorId;
     }
 
+    function validHistoricalOrganizationalAssignment() {
+      return request.resource.data.sectorId is string
+        && request.resource.data.contactId is string
+        && exists(/databases/$(database)/documents/organizationSectors/$(request.resource.data.sectorId))
+        && exists(/databases/$(database)/documents/organizationContacts/$(request.resource.data.contactId))
+        && get(/databases/$(database)/documents/organizationContacts/$(request.resource.data.contactId)).data.sectorId == request.resource.data.sectorId;
+    }
+
     // Existing assignments are retained for history when a sector/contact is
     // deactivated, but they no longer grant publishing rights until reactivated.
     function activeUserOrganizationalAssignment() {
@@ -196,7 +204,8 @@ service cloud.firestore {
       allow read: if ownUserDocument(uid) || activeManager();
       allow create: if (activeAdmin()
           && ((!('sectorId' in request.resource.data) && !('contactId' in request.resource.data))
-            || validOrganizationalAssignment())
+            || validOrganizationalAssignment()
+            || validHistoricalOrganizationalAssignment())
           && request.resource.data.role in ["employee", "admin"]
           && request.resource.data.status in ["pending", "approved", "blocked", "rejected"])
         || (activeSupervisor()
@@ -394,11 +403,29 @@ service cloud.firestore {
 
       allow create: if (approvedUser() && validExpedienteSnapshot())
         || (activeAdmin()
+          && request.resource.data.keys().hasAll([
+            "ownerUid", "date", "status", "sectorId", "sectorName",
+            "contactId", "contactName", "login", "agent", "assignment"
+          ])
           && request.resource.data.ownerUid is string
+          && request.resource.data.date is string
+          && request.resource.data.date.matches("[0-9]{4}-[0-9]{2}-[0-9]{2}")
+          && request.resource.data.status is string
+          && request.resource.data.status.size() > 0
+          && request.resource.data.sectorId is string
+          && request.resource.data.sectorName is string
+          && request.resource.data.contactId is string
+          && request.resource.data.contactName is string
+          && request.resource.data.login is string
+          && request.resource.data.agent is string
           && request.resource.data.assignment is map
           && request.resource.data.assignment.uid == request.resource.data.ownerUid
-          && request.resource.data.date is string
-          && request.resource.data.status is string);
+          && request.resource.data.assignment.sectorId == request.resource.data.sectorId
+          && request.resource.data.assignment.sectorName == request.resource.data.sectorName
+          && request.resource.data.assignment.contactId == request.resource.data.contactId
+          && request.resource.data.assignment.contactName == request.resource.data.contactName
+          && request.resource.data.assignment.login == request.resource.data.login
+          && request.resource.data.assignment.agent == request.resource.data.agent);
 
       // The index can update only its operational status/timestamp. Ownership,
       // date, identity and historical assignment snapshot are immutable.
@@ -440,10 +467,14 @@ service cloud.firestore {
 
     match /organizationContacts/{contactId} {
       allow read: if approvedUser();
-      allow create: if activeManager()
-        && request.resource.data.sectorId is string
-        && exists(/databases/$(database)/documents/organizationSectors/$(request.resource.data.sectorId))
-        && get(/databases/$(database)/documents/organizationSectors/$(request.resource.data.sectorId)).data.active == true;
+      allow create: if (activeManager()
+          && request.resource.data.sectorId is string
+          && exists(/databases/$(database)/documents/organizationSectors/$(request.resource.data.sectorId))
+          && get(/databases/$(database)/documents/organizationSectors/$(request.resource.data.sectorId)).data.active == true)
+        || (activeAdmin()
+          && request.resource.data.sectorId is string
+          && exists(/databases/$(database)/documents/organizationSectors/$(request.resource.data.sectorId))
+          && get(/databases/$(database)/documents/organizationSectors/$(request.resource.data.sectorId)).data.active == false);
       allow update: if activeManager()
         && request.resource.data.sectorId == resource.data.sectorId
         && (request.resource.data.active != true
