@@ -1092,17 +1092,41 @@ test("edição de promoções e inadimplência respeita o escopo do autor do reg
   }));
 });
 
-test("anexos compartilhados aceitam os cinco destinos por administrador e supervisor", async () => {
-  for (const uid of ["admin", "supervisor"]) {
-    const db = dbAs(uid);
-    for (const targetType of ["task-creation", "task-roteiro", "maintenance", "promotion", "delinquency"]) {
-      await assertSucceeds(setDoc(doc(db, "sharedAttachments", `${uid}-${targetType}`), {
-        targetType, targetId: "registro-1", name: "arquivo.pdf",
-        mimeType: "application/pdf", size: 4, data: "JVBERg==",
-        createdByUid: uid, createdAt: serverTimestamp(),
-      }));
-    }
+test("anexos de tarefas são liberados à supervisão e os demais respeitam escopo de publicação", async () => {
+  const admin = dbAs("admin");
+  for (const targetType of ["task-creation", "task-roteiro", "maintenance", "promotion", "delinquency"]) {
+    await assertSucceeds(setDoc(doc(admin, `admin-${targetType}`), {
+      targetType, targetId: "registro-1", name: "arquivo.pdf",
+      mimeType: "application/pdf", size: 4, data: "JVBERg==",
+      createdByUid: "admin", createdAt: serverTimestamp(),
+    }));
   }
+
+  const supervisor = dbAs("supervisor");
+  for (const targetType of ["task-creation", "task-roteiro"]) {
+    await assertSucceeds(setDoc(doc(supervisor, `supervisor-${targetType}`), {
+      targetType, targetId: "tarefa-1", name: "arquivo.pdf",
+      mimeType: "application/pdf", size: 4, data: "JVBERg==",
+      createdByUid: "supervisor", createdAt: serverTimestamp(),
+    }));
+  }
+  for (const targetType of ["maintenance", "promotion", "delinquency"]) {
+    await assertFails(setDoc(doc(supervisor, `supervisor-sem-escopo-${targetType}`), {
+      targetType, targetId: "registro-1", name: "arquivo.pdf",
+      mimeType: "application/pdf", size: 4, data: "JVBERg==",
+      createdByUid: "supervisor", createdAt: serverTimestamp(),
+    }));
+  }
+
+  await assertSucceeds(setDoc(doc(supervisor, "featurePermissions/promotions"), {
+    schemaVersion: 1, enabled: true, sectorIds: ["suporte"], wholeSectorIds: ["suporte"],
+    contactIds: [], agentIds: [], updatedAt: serverTimestamp(), updatedByUid: "supervisor",
+  }));
+  await assertSucceeds(setDoc(doc(supervisor, "sharedAttachments/supervisor-promocao-autorizada"), {
+    targetType: "promotion", targetId: "rascunho-promocao", name: "arquivo.pdf",
+    mimeType: "application/pdf", size: 4, data: "JVBERg==",
+    createdByUid: "supervisor", createdAt: serverTimestamp(),
+  }));
 });
 
 test("anexos rejeitam campos extras, destinos inválidos e payloads acima do limite", async () => {

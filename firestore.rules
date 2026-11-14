@@ -911,7 +911,8 @@ service cloud.firestore {
         && request.resource.data.createdByUid == request.auth.uid
         && request.resource.data.createdAt == request.time
         && (
-          activeSupervisor()
+          (activeSupervisor()
+            && request.resource.data.targetType in ["task-creation", "task-roteiro"])
           || (request.resource.data.targetType == "maintenance"
             && maintenancePublisher()
             && (!exists(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.targetId))
