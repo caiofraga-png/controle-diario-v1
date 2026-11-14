@@ -139,6 +139,20 @@ test("usuário não acessa configuração de outra pessoa", async () => {
   await assertFails(setDoc(doc(db, "users/bob/configuration/layout"), { schemaVersion: 1 }));
 });
 
+test("administrador restaura atendimentos históricos do proprietário sem liberar gravação cruzada", async () => {
+  const row = {
+    ticket: "12345", canal: "CHAT", codigo: "", nome: "Cliente fictício",
+    tipo: "SUPORTE", resolvido: "SIM", subtipo: "", motivoResolucao: "",
+    ownerUid: "alice", createdAt: new Date("2026-11-10T12:00:00.000Z"),
+  };
+  await assertSucceeds(setDoc(doc(dbAs("admin"), "users/alice/attendanceRows/restaurado"), row));
+  await assertSucceeds(getDoc(doc(dbAs("alice"), "users/alice/attendanceRows/restaurado")));
+  await assertFails(setDoc(doc(dbAs("alice"), "users/bob/attendanceRows/forjado"), {
+    ...row, ownerUid: "bob",
+  }));
+  await assertFails(setDoc(doc(dbAs("supervisor"), "users/alice/attendanceRows/sem-permissao"), row));
+});
+
 test("administrador pode ler subcoleções privadas de qualquer colaborador para backup", async () => {
   const admin = dbAs("admin");
   const privatePaths = [
