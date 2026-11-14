@@ -19,3 +19,30 @@ export async function restoreMissingDocuments(
   }
   return { restoredCount, skippedCount };
 }
+
+
+/** Confere a identidade do documento antes de qualquer gravação de restauração. */
+export function assertRestoreDocumentIdentity(path: string, data: Record<string, unknown>): void {
+  const parts = path.split("/");
+  if (parts[0] === "users" && parts.length === 2 && data.uid !== parts[1]) {
+    throw new Error(`O identificador do usuário não corresponde ao caminho ${path}.`);
+  }
+  if (parts[0] === "users" && parts.length > 2) {
+    const relativePath = parts.slice(2, -1).join("/");
+    const requiresOwner = relativePath === "attendanceRows"
+      || relativePath === "operational"
+      || relativePath === "operational/history/entries";
+    if (requiresOwner && data.ownerUid !== parts[1]) {
+      throw new Error(`O proprietário não corresponde ao caminho do documento ${path}.`);
+    }
+    if (typeof data.ownerUid === "string" && data.ownerUid !== parts[1]) {
+      throw new Error(`O proprietário não corresponde ao caminho do documento ${path}.`);
+    }
+  }
+  if (parts[0] === "Expediente"
+    && (typeof data.ownerUid !== "string"
+      || !data.assignment || typeof data.assignment !== "object"
+      || (data.assignment as Record<string, unknown>).uid !== data.ownerUid)) {
+    throw new Error(`A atribuição do expediente não corresponde ao proprietário em ${path}.`);
+  }
+}
