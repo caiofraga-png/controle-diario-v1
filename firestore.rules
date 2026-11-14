@@ -935,19 +935,25 @@ service cloud.firestore {
       allow delete: if activeManager()
         || (resource.data.targetType == "maintenance"
           && maintenancePublisher()
-          && exists(/databases/$(database)/documents/externalMaintenances/$(resource.data.targetId))
-          && publisherAuthorizedForRecord("maintenance",
-            get(/databases/$(database)/documents/externalMaintenances/$(resource.data.targetId)).data))
+          && ((!exists(/databases/$(database)/documents/externalMaintenances/$(resource.data.targetId))
+              && resource.data.createdByUid == request.auth.uid)
+            || (exists(/databases/$(database)/documents/externalMaintenances/$(resource.data.targetId))
+              && publisherAuthorizedForRecord("maintenance",
+                get(/databases/$(database)/documents/externalMaintenances/$(resource.data.targetId)).data))))
         || (resource.data.targetType == "delinquency"
           && delinquencyPublisher()
-          && exists(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId))
-          && publisherAuthorizedForRecord("delinquency",
-            get(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId)).data))
+          && ((!exists(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId))
+              && resource.data.createdByUid == request.auth.uid)
+            || (exists(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId))
+              && publisherAuthorizedForRecord("delinquency",
+                get(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId)).data))))
         || (resource.data.targetType == "promotion"
           && promotionsPublisher()
-          && exists(/databases/$(database)/documents/sharedPromotions/$(resource.data.targetId))
-          && publisherAuthorizedForRecord("promotions",
-            get(/databases/$(database)/documents/sharedPromotions/$(resource.data.targetId)).data));
+          && ((!exists(/databases/$(database)/documents/sharedPromotions/$(resource.data.targetId))
+              && resource.data.createdByUid == request.auth.uid)
+            || (exists(/databases/$(database)/documents/sharedPromotions/$(resource.data.targetId))
+              && publisherAuthorizedForRecord("promotions",
+                get(/databases/$(database)/documents/sharedPromotions/$(resource.data.targetId)).data)));
     }
 
     // Shared attendance subtype catalog: approved collaborators may add suggestions;
