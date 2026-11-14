@@ -2006,3 +2006,5 @@ html[data-theme="midnight-violet"] .config-embedded .config-tabs button.active {
 
 .obligations-title { margin: 0 0 12px; font-size: 17px; font-weight: 700; color: #173b2d; }
 :is(html[data-theme="corporate-dark"], html[data-theme="midnight-blue"], html[data-theme="midnight-violet"]) .obligations-title { color: #e4eee8; }
+
+.history-start-row{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}.history-start-row .date-select{margin-bottom:28px}.history-start-button{margin-bottom:28px;min-height:36px}@media(max-width:520px){.work-actions{flex-wrap:wrap;justify-content:flex-end}.history-start-row{align-items:flex-start}.history-start-row .date-select{margin-bottom:8px}.history-start-button{margin-bottom:8px}}
