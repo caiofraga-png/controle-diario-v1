@@ -1,0 +1,1249 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function ownUserDocument(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function userRecord(uid) {
+      return get(/databases/$(database)/documents/users/$(uid));
+    }
+
+    function approvedUser() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && userRecord(request.auth.uid).data.status == "approved";
+    }
+
+    function activeAdmin() {
+      return approvedUser()
+        && userRecord(request.auth.uid).data.role == "admin";
+    }
+
+    function activeSupervisor() {
+      return approvedUser()
+        && userRecord(request.auth.uid).data.isSupervisor == true;
+    }
+
+    function currentSectorId() {
+      return userRecord(request.auth.uid).data.sectorId;
+    }
+
+    function validOrganizationalAssignment() {
+      return request.resource.data.sectorId is string
+        && request.resource.data.contactId is string
+        && exists(/databases/$(database)/documents/organizationSectors/$(request.resource.data.sectorId))
+        && get(/databases/$(database)/documents/organizationSectors/$(request.resource.data.sectorId)).data.active == true
+        && exists(/databases/$(database)/documents/organizationContacts/$(request.resource.data.contactId))
+        && get(/databases/$(database)/documents/organizationContacts/$(request.resource.data.contactId)).data.active == true
+        && get(/databases/$(database)/documents/organizationContacts/$(request.resource.data.contactId)).data.sectorId == request.resource.data.sectorId;
+    }
+
+    function validHistoricalOrganizationalAssignment() {
+      return request.resource.data.sectorId is string
+        && request.resource.data.contactId is string
+        && exists(/databases/$(database)/documents/organizationSectors/$(request.resource.data.sectorId))
+        && exists(/databases/$(database)/documents/organizationContacts/$(request.resource.data.contactId))
+        && get(/databases/$(database)/documents/organizationContacts/$(request.resource.data.contactId)).data.sectorId == request.resource.data.sectorId;
+    }
+
+    // Existing assignments are retained for history when a sector/contact is
+    // deactivated, but they no longer grant publishing rights until reactivated.
+    function activeUserOrganizationalAssignment() {
+      let userData = userRecord(request.auth.uid).data;
+      let sectorPath = /databases/$(database)/documents/organizationSectors/$(userData.sectorId);
+      let contactPath = /databases/$(database)/documents/organizationContacts/$(userData.contactId);
+      return userData.sectorId is string
+        && userData.contactId is string
+        && exists(sectorPath)
+        && get(sectorPath).data.active == true
+        && exists(contactPath)
+        && get(contactPath).data.active == true
+        && get(contactPath).data.sectorId == userData.sectorId;
+    }
+
+    function canSelectProfile(uid, profileId) {
+      return userRecord(uid).data.allowedProfileIds is list
+        && userRecord(uid).data.allowedProfileIds.hasAny([profileId]);
+    }
+
+    function validCurrentOperationalProfile(uid) {
+      return request.resource.data.estado == null
+        || (request.resource.data.estado is map
+          && request.resource.data.estado.perfil is map
+          && request.resource.data.estado.perfil.id is string
+          && (request.resource.data.estado.perfil.id == "GERAL"
+            ? userRecord(uid).data.allowedProfileIds is list
+              && userRecord(uid).data.allowedProfileIds.size() > 0
+            : canSelectProfile(uid, request.resource.data.estado.perfil.id)));
+    }
+
+    // Supervisors manage operational organization and collaborators globally,
+    // but cannot grant or modify administrator privileges.
+    function activeManager() {
+      return activeAdmin() || activeSupervisor();
+    }
+
+    function maintenancePublisher() {
+      return approvedUser()
+        && activeUserOrganizationalAssignment()
+        && exists(/databases/$(database)/documents/featurePermissions/maintenance)
+        && get(/databases/$(database)/documents/featurePermissions/maintenance).data.enabled == true
+        && ((get(/databases/$(database)/documents/featurePermissions/maintenance).data.wholeSectorIds is list
+            && get(/databases/$(database)/documents/featurePermissions/maintenance).data.wholeSectorIds.hasAny([userRecord(request.auth.uid).data.sectorId]))
+          || (get(/databases/$(database)/documents/featurePermissions/maintenance).data.contactIds is list
+            && get(/databases/$(database)/documents/featurePermissions/maintenance).data.contactIds.hasAny([userRecord(request.auth.uid).data.contactId]))
+          || (get(/databases/$(database)/documents/featurePermissions/maintenance).data.agentIds is list
+            && get(/databases/$(database)/documents/featurePermissions/maintenance).data.agentIds.hasAny([request.auth.uid])));
+    }
+
+    function promotionsPublisher() {
+      return approvedUser()
+        && activeUserOrganizationalAssignment()
+        && exists(/databases/$(database)/documents/featurePermissions/promotions)
+        && get(/databases/$(database)/documents/featurePermissions/promotions).data.enabled == true
+        && ((get(/databases/$(database)/documents/featurePermissions/promotions).data.wholeSectorIds is list
+            && get(/databases/$(database)/documents/featurePermissions/promotions).data.wholeSectorIds.hasAny([userRecord(request.auth.uid).data.sectorId]))
+          || (get(/databases/$(database)/documents/featurePermissions/promotions).data.contactIds is list
+            && get(/databases/$(database)/documents/featurePermissions/promotions).data.contactIds.hasAny([userRecord(request.auth.uid).data.contactId]))
+          || (get(/databases/$(database)/documents/featurePermissions/promotions).data.agentIds is list
+            && get(/databases/$(database)/documents/featurePermissions/promotions).data.agentIds.hasAny([request.auth.uid])));
+    }
+
+    function delinquencyPublisher() {
+      return approvedUser()
+        && activeUserOrganizationalAssignment()
+        && exists(/databases/$(database)/documents/featurePermissions/delinquency)
+        && get(/databases/$(database)/documents/featurePermissions/delinquency).data.enabled == true
+        && ((get(/databases/$(database)/documents/featurePermissions/delinquency).data.wholeSectorIds is list
+            && get(/databases/$(database)/documents/featurePermissions/delinquency).data.wholeSectorIds.hasAny([userRecord(request.auth.uid).data.sectorId]))
+          || (get(/databases/$(database)/documents/featurePermissions/delinquency).data.contactIds is list
+            && get(/databases/$(database)/documents/featurePermissions/delinquency).data.contactIds.hasAny([userRecord(request.auth.uid).data.contactId]))
+          || (get(/databases/$(database)/documents/featurePermissions/delinquency).data.agentIds is list
+            && get(/databases/$(database)/documents/featurePermissions/delinquency).data.agentIds.hasAny([request.auth.uid])));
+    }
+
+    // A publisher may edit records created inside the organizational scope
+    // granted to that publisher. Managers retain global access.
+    function publisherAuthorizedForOwner(featureId, ownerUid) {
+      let permissionPath = /databases/$(database)/documents/featurePermissions/$(featureId);
+      let ownerPath = /databases/$(database)/documents/users/$(ownerUid);
+      return approvedUser()
+        && ownerUid is string
+        && exists(ownerPath)
+        && userRecord(ownerUid).data.status == "approved"
+        && exists(permissionPath)
+        && get(permissionPath).data.enabled == true
+        && ((get(permissionPath).data.wholeSectorIds is list
+            && get(permissionPath).data.wholeSectorIds.hasAny([userRecord(ownerUid).data.sectorId]))
+          || (get(permissionPath).data.contactIds is list
+            && get(permissionPath).data.contactIds.hasAny([userRecord(ownerUid).data.contactId]))
+          || (get(permissionPath).data.agentIds is list
+            && get(permissionPath).data.agentIds.hasAny([ownerUid])
+            && ((hasSectorSnapshot || hasContactSnapshot)
+              || (exists(ownerPath) && userRecord(ownerUid).data.status == "approved"))));
+    }
+
+    // New records use immutable organizational snapshots so later profile
+    // transfers do not silently change who may manage an existing publication.
+    // Legacy records without snapshots retain the historical profile-based rule.
+    function publisherAuthorizedForRecord(featureId, recordData) {
+      let permissionPath = /databases/$(database)/documents/featurePermissions/$(featureId);
+      let ownerUid = recordData.createdByUid;
+      let ownerPath = /databases/$(database)/documents/users/$(ownerUid);
+      let hasSectorSnapshot = recordData.keys().hasAny(["ownerSectorId"]);
+      let hasContactSnapshot = recordData.keys().hasAny(["ownerContactId"]);
+      return approvedUser()
+        && activeUserOrganizationalAssignment()
+        && ownerUid is string
+        && exists(permissionPath)
+        && get(permissionPath).data.enabled == true
+        && (
+          (hasSectorSnapshot
+            && recordData.ownerSectorId is string
+            && get(permissionPath).data.wholeSectorIds is list
+            && get(permissionPath).data.wholeSectorIds.hasAny([recordData.ownerSectorId]))
+          || (hasContactSnapshot
+            && recordData.ownerContactId is string
+            && get(permissionPath).data.contactIds is list
+            && get(permissionPath).data.contactIds.hasAny([recordData.ownerContactId]))
+          || (get(permissionPath).data.agentIds is list
+            && get(permissionPath).data.agentIds.hasAny([ownerUid]))
+          // Legacy records without immutable scope snapshots still depend on
+          // the creator's active account and current organizational assignment.
+          || (!hasSectorSnapshot && !hasContactSnapshot
+            && exists(ownerPath)
+            && userRecord(ownerUid).data.status == "approved"
+            && ((get(permissionPath).data.wholeSectorIds is list
+                && get(permissionPath).data.wholeSectorIds.hasAny([userRecord(ownerUid).data.sectorId]))
+              || (get(permissionPath).data.contactIds is list
+                && get(permissionPath).data.contactIds.hasAny([userRecord(ownerUid).data.contactId]))))
+        );
+    }
+
+    function canEditScopedRecord(featureId, recordData) {
+      return activeManager() || publisherAuthorizedForRecord(featureId, recordData);
+    }
+
+    function allowedCorporateDomain() {
+      return signedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email is string
+        && exists(/databases/$(database)/documents/settings/allowedDomains)
+        && get(/databases/$(database)/documents/settings/allowedDomains).data.domains
+          .hasAny([request.auth.token.email.split("@")[1].lower()]);
+    }
+
+    // User identity and organizational assignment are administrator-managed.
+    match /users/{uid} {
+      allow read: if ownUserDocument(uid) || activeManager();
+      allow create: if (activeAdmin()
+          && ((!('sectorId' in request.resource.data) && !('contactId' in request.resource.data))
+            || validOrganizationalAssignment()
+            || validHistoricalOrganizationalAssignment())
+          && request.resource.data.role in ["employee", "admin"]
+          && request.resource.data.status in ["pending", "approved", "blocked", "rejected"])
+        || (activeSupervisor()
+          && validOrganizationalAssignment()
+          && request.resource.data.uid == uid
+          && request.resource.data.role == "employee"
+          && request.resource.data.status == "approved"
+          && request.resource.data.isSupervisor == false
+          && existsAfter(/databases/$(database)/documents/accessRequests/$(uid))
+          && getAfter(/databases/$(database)/documents/accessRequests/$(uid)).data.uid == uid
+          && getAfter(/databases/$(database)/documents/accessRequests/$(uid)).data.status == "approved"
+          && getAfter(/databases/$(database)/documents/accessRequests/$(uid)).data.email == request.resource.data.email);
+      allow update: if request.resource.data.uid == resource.data.uid
+        && request.resource.data.role == resource.data.role
+        && ((activeAdmin()
+            && (!request.resource.data.diff(resource.data).affectedKeys()
+                .hasAny(["sectorId", "contactId"])
+              || validOrganizationalAssignment()))
+          || (activeSupervisor()
+            && request.auth.uid != uid
+            && resource.data.role == "employee"
+            && request.resource.data.isSupervisor == resource.data.isSupervisor
+            && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(["login", "agent", "sectorId", "contactId", "allowedProfileIds", "updatedAt"])
+            && (!request.resource.data.diff(resource.data).affectedKeys()
+                .hasAny(["sectorId", "contactId"])
+              || validOrganizationalAssignment())));
+      allow delete: if false;
+
+      // Private per-user configuration and calendar remain isolated.
+      match /configuration/{document=**} {
+        allow read: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
+        allow create: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
+        allow update: if approvedUser() && request.auth.uid == uid;
+        allow delete: if false;
+      }
+
+      match /calendar/{document=**} {
+        allow read: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
+        allow create: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
+        allow update: if approvedUser() && request.auth.uid == uid;
+        allow delete: if false;
+      }
+
+      // Appearance preferences are private to each approved collaborator.
+      match /preferences/{document=**} {
+        allow read: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
+        allow create: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
+        allow update: if approvedUser() && request.auth.uid == uid;
+        allow delete: if false;
+      }
+
+      // Each collaborator can customize only their own task instructions.
+      // Institutional templates remain protected in sharedTaskCatalog.
+      match /taskCustomizations/{taskId} {
+        allow read: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
+        allow create: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
+        allow update: if approvedUser() && request.auth.uid == uid;
+        allow delete: if false;
+      }
+
+      match /usefulLinks/{document=**} {
+        allow read: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
+        allow create: if activeAdmin() || (approvedUser() && request.auth.uid == uid);
+        allow update: if approvedUser() && request.auth.uid == uid;
+        allow delete: if false;
+      }
+
+      // Attendance rows are private, append-only records owned by each collaborator.
+      match /attendanceRows/{rowId} {
+        allow read: if approvedUser() && request.auth.uid == uid && resource.data.ownerUid == uid;
+        // Administradores podem restaurar linhas históricas preservando a data original.
+        // Colaboradores continuam limitados à própria conta e a gravações com horário do servidor.
+        allow create: if request.resource.data.ownerUid == uid
+          && request.resource.data.keys().hasOnly([
+            "ticket", "canal", "codigo", "nome", "tipo", "resolvido",
+            "subtipo", "motivoResolucao", "ownerUid", "createdAt"
+          ])
+          && request.resource.data.ticket is string
+          && request.resource.data.canal is string
+          && request.resource.data.codigo is string
+          && request.resource.data.nome is string
+          && request.resource.data.tipo is string
+          && request.resource.data.resolvido is string
+          && request.resource.data.subtipo is string
+          && request.resource.data.motivoResolucao is string
+          && ((activeAdmin() && request.resource.data.createdAt is timestamp)
+            || (approvedUser() && request.auth.uid == uid
+              && request.resource.data.createdAt == request.time));
+        allow update, delete: if false;
+      }
+
+      // Mutable current state belongs only to the approved owner.
+      // The envelope and owner UID cannot be changed by a client update.
+      match /operational/currentState {
+        allow read: if activeManager() || (approvedUser() && request.auth.uid == uid
+          && (!exists(/databases/$(database)/documents/users/$(uid)/operational/currentState)
+            || resource.data.ownerUid == uid));
+        allow create: if (activeAdmin() || (approvedUser() && request.auth.uid == uid))
+          && request.resource.data.ownerUid == uid
+          && request.resource.data.schemaVersion == 1
+          && request.resource.data.keys().hasOnly(["schemaVersion", "ownerUid", "estado", "updatedAt"])
+          && validCurrentOperationalProfile(uid);
+        allow update: if approvedUser() && request.auth.uid == uid
+          && resource.data.ownerUid == uid
+          && request.resource.data.ownerUid == resource.data.ownerUid
+          && request.resource.data.schemaVersion == 1
+          && request.resource.data.keys().hasOnly(["schemaVersion", "ownerUid", "estado", "updatedAt"])
+          && validCurrentOperationalProfile(uid);
+        allow delete: if false;
+      }
+
+      // Completed records and errata are append-only: creation is allowed for
+      // the approved owner, but clients cannot update or delete a saved version.
+      match /operational/history/entries/{historyId} {
+        allow read: if activeManager() || (approvedUser() && request.auth.uid == uid
+          && resource.data.ownerUid == uid);
+        allow create: if (activeAdmin() || (approvedUser() && request.auth.uid == uid))
+          && request.resource.data.ownerUid == uid
+          && request.resource.data.schemaVersion == 1
+          && request.resource.data.status == "CONCLUIDO"
+          && request.resource.data.data is string
+          && request.resource.data.versao is int
+          && request.resource.data.versao > 0
+          && request.resource.data.keys().hasAll([
+            "schemaVersion", "ownerUid", "id", "versao", "data", "perfil",
+            "tarefas", "emailsGlobais", "observacao", "status", "criadoEm",
+            "concluidoEm", "ultimaAlteracao", "origemVersao"
+          ]);
+        allow update, delete: if false;
+      }
+
+      // Managers can query the operational collection group. Employees remain
+      // restricted to documents carrying their own UID; writes stay governed
+      // by the specific current-state and append-only history matches above.
+      match /operational/{document=**} {
+        allow read: if activeManager()
+          || (approvedUser() && request.auth.uid == uid && resource.data.ownerUid == uid);
+        allow write: if false;
+      }
+    }
+
+    function sectorRecord(sectorId) {
+      return get(/databases/$(database)/documents/organizationSectors/$(sectorId));
+    }
+
+    function contactRecord(contactId) {
+      return get(/databases/$(database)/documents/organizationContacts/$(contactId));
+    }
+
+    // Shared operational index. Its owner and organizational snapshot are
+    // checked at creation and cannot be changed by a later client update.
+    function validExpedienteSnapshot() {
+      return request.resource.data.keys().hasAll([
+          "ownerUid", "date", "status", "sectorId", "sectorName",
+          "contactId", "contactName", "login", "agent", "assignment"
+        ])
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.assignment is map
+        && request.resource.data.assignment.uid == request.auth.uid
+        && request.resource.data.assignment.sectorId == userRecord(request.auth.uid).data.sectorId
+        && request.resource.data.sectorId == request.resource.data.assignment.sectorId
+        && request.resource.data.contactId == request.resource.data.assignment.contactId
+        && request.resource.data.sectorName == request.resource.data.assignment.sectorName
+        && request.resource.data.contactName == request.resource.data.assignment.contactName
+        && request.resource.data.login == request.resource.data.assignment.login
+        && request.resource.data.agent == request.resource.data.assignment.agent
+        && request.resource.data.assignment.login == userRecord(request.auth.uid).data.login
+        && request.resource.data.assignment.agent == userRecord(request.auth.uid).data.agent
+        && request.resource.data.assignment.contactId == userRecord(request.auth.uid).data.contactId
+        && exists(/databases/$(database)/documents/organizationSectors/$(request.resource.data.assignment.sectorId))
+        && sectorRecord(request.resource.data.assignment.sectorId).data.active == true
+        && sectorRecord(request.resource.data.assignment.sectorId).data.name == request.resource.data.assignment.sectorName
+        && exists(/databases/$(database)/documents/organizationContacts/$(request.resource.data.assignment.contactId))
+        && contactRecord(request.resource.data.assignment.contactId).data.active == true
+        && contactRecord(request.resource.data.assignment.contactId).data.sectorId == request.resource.data.assignment.sectorId
+        && contactRecord(request.resource.data.assignment.contactId).data.name == request.resource.data.assignment.contactName;
+    }
+
+    match /Expediente/{expedienteId} {
+      // A conclusão consulta o índice antes de decidir entre criar ou atualizar.
+      // O colaborador pode obter somente o caminho do próprio UID/data,
+      // mesmo quando o documento ainda não existe.
+      allow get: if approvedUser()
+        && (expedienteId.matches(request.auth.uid + '_[0-9]{4}-[0-9]{2}-[0-9]{2}')
+          || resource.data.ownerUid == request.auth.uid
+          || activeAdmin()
+          || activeSupervisor());
+
+      // Consultas em lista continuam limitadas aos próprios registros ou gestores.
+      allow list: if approvedUser()
+        && (resource.data.ownerUid == request.auth.uid
+          || activeAdmin()
+          || activeSupervisor());
+
+      allow create: if (approvedUser() && validExpedienteSnapshot())
+        || (activeAdmin()
+          && request.resource.data.keys().hasAll([
+            "ownerUid", "date", "status", "sectorId", "sectorName",
+            "contactId", "contactName", "login", "agent", "assignment"
+          ])
+          && request.resource.data.ownerUid is string
+          && request.resource.data.date is string
+          && request.resource.data.date.matches("[0-9]{4}-[0-9]{2}-[0-9]{2}")
+          && request.resource.data.status is string
+          && request.resource.data.status.size() > 0
+          && request.resource.data.sectorId is string
+          && request.resource.data.sectorName is string
+          && request.resource.data.contactId is string
+          && request.resource.data.contactName is string
+          && request.resource.data.login is string
+          && request.resource.data.agent is string
+          && request.resource.data.assignment is map
+          && request.resource.data.assignment.uid == request.resource.data.ownerUid
+          && request.resource.data.assignment.sectorId == request.resource.data.sectorId
+          && request.resource.data.assignment.sectorName == request.resource.data.sectorName
+          && request.resource.data.assignment.contactId == request.resource.data.contactId
+          && request.resource.data.assignment.contactName == request.resource.data.contactName
+          && request.resource.data.assignment.login == request.resource.data.login
+          && request.resource.data.assignment.agent == request.resource.data.agent);
+
+      // The index can update only its operational status/timestamp. Ownership,
+      // date, identity and historical assignment snapshot are immutable.
+      allow update: if approvedUser()
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["status", "completedAt"]);
+
+      // Operational history/index records are not deleted by the client.
+      allow delete: if false;
+    }
+
+    match /accessRequests/{uid} {
+      allow create: if activeAdmin()
+        || (ownUserDocument(uid)
+          && allowedCorporateDomain()
+          && request.resource.data.keys().hasOnly(["uid", "email", "status", "requestedAt"])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.email == request.auth.token.email
+          && request.resource.data.status == "pending");
+      allow read: if ownUserDocument(uid) || activeManager();
+      // Supervisors may decide pending access requests, but only administrators
+      // may mark an access request as blocked. Account status in /users is admin-only.
+      allow update: if request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["status", "decidedAt", "reason"])
+        && ((activeAdmin()
+            && request.resource.data.status in ["approved", "rejected", "blocked"])
+          || (activeSupervisor()
+            && request.resource.data.status in ["approved", "rejected"]));
+      allow delete: if false;
+    }
+
+    match /organizationSectors/{sectorId} {
+      allow read: if approvedUser();
+      allow create, update: if activeManager();
+      allow delete: if false;
+    }
+
+    match /organizationContacts/{contactId} {
+      allow read: if approvedUser();
+      allow create: if (activeManager()
+          && request.resource.data.sectorId is string
+          && exists(/databases/$(database)/documents/organizationSectors/$(request.resource.data.sectorId))
+          && get(/databases/$(database)/documents/organizationSectors/$(request.resource.data.sectorId)).data.active == true)
+        || (activeAdmin()
+          && request.resource.data.sectorId is string
+          && exists(/databases/$(database)/documents/organizationSectors/$(request.resource.data.sectorId))
+          && get(/databases/$(database)/documents/organizationSectors/$(request.resource.data.sectorId)).data.active == false);
+      allow update: if activeManager()
+        && request.resource.data.sectorId == resource.data.sectorId
+        && (request.resource.data.active != true
+          || (resource.data.sectorId is string
+            && exists(/databases/$(database)/documents/organizationSectors/$(resource.data.sectorId))
+            && get(/databases/$(database)/documents/organizationSectors/$(resource.data.sectorId)).data.active == true));
+      allow delete: if false;
+    }
+
+    // Shared task/profile catalogue; each user's allowed IDs are stored on
+    // their organizational record and enforced by the application.
+    match /sharedTaskCatalog/{document=**} {
+      allow read: if approvedUser();
+      allow write: if activeManager();
+    }
+
+    // Legacy catalog remains manager-only. Scoped publishers may edit
+    // every campaign in the shared catalog while their permission is active.
+    match /sharedPromotions/current {
+      allow read: if approvedUser();
+      allow write: if activeManager();
+    }
+
+    function validPromotionFields(data) {
+      return data.keys().hasAll([
+          "id", "name", "category", "benefit", "eligible", "conditions",
+          "startDate", "endDate", "status", "createdByUid", "createdByName",
+          "createdAt", "updatedByUid", "updatedByName", "updatedAt"
+        ])
+        && data.keys().hasOnly([
+          "id", "name", "category", "benefit", "eligible", "conditions",
+          "startDate", "endDate", "status", "createdByUid", "createdByName",
+          "createdAt", "updatedByUid", "updatedByName", "updatedAt", "lastNotificationId", "ownerSectorId", "ownerContactId"
+        ])
+        && data.id is string && data.id.size() > 0
+        && data.name is string && data.name.size() > 0
+        && data.category is string
+        && data.benefit is string
+        && data.eligible is string
+        && data.conditions is string
+        && data.startDate is string
+        && data.endDate is string
+        && data.status in ["active", "suspended", "closed"]
+        && data.createdByUid is string
+        && data.createdByName is string
+        && data.updatedByUid is string
+        && data.updatedByName is string
+        && (!data.keys().hasAny(["lastNotificationId"]) || data.lastNotificationId is string)
+        && (!data.keys().hasAny(["ownerSectorId"]) || data.ownerSectorId is string)
+        && (!data.keys().hasAny(["ownerContactId"]) || data.ownerContactId is string);
+    }
+
+    function validPromotionNotificationLink(promotionId) {
+      let notificationId = request.resource.data.lastNotificationId;
+      let notificationPath = /databases/$(database)/documents/sharedNotifications/$(notificationId);
+      let notificationData = getAfter(notificationPath).data;
+      return notificationId is string
+        && existsAfter(notificationPath)
+        && notificationData.category == "promocoes"
+        && notificationData.target == "promocoes"
+        && notificationData.referenceId == promotionId
+        && notificationData.message == "Promoção - " + request.resource.data.name
+          + (request.resource.data.status == "active" ? " - Em Andamento" : " - Encerrado")
+        && notificationData.createdByUid == request.auth.uid
+        && notificationData.createdAt == request.time;
+    }
+
+    match /sharedPromotions/{promotionId} {
+      allow read: if approvedUser();
+      // Recuperação administrativa preserva autoria e datas dos registros antigos.
+      allow create: if activeAdmin()
+        && validPromotionFields(request.resource.data)
+        && request.resource.data.id == promotionId
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && ((!request.resource.data.keys().hasAny(["ownerSectorId", "ownerContactId"]))
+          || (request.resource.data.ownerSectorId is string
+            && request.resource.data.ownerContactId is string));
+      allow create: if approvedUser()
+        && (activeManager() || promotionsPublisher())
+        && validPromotionFields(request.resource.data)
+        && request.resource.data.id == promotionId
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.keys().hasAll(["ownerSectorId", "ownerContactId"])
+        && request.resource.data.ownerSectorId == userRecord(request.auth.uid).data.sectorId
+        && request.resource.data.ownerContactId == userRecord(request.auth.uid).data.contactId
+
+        && (!request.resource.data.keys().hasAny(["lastNotificationId"])
+          || validPromotionNotificationLink(promotionId));
+      allow update: if approvedUser()
+        && canEditScopedRecord("promotions", resource.data)
+        && validPromotionFields(request.resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "name", "category", "benefit", "eligible", "conditions", "startDate",
+          "endDate", "status", "updatedByUid", "updatedByName", "updatedAt", "lastNotificationId"
+        ])
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.createdByUid == resource.data.createdByUid
+        && request.resource.data.createdByName == resource.data.createdByName
+        && request.resource.data.createdAt == resource.data.createdAt
+        && (!resource.data.keys().hasAny(["ownerSectorId"]) || request.resource.data.ownerSectorId == resource.data.ownerSectorId)
+        && (!resource.data.keys().hasAny(["ownerContactId"]) || request.resource.data.ownerContactId == resource.data.ownerContactId)
+        && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.updatedAt == request.time
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(["lastNotificationId"])
+          || validPromotionNotificationLink(promotionId));
+      allow delete: if activeManager();
+    }
+
+    function validDelinquencyNoticeNotification(notificationId, noticeId) {
+      let path = /databases/$(database)/documents/sharedNotifications/$(notificationId);
+      return existsAfter(path)
+        && getAfter(path).data.category == "cobranca"
+        && getAfter(path).data.target == "inadimplencia"
+        && getAfter(path).data.message == "Inadimplência - " + getAfter(/databases/$(database)/documents/delinquencyNotices/$(noticeId)).data.title
+        && getAfter(path).data.noticeId == noticeId
+        && getAfter(path).data.createdByUid == request.auth.uid
+        && getAfter(path).data.createdAt == request.time;
+    }
+
+    match /delinquencyNotices/{noticeId} {
+      allow read: if approvedUser();
+      // Recuperação administrativa preserva autoria, datas e referências históricas.
+      allow create: if activeAdmin()
+        && request.resource.data.keys().hasAll([
+          "type", "date", "title", "dueDate", "customerCount", "overdueDays",
+          "validUntil", "status", "createdByUid", "createdAt", "updatedByUid", "updatedAt", "notificationId"
+        ])
+        && request.resource.data.keys().hasOnly([
+          "type", "date", "title", "dueDate", "customerCount", "overdueDays",
+          "validUntil", "status", "createdByUid", "createdAt", "updatedByUid", "updatedAt", "notificationId",
+          "ownerSectorId", "ownerContactId"
+        ])
+        && request.resource.data.type in ["reducao", "suspensao"]
+        && request.resource.data.date is string
+        && request.resource.data.title is string
+        && request.resource.data.dueDate is string
+        && request.resource.data.customerCount is int
+        && request.resource.data.customerCount >= 0
+        && request.resource.data.overdueDays is int
+        && request.resource.data.overdueDays >= 0
+        && request.resource.data.validUntil is string
+        && request.resource.data.status in ["ongoing", "completed"]
+        && request.resource.data.createdByUid is string
+        && request.resource.data.updatedByUid is string
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.notificationId is string
+        && ((!request.resource.data.keys().hasAny(["ownerSectorId", "ownerContactId"]))
+          || (request.resource.data.ownerSectorId is string
+            && request.resource.data.ownerContactId is string))
+        && request.resource.data.validUntil >= request.resource.data.date;
+      allow create: if approvedUser()
+        && (activeManager() || delinquencyPublisher())
+        && request.resource.data.keys().hasAll([
+          "type", "date", "title", "dueDate", "customerCount", "overdueDays",
+          "validUntil", "status", "createdByUid", "createdAt", "updatedByUid", "updatedAt", "notificationId"
+        ])
+        && request.resource.data.keys().hasOnly([
+          "type", "date", "title", "dueDate", "customerCount", "overdueDays",
+          "validUntil", "status", "createdByUid", "createdAt", "updatedByUid", "updatedAt", "notificationId",
+          "ownerSectorId", "ownerContactId"
+        ])
+        && request.resource.data.type in ["reducao", "suspensao"]
+        && request.resource.data.date is string
+        && request.resource.data.title is string
+        && request.resource.data.dueDate is string
+        && request.resource.data.customerCount is int
+        && request.resource.data.customerCount >= 0
+        && request.resource.data.overdueDays is int
+        && request.resource.data.overdueDays >= 0
+        && request.resource.data.validUntil is string
+        && request.resource.data.status in ["ongoing", "completed"]
+
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.keys().hasAll(["ownerSectorId", "ownerContactId"])
+        && request.resource.data.ownerSectorId == userRecord(request.auth.uid).data.sectorId
+        && request.resource.data.ownerContactId == userRecord(request.auth.uid).data.contactId
+        && request.resource.data.validUntil >= request.resource.data.date
+        && validDelinquencyNoticeNotification(request.resource.data.notificationId, noticeId);
+      allow update: if approvedUser()
+        && canEditScopedRecord("delinquency", resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "type", "date", "title", "dueDate", "customerCount", "overdueDays",
+          "validUntil", "status", "updatedByUid", "updatedAt"
+        ])
+        && request.resource.data.type in ["reducao", "suspensao"]
+        && request.resource.data.date is string
+        && request.resource.data.title is string
+        && request.resource.data.dueDate is string
+        && request.resource.data.customerCount is int
+        && request.resource.data.customerCount >= 0
+        && request.resource.data.overdueDays is int
+        && request.resource.data.overdueDays >= 0
+        && request.resource.data.validUntil is string
+        && request.resource.data.status in ["ongoing", "completed"]
+        && (!resource.data.keys().hasAny(["ownerSectorId"]) || request.resource.data.ownerSectorId == resource.data.ownerSectorId)
+        && (!resource.data.keys().hasAny(["ownerContactId"]) || request.resource.data.ownerContactId == resource.data.ownerContactId)
+        && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.validUntil >= request.resource.data.date;
+      allow delete: if false;
+    }
+
+    // Shared notifications are visible to every approved collaborator.
+    // Only administrators and supervisors may publish institutional notices.
+    function validMaintenanceNotificationLink(notificationId) {
+      let maintenanceId = request.resource.data.maintenanceId;
+      let maintenancePath = /databases/$(database)/documents/externalMaintenances/$(maintenanceId);
+      let maintenanceData = getAfter(maintenancePath).data;
+      return maintenanceId is string
+        && notificationId is string
+        && request.resource.data.keys().hasOnly([
+          "category", "message", "target", "maintenanceId", "createdByUid", "createdAt"
+        ])
+        && existsAfter(maintenancePath)
+        && maintenanceData.lastNotificationId == notificationId
+        && maintenanceData.updatedByUid == request.auth.uid
+        // The maintenance write itself enforces the publisher's scope.
+        // Requiring its server timestamp here proves this notification was
+        // committed in the same atomic batch without re-evaluating the full scope tree.
+        && maintenanceData.updatedAt == request.time
+        && request.resource.data.category == "manutencoes"
+        && request.resource.data.target == "manutencoes"
+        && request.resource.data.message == "Manutenção - " + maintenanceData.title
+          + " - " + (maintenanceData.status == "ongoing" ? "Em Andamento" : "Concluído");
+    }
+
+    function validPromotionNotification(notificationId) {
+      let promotionPath = /databases/$(database)/documents/sharedPromotions/$(request.resource.data.referenceId);
+      let promotionData = getAfter(promotionPath).data;
+      return request.resource.data.referenceId is string
+        && notificationId is string
+        && existsAfter(promotionPath)
+        && promotionData.lastNotificationId == notificationId
+        && promotionData.updatedByUid == request.auth.uid
+        && canEditScopedRecord("promotions", promotionData)
+        && promotionData.status in ["active", "closed"]
+        && request.resource.data.message == "Promoção - " + promotionData.name
+          + (promotionData.status == "active" ? " - Em Andamento" : " - Encerrado");
+    }
+
+    match /sharedNotifications/{notificationId} {
+      allow read: if approvedUser();
+      // Recuperação administrativa aceita metadados históricos, sem liberar edição.
+      allow create: if activeAdmin()
+        && request.resource.data.keys().hasOnly([
+          "category", "message", "target", "referenceId", "noticeId", "maintenanceId", "createdByUid", "createdAt"
+        ])
+        && request.resource.data.category in ["cobranca", "promocoes", "manutencoes"]
+        && request.resource.data.target in ["inadimplencia", "promocoes", "manutencoes"]
+        && request.resource.data.message is string
+        && request.resource.data.createdByUid is string
+        && request.resource.data.createdAt is timestamp
+        && ((request.resource.data.category == "promocoes"
+            && request.resource.data.target == "promocoes"
+            && request.resource.data.referenceId is string
+            && !request.resource.data.keys().hasAny(["noticeId", "maintenanceId"]))
+          || (request.resource.data.category == "cobranca"
+            && request.resource.data.target == "inadimplencia"
+            && request.resource.data.noticeId is string
+            && !request.resource.data.keys().hasAny(["referenceId", "maintenanceId"]))
+          || (request.resource.data.category == "manutencoes"
+            && request.resource.data.target == "manutencoes"
+            && request.resource.data.maintenanceId is string
+            && !request.resource.data.keys().hasAny(["referenceId", "noticeId"])));
+    }
+
+    match /sharedNotifications/{notificationId} {
+      allow read: if approvedUser();
+      allow create: if (
+          ((activeManager() || (request.resource.data.category == "promocoes" && promotionsPublisher()))
+            && request.resource.data.category == "promocoes"
+            && request.resource.data.target == "promocoes"
+            && request.resource.data.keys().hasOnly(["category", "message", "target", "referenceId", "createdByUid", "createdAt"])
+            && validPromotionNotification(notificationId))
+          || ((activeManager() || delinquencyPublisher())
+            && request.resource.data.category == "cobranca"
+            && request.resource.data.target == "inadimplencia"
+            && request.resource.data.keys().hasAll(["category", "message", "target", "noticeId", "createdByUid", "createdAt"])
+            && request.resource.data.keys().hasOnly(["category", "message", "target", "noticeId", "createdByUid", "createdAt"])
+            && request.resource.data.noticeId is string
+            && !exists(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.noticeId))
+            && existsAfter(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.noticeId))
+            && getAfter(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.noticeId)).data.notificationId == notificationId
+            && getAfter(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.noticeId)).data.createdByUid == request.auth.uid
+            && request.resource.data.message == "Inadimplência - "
+              + getAfter(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.noticeId)).data.title)
+          || ((activeManager() || maintenancePublisher())
+            && request.resource.data.category == "manutencoes"
+            && request.resource.data.target == "manutencoes"
+            && validMaintenanceNotificationLink(notificationId)))
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.category in ["cobranca", "promocoes", "manutencoes"]
+        && request.resource.data.target in ["inadimplencia", "promocoes", "manutencoes"]
+        && request.resource.data.message is string
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    function validMaintenanceNotification(maintenanceId) {
+      let notificationPath = /databases/$(database)/documents/sharedNotifications/$(request.resource.data.lastNotificationId);
+      let notificationData = getAfter(notificationPath).data;
+      let maintenanceData = getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)).data;
+      return request.resource.data.lastNotificationId is string
+        && existsAfter(notificationPath)
+        && notificationData.keys().hasOnly(["category", "message", "target", "maintenanceId", "createdByUid", "createdAt"])
+        && notificationData.category == "manutencoes"
+        && notificationData.target == "manutencoes"
+        && notificationData.message == "Manutenção - " + maintenanceData.title
+          + " - " + (maintenanceData.status == "ongoing" ? "Em Andamento" : "Concluído")
+        && notificationData.maintenanceId == maintenanceId
+        && notificationData.createdByUid == request.auth.uid
+        && notificationData.createdAt == request.time;
+    }
+
+    function validMaintenanceHistory(maintenanceId, isCreate) {
+      let historyPath = /databases/$(database)/documents/externalMaintenances/$(maintenanceId)/history/$(request.resource.data.lastHistoryId);
+      let historyData = getAfter(historyPath).data;
+      return request.resource.data.lastHistoryId is string
+        && existsAfter(historyPath)
+        && historyData.keys().hasAll(["maintenanceId", "changedByUid", "changedByName", "changedAt", "before", "after"])
+        && historyData.keys().hasOnly(["maintenanceId", "changedByUid", "changedByName", "changedAt", "before", "after"])
+        && historyData.maintenanceId == maintenanceId
+        && historyData.changedByUid == request.auth.uid
+        && historyData.changedByName == userRecord(request.auth.uid).data.agent
+        && historyData.changedAt == request.time
+        && historyData.after is map
+        && historyData.after.keys().hasOnly(["title", "date", "location", "description", "status"])
+        && historyData.after.title == request.resource.data.title
+        && historyData.after.date == request.resource.data.date
+        && historyData.after.location == request.resource.data.location
+        && historyData.after.description == request.resource.data.description
+        && historyData.after.status == request.resource.data.status
+        && (isCreate
+          ? historyData.before == null
+          : historyData.before is map
+            && historyData.before.keys().hasOnly(["title", "date", "location", "description", "status"])
+            && historyData.before.title == resource.data.title
+            && historyData.before.date == resource.data.date
+            && historyData.before.location == resource.data.location
+            && historyData.before.description == resource.data.description
+            && historyData.before.status == resource.data.status);
+    }
+
+    match /externalMaintenances/{maintenanceId} {
+      allow read: if approvedUser();
+      // Recuperação administrativa preserva os metadados históricos da manutenção.
+      allow create: if activeAdmin()
+        && request.resource.data.keys().hasAll([
+          "title", "date", "location", "description", "status",
+          "createdByUid", "createdAt", "createdByName", "updatedByUid", "updatedAt", "updatedByName",
+          "lastHistoryId", "lastNotificationId"
+        ])
+        && request.resource.data.keys().hasOnly([
+          "title", "date", "location", "description", "status",
+          "createdByUid", "createdAt", "createdByName", "updatedByUid", "updatedAt", "updatedByName",
+          "lastHistoryId", "lastNotificationId", "ownerSectorId", "ownerContactId"
+        ])
+        && request.resource.data.title is string
+        && request.resource.data.date is string
+        && request.resource.data.location is string
+        && request.resource.data.description is string
+        && request.resource.data.status in ["ongoing", "completed"]
+        && request.resource.data.createdByUid is string
+        && request.resource.data.updatedByUid is string
+        && request.resource.data.createdByName is string
+        && request.resource.data.updatedByName is string
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.lastHistoryId is string
+        && request.resource.data.lastNotificationId is string
+        && ((!request.resource.data.keys().hasAny(["ownerSectorId", "ownerContactId"]))
+          || (request.resource.data.ownerSectorId is string
+            && request.resource.data.ownerContactId is string));
+    }
+
+    match /externalMaintenances/{maintenanceId} {
+      allow read: if approvedUser();
+      allow create: if (activeManager() || maintenancePublisher())
+        && request.resource.data.keys().hasOnly([
+          "title", "date", "location", "description", "status",
+          "createdByUid", "createdAt", "createdByName", "updatedByUid", "updatedAt", "updatedByName",
+          "lastHistoryId", "lastNotificationId", "ownerSectorId", "ownerContactId"
+        ])
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.keys().hasAll(["ownerSectorId", "ownerContactId"])
+        && request.resource.data.ownerSectorId == userRecord(request.auth.uid).data.sectorId
+        && request.resource.data.ownerContactId == userRecord(request.auth.uid).data.contactId
+        && request.resource.data.createdByName is string
+        && request.resource.data.updatedByName is string
+        && (!request.resource.data.keys().hasAny(["ownerSectorId"]) || request.resource.data.ownerSectorId == userRecord(request.auth.uid).data.sectorId)
+        && (!request.resource.data.keys().hasAny(["ownerContactId"]) || request.resource.data.ownerContactId == userRecord(request.auth.uid).data.contactId)
+        && request.resource.data.status in ["ongoing", "completed"]
+        && request.resource.data.title is string
+        && request.resource.data.date is string
+        && request.resource.data.location is string
+        && request.resource.data.description is string
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && validMaintenanceHistory(maintenanceId, true)
+        && validMaintenanceNotification(maintenanceId);
+      allow update: if canEditScopedRecord("maintenance", resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "title", "date", "location", "description", "status",
+          "updatedByUid", "updatedAt", "updatedByName", "lastHistoryId", "lastNotificationId"
+        ])
+        && request.resource.data.diff(resource.data).affectedKeys().hasAny(["title", "date", "location", "description", "status"])
+        && request.resource.data.createdByUid == resource.data.createdByUid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && (!resource.data.keys().hasAny(["ownerSectorId"]) || request.resource.data.ownerSectorId == resource.data.ownerSectorId)
+        && (!resource.data.keys().hasAny(["ownerContactId"]) || request.resource.data.ownerContactId == resource.data.ownerContactId)
+        && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.status in ["ongoing", "completed"]
+        && request.resource.data.title is string
+        && request.resource.data.date is string
+        && request.resource.data.location is string
+        && request.resource.data.description is string
+        && validMaintenanceHistory(maintenanceId, false)
+        && validMaintenanceNotification(maintenanceId);
+      allow delete: if false;
+      match /history/{entryId} {
+        allow read: if approvedUser();
+        // Somente administradores podem recuperar entradas históricas preservadas.
+        allow create: if activeAdmin()
+            && exists(/databases/$(database)/documents/externalMaintenances/$(maintenanceId))
+            && request.resource.data.maintenanceId == maintenanceId
+            && request.resource.data.keys().hasAll(["maintenanceId", "changedByUid", "changedByName", "changedAt", "before", "after"])
+            && request.resource.data.keys().hasOnly(["maintenanceId", "changedByUid", "changedByName", "changedAt", "before", "after"])
+            && request.resource.data.changedByUid is string
+            && request.resource.data.changedByName is string
+            && request.resource.data.changedAt is timestamp
+            && (request.resource.data.before == null || request.resource.data.before is map)
+            && request.resource.data.after is map;
+        allow create: if (request.resource.data.before == null
+            ? canEditScopedRecord("maintenance",
+              getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)).data)
+            : canEditScopedRecord("maintenance",
+              get(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)).data))
+          && request.resource.data.keys().hasAll(["maintenanceId", "changedByUid", "changedByName", "changedAt", "before", "after"])
+          && request.resource.data.keys().hasOnly(["maintenanceId", "changedByUid", "changedByName", "changedAt", "before", "after"])
+          && request.resource.data.maintenanceId == maintenanceId
+          && request.resource.data.changedByUid == request.auth.uid
+          && request.resource.data.changedByName == userRecord(request.auth.uid).data.agent
+          && request.resource.data.changedAt == request.time
+          && (request.resource.data.before == null || request.resource.data.before is map)
+          && request.resource.data.after is map
+          && getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)).data.lastHistoryId == entryId;
+        allow update, delete: if false;
+      }
+    }
+
+    match /featurePermissions/{featureId} {
+      allow read: if approvedUser();
+      // Recuperação administrativa preserva autor e data da configuração histórica.
+      allow create: if activeAdmin()
+        && featureId == "maintenance"
+        && request.resource.data.keys().hasOnly([
+          "schemaVersion", "enabled", "sectorIds", "wholeSectorIds", "contactIds",
+          "agentIds", "updatedAt", "updatedByUid"
+        ])
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.enabled is bool
+        && request.resource.data.sectorIds is list
+        && request.resource.data.wholeSectorIds is list
+        && request.resource.data.contactIds is list
+        && request.resource.data.agentIds is list
+        && request.resource.data.updatedByUid is string
+        && request.resource.data.updatedAt is timestamp;
+      allow create, update: if activeManager()
+        && featureId == "maintenance"
+        && request.resource.data.keys().hasOnly(["schemaVersion", "enabled", "sectorIds", "wholeSectorIds", "contactIds", "agentIds", "updatedAt", "updatedByUid"])
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.enabled is bool
+        && request.resource.data.sectorIds is list
+        && request.resource.data.wholeSectorIds is list
+        && request.resource.data.contactIds is list
+        && request.resource.data.agentIds is list
+        && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    function validOverviewNoticeScope(scope) {
+      return scope is map
+        && scope.keys().hasOnly(["enabled", "wholeSectorIds", "contactIds", "agentIds"])
+        && scope.keys().hasAll(["enabled", "wholeSectorIds", "contactIds", "agentIds"])
+        && scope.enabled is bool
+        && scope.wholeSectorIds is list
+        && scope.contactIds is list
+        && scope.agentIds is list;
+    }
+
+    // Only managers can configure the three independent Visão Geral notice scopes.
+    match /featurePermissions/{featureId} {
+      allow read: if approvedUser();
+      // Recuperação administrativa da configuração de avisos com estrutura validada.
+      allow create: if activeAdmin()
+        && featureId == "overviewNotices"
+        && request.resource.data.keys().hasOnly(["schemaVersion", "notices", "updatedAt", "updatedByUid"])
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.notices is map
+        && request.resource.data.notices.keys().hasOnly(["longCalls", "googleChat", "otherHelp"])
+        && request.resource.data.notices.keys().hasAll(["longCalls", "googleChat", "otherHelp"])
+        && validOverviewNoticeScope(request.resource.data.notices.longCalls)
+        && validOverviewNoticeScope(request.resource.data.notices.googleChat)
+        && validOverviewNoticeScope(request.resource.data.notices.otherHelp)
+        && request.resource.data.updatedByUid is string
+        && request.resource.data.updatedAt is timestamp;
+      allow create, update: if activeManager()
+        && featureId == "overviewNotices"
+        && request.resource.data.keys().hasOnly(["schemaVersion", "notices", "updatedAt", "updatedByUid"])
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.notices is map
+        && request.resource.data.notices.keys().hasOnly(["longCalls", "googleChat", "otherHelp"])
+        && request.resource.data.notices.keys().hasAll(["longCalls", "googleChat", "otherHelp"])
+        && validOverviewNoticeScope(request.resource.data.notices.longCalls)
+        && validOverviewNoticeScope(request.resource.data.notices.googleChat)
+        && validOverviewNoticeScope(request.resource.data.notices.otherHelp)
+        && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    // Supervisors and administrators manage scoped permissions for promotion publishers.
+    match /featurePermissions/{featureId} {
+      allow read: if approvedUser();
+      // Recuperação administrativa preserva autor e data da configuração histórica.
+      allow create: if activeAdmin()
+        && featureId == "promotions"
+        && request.resource.data.keys().hasOnly([
+          "schemaVersion", "enabled", "sectorIds", "wholeSectorIds", "contactIds",
+          "agentIds", "updatedAt", "updatedByUid"
+        ])
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.enabled is bool
+        && request.resource.data.sectorIds is list
+        && request.resource.data.wholeSectorIds is list
+        && request.resource.data.contactIds is list
+        && request.resource.data.agentIds is list
+        && request.resource.data.updatedByUid is string
+        && request.resource.data.updatedAt is timestamp;
+      allow create, update: if activeManager()
+        && featureId == "promotions"
+        && request.resource.data.keys().hasOnly(["schemaVersion", "enabled", "sectorIds", "wholeSectorIds", "contactIds", "agentIds", "updatedAt", "updatedByUid"])
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.enabled is bool
+        && request.resource.data.sectorIds is list
+        && request.resource.data.wholeSectorIds is list
+        && request.resource.data.contactIds is list
+        && request.resource.data.agentIds is list
+        && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    // Supervisors and administrators manage scoped permissions for delinquency notices.
+    match /featurePermissions/{featureId} {
+      allow read: if approvedUser();
+      allow create: if featureId == "delinquency"
+        && request.resource.data.keys().hasOnly(["schemaVersion", "enabled", "sectorIds", "wholeSectorIds", "contactIds", "agentIds", "updatedAt", "updatedByUid"])
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.enabled is bool
+        && request.resource.data.sectorIds is list
+        && request.resource.data.wholeSectorIds is list
+        && request.resource.data.contactIds is list
+        && request.resource.data.agentIds is list
+        && ((activeManager()
+          && request.resource.data.updatedByUid == request.auth.uid
+          && request.resource.data.updatedAt == request.time)
+          || (activeAdmin()
+            && request.resource.data.updatedByUid is string
+            && request.resource.data.updatedAt is timestamp));
+      allow update: if activeManager()
+        && featureId == "delinquency"
+        && request.resource.data.keys().hasOnly(["schemaVersion", "enabled", "sectorIds", "wholeSectorIds", "contactIds", "agentIds", "updatedAt", "updatedByUid"])
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.enabled is bool
+        && request.resource.data.sectorIds is list
+        && request.resource.data.wholeSectorIds is list
+        && request.resource.data.contactIds is list
+        && request.resource.data.agentIds is list
+        && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    function validAttachmentPayload() {
+      return request.resource.data.keys().hasAll(["targetType","targetId","name","mimeType","size","data","createdByUid","createdAt"])
+        && request.resource.data.keys().hasOnly(["targetType","targetId","name","mimeType","size","data","createdByUid","createdAt"])
+        && request.resource.data.targetType in ["task-creation","task-roteiro","maintenance","promotion","delinquency"]
+        && request.resource.data.targetId is string
+        && request.resource.data.targetId.size() > 0
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 180
+        && request.resource.data.mimeType is string
+        && request.resource.data.size is int
+        && request.resource.data.size > 0
+        && request.resource.data.size <= 512000
+        && request.resource.data.data is string
+        && request.resource.data.data.size() <= 700000
+        && request.resource.data.createdByUid is string
+        && request.resource.data.createdAt is timestamp;
+    }
+
+    // Attachments follow the scope of an existing record. A publisher may
+    // also attach files to their own not-yet-saved draft.
+    match /sharedAttachments/{attachmentId} {
+      // Published-record attachments are shared with approved collaborators.
+      // Files uploaded to an unsaved draft remain visible only to their author
+      // (or an administrator) until the target record exists.
+      allow read: if approvedUser()
+        && (activeAdmin()
+          || resource.data.targetType in ["task-creation", "task-roteiro"]
+          || resource.data.createdByUid == request.auth.uid
+          || (resource.data.targetType == "maintenance"
+            && exists(/databases/$(database)/documents/externalMaintenances/$(resource.data.targetId)))
+          || (resource.data.targetType == "promotion"
+            && exists(/databases/$(database)/documents/sharedPromotions/$(resource.data.targetId)))
+          || (resource.data.targetType == "delinquency"
+            && exists(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId))));
+      // Keep one create expression to avoid evaluating overlapping allow
+      // statements twice. Admins may restore historical authorship; all
+      // other uploads require current identity, timestamp and scoped rights.
+      allow create: if validAttachmentPayload()
+        && (activeAdmin()
+          || (request.resource.data.createdByUid == request.auth.uid
+            && request.resource.data.createdAt == request.time
+            && (
+              (activeSupervisor()
+                && request.resource.data.targetType in ["task-creation", "task-roteiro"])
+              || (request.resource.data.targetType == "maintenance"
+                && maintenancePublisher()
+                && (!exists(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.targetId))
+                  || publisherAuthorizedForRecord("maintenance",
+                    get(/databases/$(database)/documents/externalMaintenances/$(request.resource.data.targetId)).data)))
+              || (request.resource.data.targetType == "delinquency"
+                && delinquencyPublisher()
+                && (!exists(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId))
+                  || publisherAuthorizedForRecord("delinquency",
+                    get(/databases/$(database)/documents/delinquencyNotices/$(request.resource.data.targetId)).data)))
+              || (request.resource.data.targetType == "promotion"
+                && promotionsPublisher()
+                && (!exists(/databases/$(database)/documents/sharedPromotions/$(request.resource.data.targetId))
+                  || publisherAuthorizedForRecord("promotions",
+                    get(/databases/$(database)/documents/sharedPromotions/$(request.resource.data.targetId)).data)))
+            )));
+      allow update: if false;
+      allow delete: if activeManager()
+        || (resource.data.targetType == "maintenance"
+          && maintenancePublisher()
+          && ((!exists(/databases/$(database)/documents/externalMaintenances/$(resource.data.targetId))
+              && resource.data.createdByUid == request.auth.uid)
+            || (exists(/databases/$(database)/documents/externalMaintenances/$(resource.data.targetId))
+              && publisherAuthorizedForRecord("maintenance",
+                get(/databases/$(database)/documents/externalMaintenances/$(resource.data.targetId)).data))))
+        || (resource.data.targetType == "delinquency"
+          && delinquencyPublisher()
+          && ((!exists(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId))
+              && resource.data.createdByUid == request.auth.uid)
+            || (exists(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId))
+              && publisherAuthorizedForRecord("delinquency",
+                get(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId)).data))))
+        || (resource.data.targetType == "promotion"
+          && promotionsPublisher()
+          && ((!exists(/databases/$(database)/documents/sharedPromotions/$(resource.data.targetId))
+              && resource.data.createdByUid == request.auth.uid)
+            || (exists(/databases/$(database)/documents/sharedPromotions/$(resource.data.targetId))
+              && publisherAuthorizedForRecord("promotions",
+                get(/databases/$(database)/documents/sharedPromotions/$(resource.data.targetId)).data))));
+    }
+
+    // Shared attendance subtype catalog: approved collaborators may add suggestions;
+    // only administrators and supervisors may deactivate them.
+    match /attendanceSubtypes/{subtypeId} {
+      allow read: if approvedUser();
+      // Administradores podem recuperar o catálogo histórico, inclusive itens inativos.
+      allow create: if activeAdmin()
+        && request.resource.data.keys().hasAll(["name", "normalized", "active", "createdBy", "createdAt"])
+        && request.resource.data.keys().hasOnly([
+          "name", "normalized", "active", "createdBy", "createdAt", "deactivatedAt", "deactivatedBy"
+        ])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.normalized == subtypeId
+        && request.resource.data.active is bool
+        && request.resource.data.createdBy is string
+        && request.resource.data.createdAt is timestamp
+        && (!request.resource.data.keys().hasAny(["deactivatedAt"])
+          || request.resource.data.deactivatedAt is timestamp)
+        && (!request.resource.data.keys().hasAny(["deactivatedBy"])
+          || request.resource.data.deactivatedBy is string);
+      allow create: if approvedUser()
+        && request.resource.data.keys().hasOnly(["name", "normalized", "active", "createdBy", "createdAt"])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.normalized == subtypeId
+        && request.resource.data.active == true
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+      allow update: if activeManager()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["active", "deactivatedAt", "deactivatedBy"])
+        && request.resource.data.active == false
+        && request.resource.data.deactivatedBy == request.auth.uid
+        && request.resource.data.deactivatedAt == request.time;
+      allow delete: if false;
+    }
+
+    match /settings/allowedDomains {
+      allow read: if signedIn();
+      allow write: if activeAdmin();
+    }
+
+    match /settings/attendanceMotives {
+      allow read: if approvedUser();
+      allow create, update: if activeManager()
+        && request.resource.data.keys().hasOnly(["schemaVersion", "items", "updatedByUid", "updatedAt"])
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.items is list
+        && request.resource.data.items.size() <= 50
+        && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    match /settings/{settingId} {
+      allow read: if approvedUser();
+      allow write: if activeAdmin();
+    }
+
+    match /adminAudit/{auditId} {
+      allow read: if activeAdmin();
+      allow create: if activeManager()
+        && ((request.resource.data.actorUid == request.auth.uid
+          && request.resource.data.createdAt == request.time)
+          || (activeAdmin()
+            && request.resource.data.actorUid is string
+            && request.resource.data.createdAt is timestamp));
+      allow update, delete: if false;
+    }
+
+    // Collection-group reads used by Visão Geral. The recursive path is
+    // required because these queries span each user's operational subcollection.
+    // Managers can read across collaborators; employees must constrain queries
+    // to documents carrying their own ownerUid. No collection-group writes.
+    match /{path=**}/operational/{documentId} {
+      allow read: if activeManager()
+        || (approvedUser() && resource.data.ownerUid == request.auth.uid);
+      allow write: if false;
+    }
+
+    match /{path=**}/entries/{entryId} {
+      allow read: if activeManager()
+        || (approvedUser() && resource.data.ownerUid == request.auth.uid);
+      allow write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

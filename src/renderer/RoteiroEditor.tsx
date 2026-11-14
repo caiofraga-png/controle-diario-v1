@@ -1,4 +1,5 @@
 import { useState } from "react";
+import AttachmentPanel from "./AttachmentPanel";
 
 type Roteiro = {
   linhas: number;
@@ -13,8 +14,11 @@ type Props = {
   initial: Roteiro;
   onCancel: () => void;
   onSave: (value: Roteiro) => void;
+  onReset?: () => void;
   presentation?: "popup" | "side";
   sidePosition?: "esquerda" | "direita";
+  taskId?: string;
+  canUploadAttachments?: boolean;
 };
 
 function extractText(r: Roteiro) {
@@ -38,8 +42,11 @@ export default function RoteiroEditor({
   initial,
   onCancel,
   onSave,
+  onReset,
   presentation = "popup",
-  sidePosition = "direita"
+  sidePosition = "direita",
+  taskId,
+  canUploadAttachments = false
 }: Props) {
   const [text, setText] = useState(() => extractText(initial));
 
@@ -71,8 +78,11 @@ export default function RoteiroEditor({
           />
         </div>
 
+        {taskId && <AttachmentPanel targetType="task-roteiro" targetId={taskId} canUpload={canUploadAttachments} />}
+
         <div className="config-actions">
           <button onClick={onCancel}>CANCELAR</button>
+          {onReset && <button onClick={onReset}>REDEFINIR PARA PADRÃO</button>}
           <button className="primary" onClick={save}>SALVAR ROTEIRO</button>
         </div>
       </div>

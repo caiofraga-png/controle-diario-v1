@@ -1,0 +1,48 @@
+name: Validar migração Firebase
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "firestore.rules"
+      - "firebase.json"
+      - "package.json"
+      - "vite.config.ts"
+      - "tsconfig*.json"
+      - ".github/workflows/firebase-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-rules:
+    name: Compilação e testes das regras
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Obter código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Configurar Java para o emulador
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Instalar dependências
+        run: npm install --no-audit --no-fund
+
+      - name: Validar compilação TypeScript e Vite
+        run: npm run build
+
+      - name: Testar regras no emulador Firestore
+        run: npx firebase emulators:exec --only firestore --project leste-controle-diario-rules-test "npm run test:rules"

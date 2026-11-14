@@ -9,6 +9,26 @@ export interface TarefaSnapshot extends Omit<Tarefa, "emailsVinculados"> {
   emailsVinculados: EmailSnapshot[];
 }
 
+export interface ExpedienteCatalogSnapshot {
+  tarefas: { schemaVersion: 1; tarefas: Tarefa[] };
+  perfis: { schemaVersion: 1; perfis: Perfil[] };
+  email: { schemaVersion: 1; emails: Email[]; emailsGlobais: string[] };
+  layout: { ordemPerfis: string[]; ordemTarefas: Record<string, string[]> };
+}
+
+export interface AttendanceRecord {
+  id: string;
+  ticket: string;
+  canal: string;
+  codigo: string;
+  nome: string;
+  tipo: string;
+  resolvido: string;
+  subtipo: string;
+  motivoResolucao: string;
+  criadoEm: string;
+}
+
 export interface EstadoAtual {
   id: string;
   data: string;
@@ -16,11 +36,25 @@ export interface EstadoAtual {
   tarefas: TarefaSnapshot[];
   emailsGlobais: EmailSnapshot[];
   observacao: string;
+  /** Tickets saved during the active expediente and copied to immutable history on completion. */
+  atendimentos?: AttendanceRecord[];
   criadoEm: string;
   ultimaAlteracao: string;
+  /** Immutable catalog/layout version captured when this expediente starts. */
+  catalogSnapshot?: ExpedienteCatalogSnapshot;
 }
 
 export interface RegistroHistorico {
+  /** Organizational assignment captured at completion; optional for legacy history records. */
+  assignment?: {
+    uid: string;
+    login: string;
+    agent: string;
+    sectorId: string;
+    sectorName: string;
+    contactId: string;
+    contactName: string;
+  };
   schemaVersion: 1;
   id: string;
   versao: number;
@@ -29,6 +63,8 @@ export interface RegistroHistorico {
   tarefas: TarefaSnapshot[];
   emailsGlobais: EmailSnapshot[];
   observacao: string;
+  /** Tickets preserved with the completed expediente. */
+  atendimentos?: AttendanceRecord[];
   status: "CONCLUIDO";
   criadoEm: string;
   concluidoEm: string;

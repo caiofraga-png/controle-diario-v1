@@ -1,0 +1,219 @@
+import type { EstadoAtual, RegistroHistorico } from "../shared/types/state";
+import { createEmail, createProfile, createTask } from "./configService";
+import { buildState, obligationProgress, setObservation, toggleEmail, toggleTask } from "./taskService";
+import { FirebaseWorkspaceRepository } from "./firebaseWorkspaceRepository";
+import { FirebaseOperationalService } from "./firebaseOperationalService";
+import type { Configuracao, LoadedData } from "./dataRepository";
+import { loadPromotions, savePromotions, type Promotion } from "./firebasePromotionsService";
+
+async function diagnoseFirebaseStep<T>(step: string, operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    const code = typeof error === "object" && error !== null && "code" in error
+      ? String((error as { code?: unknown }).code ?? "")
+      : "";
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`Falha no Firebase durante: ${step}${code ? ` (${code})` : ""}. Detalhe: ${detail}`);
+  }
+}
+
+/**
+ * Firebase-backed implementation of the expediente domain workflow.
+ * This is the primary persistence path for the Firebase migration.
+ */
+export class FirebaseWorkflowService {
+  constructor(
+    private readonly workspace = new FirebaseWorkspaceRepository(),
+    private readonly operational = new FirebaseOperationalService(),
+  ) {}
+
+  async load(): Promise<LoadedData> {
+    return diagnoseFirebaseStep("carregar configuração e estado atual do expediente", () => this.workspace.load());
+  }
+
+
+  async versions(date: string) {
+    return this.operational.listHistory(date);
+  }
+
+  async readVersion(input: { date: string; versao: number }) {
+    const versions = await this.operational.listHistory(input.date);
+    const selected = versions.find(item => item.versao === input.versao);
+    if (!selected) throw new Error("A VERSÃO DO HISTÓRICO NÃO FOI ENCONTRADA.");
+    return this.operational.readHistory(selected.nome);
+  }
+
+  async saveHistoryErrata(source: RegistroHistorico, edited: Pick<RegistroHistorico, "tarefas" | "emailsGlobais" | "observacao">) {
+    return this.operational.saveErrata(source, edited);
+  }
+
+  async lastUsedProfileId(): Promise<string | null> {
+    return this.operational.lastUsedProfileId();
+  }
+
+  async start(input: { data: string; perfilId: string }): Promise<EstadoAtual> {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.data)) throw new Error("A DATA DO EXPEDIENTE É INVÁLIDA.");
+    const loaded = await this.workspace.load();
+    const allowedProfiles = await this.operational.allowedProfileIds();
+    if (input.perfilId === "GERAL" ? allowedProfiles.length === 0 : !allowedProfiles.includes(input.perfilId)) {
+      throw new Error("ESTE PERFIL NÃO FOI ATRIBUÍDO À SUA CONTA. SOLICITE A LIBERAÇÃO À SUPERVISÃO.");
+    }
+    if (loaded.estado) throw new Error("JÁ EXISTE UM EXPEDIENTE EM PRODUÇÃO.");
+    const state = buildState(loaded, input.data, input.perfilId, allowedProfiles);
+    state.catalogSnapshot = {
+      tarefas: JSON.parse(JSON.stringify(loaded.configuracao.tarefas)),
+      perfis: JSON.parse(JSON.stringify(loaded.configuracao.perfis)),
+      email: JSON.parse(JSON.stringify(loaded.configuracao.email)),
+      layout: {
+        ordemPerfis: [...loaded.configuracao.layout.ordemPerfis],
+        ordemTarefas: JSON.parse(JSON.stringify(loaded.configuracao.layout.ordemTarefas)),
+      },
+    };
+    if (!state.tarefas.length && !state.emailsGlobais.length) {
+      throw new Error("ESTE PERFIL NÃO POSSUI OBRIGAÇÕES.\nAdicione tarefas ou utilize outro perfil.");
+    }
+    await this.workspace.saveCurrentState(state);
+    return state;
+  }
+
+  async switchProfile(profileId: string): Promise<EstadoAtual> {
+    const loaded = await this.workspace.load();
+    const allowedProfiles = await this.operational.allowedProfileIds();
+    if (profileId === "GERAL" ? allowedProfiles.length === 0 : !allowedProfiles.includes(profileId)) {
+      throw new Error("ESTE PERFIL NÃO FOI ATRIBUÍDO À SUA CONTA. SOLICITE A LIBERAÇÃO À SUPERVISÃO.");
+    }
+    if (!loaded.estado) throw new Error("NÃO HÁ EXPEDIENTE EM PRODUÇÃO.");
+    const frozen = loaded.estado.catalogSnapshot;
+    if (!frozen) {
+      throw new Error("ESTE EXPEDIENTE FOI INICIADO ANTES DA PROTEÇÃO DE VERSÃO DO CATÁLOGO. Para evitar alterações retroativas, conclua ou abandone este expediente antes de iniciar outro e trocar de perfil.");
+    }
+    const snapshotLoaded: LoadedData = {
+      ...loaded,
+      configuracao: {
+        ...loaded.configuracao,
+        tarefas: JSON.parse(JSON.stringify(frozen.tarefas)),
+        perfis: JSON.parse(JSON.stringify(frozen.perfis)),
+        email: JSON.parse(JSON.stringify(frozen.email)),
+        layout: {
+          ...loaded.configuracao.layout,
+          ordemPerfis: [...frozen.layout.ordemPerfis],
+          ordemTarefas: JSON.parse(JSON.stringify(frozen.layout.ordemTarefas)),
+        },
+      },
+    };
+    const next = buildState(snapshotLoaded, loaded.estado.data, profileId, allowedProfiles);
+    next.catalogSnapshot = JSON.parse(JSON.stringify(frozen));
+    if (!next.tarefas.length && !next.emailsGlobais.length) throw new Error("ESTE PERFIL NÃO POSSUI OBRIGAÇÕES.");
+    const doneTasks = new Map(loaded.estado.tarefas.map(task => [task.id, task.concluida]));
+    const doneEmails = new Map<string, boolean>();
+    for (const email of loaded.estado.emailsGlobais) doneEmails.set(email.id, email.concluido);
+    for (const task of loaded.estado.tarefas) for (const email of task.emailsVinculados) doneEmails.set(email.id, email.concluido);
+    for (const task of next.tarefas) {
+      if (doneTasks.has(task.id)) task.concluida = Boolean(doneTasks.get(task.id));
+      for (const email of task.emailsVinculados) if (doneEmails.has(email.id)) email.concluido = Boolean(doneEmails.get(email.id));
+    }
+    for (const email of next.emailsGlobais) if (doneEmails.has(email.id)) email.concluido = Boolean(doneEmails.get(email.id));
+    next.observacao = loaded.estado.observacao;
+    next.atendimentos = JSON.parse(JSON.stringify(loaded.estado.atendimentos ?? []));
+    next.criadoEm = loaded.estado.criadoEm;
+    next.ultimaAlteracao = new Date().toISOString();
+    await this.workspace.saveCurrentState(next);
+    return next;
+  }
+
+  async mark(input: { tipo: "tarefa" | "email"; id: string; concluido: boolean }) {
+    const loaded = await this.workspace.load();
+    if (!loaded.estado) throw new Error("NÃO HÁ EXPEDIENTE EM PRODUÇÃO.");
+    const state = input.tipo === "tarefa"
+      ? toggleTask(loaded.estado, input.id, input.concluido)
+      : toggleEmail(loaded.estado, input.id, input.concluido);
+    await this.workspace.saveCurrentState(state);
+    return { state, progress: obligationProgress(state) };
+  }
+
+  async setObservation(value: string): Promise<EstadoAtual> {
+    const loaded = await this.workspace.load();
+    if (!loaded.estado) throw new Error("NÃO HÁ EXPEDIENTE EM PRODUÇÃO.");
+    const state = setObservation(loaded.estado, value);
+    await this.workspace.saveCurrentState(state);
+    return state;
+  }
+
+  async saveAttendance(input: import("../shared/types/state").AttendanceRecord): Promise<EstadoAtual> {
+    return this.operational.appendAttendance(input);
+  }
+
+  async replaceAttendances(records: import("../shared/types/state").AttendanceRecord[]): Promise<EstadoAtual> {
+    return this.operational.replaceAttendances(records);
+  }
+
+  async complete(): Promise<RegistroHistorico> {
+    const loaded = await this.workspace.load();
+    if (!loaded.estado) throw new Error("NÃO HÁ EXPEDIENTE EM PRODUÇÃO.");
+    const progress = obligationProgress(loaded.estado);
+    if (!progress.total || progress.done !== progress.total) throw new Error("O EXPEDIENTE AINDA NÃO ESTÁ 100% CONCLUÍDO.");
+    return this.operational.completeState(loaded.estado, new Date().toISOString());
+  }
+
+  async abandon(): Promise<void> {
+    const loaded = await this.workspace.load();
+    if (!loaded.estado) throw new Error("NÃO HÁ EXPEDIENTE EM PRODUÇÃO.");
+    await this.workspace.saveCurrentState(null);
+  }
+
+  async saveLayout(layout: Configuracao["layout"]): Promise<LoadedData> {
+    await diagnoseFirebaseStep("salvar layout pessoal do usuário", () => this.workspace.saveLayout(layout));
+    return diagnoseFirebaseStep("confirmar layout pessoal salvo", () => this.workspace.load());
+  }
+
+  async saveConfiguration(config: Configuracao): Promise<LoadedData> {
+    await this.workspace.saveConfiguration(config);
+    return this.workspace.load();
+  }
+
+  async saveTask(input: { id: string; criacao?: string; roteiro?: unknown }): Promise<LoadedData> {
+    await this.workspace.saveTaskContent(input);
+    return this.workspace.load();
+  }
+
+  async resetTaskContent(input: { id: string; field: "criacao" | "roteiro" }): Promise<LoadedData> {
+    await this.workspace.resetTaskContent(input);
+    return this.workspace.load();
+  }
+
+  async addTask(input: { nome: string; link: string; criacao: string }) {
+    const loaded = await this.workspace.load();
+    const task = createTask(loaded.configuracao, input);
+    const config = JSON.parse(JSON.stringify(loaded.configuracao)) as Configuracao;
+    config.tarefas.tarefas.push(task);
+    await this.workspace.saveConfiguration(config);
+    return task;
+  }
+
+  async addProfile(input: { nome: string; tarefas: string[] }) {
+    const loaded = await this.workspace.load();
+    const profile = createProfile(loaded.configuracao, input.nome, input.tarefas);
+    const config = JSON.parse(JSON.stringify(loaded.configuracao)) as Configuracao;
+    config.perfis.perfis.push(profile);
+    config.layout.ordemPerfis.push(profile.id);
+    config.layout.ordemTarefas[profile.id] = profile.tarefas.slice();
+    await this.workspace.saveConfiguration(config);
+    return profile;
+  }
+
+  async addEmail(input: { nome: string; titulo: string; corpo: string; global?: boolean }) {
+    const loaded = await this.workspace.load();
+    const email = createEmail(loaded.configuracao, input);
+    const config = JSON.parse(JSON.stringify(loaded.configuracao)) as Configuracao;
+    config.email.emails.push(email);
+    if (input.global) config.email.emailsGlobais.push(email.id);
+    await this.workspace.saveConfiguration(config);
+    return email;
+  }
+
+  async promotions() { return loadPromotions(); }
+
+  async savePromotions(items: Promotion[]) { await savePromotions(items); return loadPromotions(); }
+
+}
