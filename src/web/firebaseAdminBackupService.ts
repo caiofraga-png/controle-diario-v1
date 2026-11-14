@@ -1,7 +1,7 @@
 import { collection, doc, getDoc, getDocs, runTransaction, serverTimestamp, Timestamp, type DocumentData, type QueryDocumentSnapshot } from "firebase/firestore";
 import { requireFirebase } from "./firebaseClient";
 import { encryptBackupPayload, decryptBackupEnvelope, assertBackupProject, type EncryptedBackupEnvelope } from "./backupCrypto";
-import { restoreMissingDocuments } from "./backupRestoreCore";
+import { assertRestoreDocumentIdentity, restoreMissingDocuments } from "./backupRestoreCore";
 
 type BackupDocument = { id: string; path: string; data: Record<string, unknown> };
 export type BackupPayload = {
@@ -221,13 +221,7 @@ export async function inspectAdministrativeBackup(file: File, password: string):
         && (parts.length !== 4 || parts[0] !== "externalMaintenances" || parts[2] !== "history")) {
         throw new Error("O documento não corresponde ao histórico de manutenção externa.");
       }
-      if (typeof entry.data.ownerUid === "string" && parts[0] === "users" && entry.data.ownerUid !== parts[1]) {
-        throw new Error(`O proprietário não corresponde ao caminho do documento ${entry.path}.`);
-      }
-      if (parts[0] === "Expediente" && isRecord(entry.data.assignment)
-        && entry.data.assignment.uid !== entry.data.ownerUid) {
-        throw new Error(`A atribuição do expediente não corresponde ao proprietário em ${entry.path}.`);
-      }
+      assertRestoreDocumentIdentity(entry.path, entry.data);
       allDocuments.push(entry as unknown as BackupDocument);
     }
   }
@@ -323,19 +317,24 @@ export async function restoreAdministrativeBackup(
           && (parts.length !== 4 || parts[0] !== "externalMaintenances" || parts[2] !== "history"))) {
         throw new Error(`O documento ${candidate.path} não corresponde à coleção declarada no backup.`);
       }
-      if (typeof candidate.data.ownerUid === "string" && parts[0] === "users" && candidate.data.ownerUid !== parts[1]) {
-        throw new Error(`O proprietário não corresponde ao caminho do documento ${candidate.path}.`);
-      }
-      if (parts[0] === "Expediente"
-        && (!isRecord(candidate.data.assignment)
-          || candidate.data.assignment.uid !== candidate.data.ownerUid)) {
-        throw new Error(`A atribuição do expediente não corresponde ao proprietário em ${candidate.path}.`);
-      }
+      assertRestoreDocumentIdentity(candidate.path, candidate.data);
       paths.add(candidate.path);
       documents.push(candidate as unknown as BackupDocument);
     }
   }
 
+  // Restaura primeiro os cadastros exigidos pelos vínculos organizacionais.
+  const restorePriority = (path: string) => {
+    if (path.startsWith("organizationSectors/")) return 0;
+    if (path.startsWith("organizationContacts/")) return 1;
+    if (path.startsWith("users/") && path.split("/").length === 2) return 2;
+    if (path.startsWith("users/")) return 3;
+    if (path.startsWith("sharedPromotions/") || path.startsWith("externalMaintenances/") || path.startsWith("delinquencyNotices/")) return 4;
+    if (path.startsWith("sharedNotifications/")) return 5;
+    if (path.startsWith("sharedAttachments/")) return 6;
+    return 4;
+  };
+  documents.sort((a, b) => restorePriority(a.path) - restorePriority(b.path));
   const writeAudit = async (action: string, details: Record<string, unknown>) => {
     const auditRef = doc(collection(db, "adminAudit"));
     await runTransaction(db, async (transaction) => {
