@@ -1183,6 +1183,47 @@ test("anexos de promoções respeitam o escopo do registro", async () => {
   await assertSucceeds(deleteDoc(doc(alice, "sharedAttachments/promo-dentro-escopo")));
 });
 
+test("autor pode remover apenas os próprios anexos órfãos de rascunhos autorizados", async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await setDoc(doc(db, "featurePermissions/maintenance"), {
+      enabled: true, wholeSectorIds: ["suporte"], contactIds: [], agentIds: [],
+    });
+    await setDoc(doc(db, "featurePermissions/promotions"), {
+      enabled: true, wholeSectorIds: ["suporte"], contactIds: [], agentIds: [],
+    });
+    await setDoc(doc(db, "featurePermissions/delinquency"), {
+      enabled: true, wholeSectorIds: ["suporte"], contactIds: [], agentIds: [],
+    });
+    await setDoc(doc(db, "sharedAttachments/orfao-de-outro-autor"), {
+      targetType: "promotion", targetId: "rascunho-alice", name: "arquivo.pdf",
+      mimeType: "application/pdf", size: 4, data: "JVBERg==",
+      createdByUid: "bob", createdAt: new Date(),
+    });
+  });
+  const alice = dbAs("alice");
+  for (const targetType of ["maintenance", "promotion", "delinquency"]) {
+    await assertSucceeds(setDoc(doc(alice, `sharedAttachments/orfao-${targetType}`), {
+      targetType, targetId: `rascunho-${targetType}-alice`, name: "arquivo.pdf",
+      mimeType: "application/pdf", size: 4, data: "JVBERg==",
+      createdByUid: "alice", createdAt: serverTimestamp(),
+    }));
+    await assertSucceeds(deleteDoc(doc(alice, `sharedAttachments/orfao-${targetType}`)));
+  }
+  await assertFails(deleteDoc(doc(alice, "sharedAttachments/orfao-de-outro-autor")));
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "sharedPromotions/promo-existente-fora-do-escopo"), {
+      id: "promo-existente-fora-do-escopo", name: "Campanha", status: "active",
+      createdByUid: "bob", ownerSectorId: "financeiro", ownerContactId: "equipe-b",
+    });
+  });
+  await assertSucceeds(setDoc(doc(alice, "sharedAttachments/anexo-registro-fora-do-escopo"), {
+    targetType: "promotion", targetId: "promo-existente-fora-do-escopo", name: "arquivo.pdf",
+    mimeType: "application/pdf", size: 4, data: "JVBERg==",
+    createdByUid: "alice", createdAt: serverTimestamp(),
+  }).then(() => assertFails(deleteDoc(doc(alice, "sharedAttachments/anexo-registro-fora-do-escopo")))));
+});
+
 test("anexos de manutenção e inadimplência respeitam as permissões específicas de publicação", async () => {
   await env.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
