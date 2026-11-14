@@ -33,6 +33,10 @@ export class FirebaseWorkflowService {
   }
 
 
+  async historyMonth(year: number, month: number) {
+    return this.operational.listHistoryMonth(year, month);
+  }
+
   async versions(date: string) {
     return this.operational.listHistory(date);
   }
