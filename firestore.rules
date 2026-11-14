@@ -268,8 +268,9 @@ service cloud.firestore {
       // Attendance rows are private, append-only records owned by each collaborator.
       match /attendanceRows/{rowId} {
         allow read: if approvedUser() && request.auth.uid == uid && resource.data.ownerUid == uid;
-        allow create: if approvedUser() && request.auth.uid == uid
-          && request.resource.data.ownerUid == uid
+        // Administradores podem restaurar linhas históricas preservando a data original.
+        // Colaboradores continuam limitados à própria conta e a gravações com horário do servidor.
+        allow create: if request.resource.data.ownerUid == uid
           && request.resource.data.keys().hasOnly([
             "ticket", "canal", "codigo", "nome", "tipo", "resolvido",
             "subtipo", "motivoResolucao", "ownerUid", "createdAt"
@@ -282,7 +283,9 @@ service cloud.firestore {
           && request.resource.data.resolvido is string
           && request.resource.data.subtipo is string
           && request.resource.data.motivoResolucao is string
-          && request.resource.data.createdAt == request.time;
+          && ((activeAdmin() && request.resource.data.createdAt is timestamp)
+            || (approvedUser() && request.auth.uid == uid
+              && request.resource.data.createdAt == request.time));
         allow update, delete: if false;
       }
 
