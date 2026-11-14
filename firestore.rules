@@ -833,7 +833,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasAll([
           "title", "date", "location", "description", "status",
           "createdByUid", "createdAt", "createdByName", "updatedByUid", "updatedAt", "updatedByName",
-          "lastHistoryId", "lastNotificationId", "ownerSectorId", "ownerContactId"
+          "lastHistoryId", "lastNotificationId"
         ])
         && request.resource.data.keys().hasOnly([
           "title", "date", "location", "description", "status",
