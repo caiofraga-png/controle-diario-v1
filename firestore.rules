@@ -604,12 +604,12 @@ service cloud.firestore {
       allow create: if activeAdmin()
         && request.resource.data.keys().hasAll([
           "type", "date", "title", "dueDate", "customerCount", "overdueDays",
-          "validUntil", "status", "createdByUid", "createdAt", "updatedByUid", "updatedAt", "notificationId",
-          "ownerSectorId", "ownerContactId"
+          "validUntil", "status", "createdByUid", "createdAt", "updatedByUid", "updatedAt", "notificationId"
         ])
         && request.resource.data.keys().hasOnly([
           "type", "date", "title", "dueDate", "customerCount", "overdueDays",
           "validUntil", "status", "createdByUid", "createdAt", "updatedByUid", "updatedAt", "notificationId",
+          "ownerSectorId", "ownerContactId"
         ])
         && request.resource.data.type in ["reducao", "suspensao"]
         && request.resource.data.date is string
