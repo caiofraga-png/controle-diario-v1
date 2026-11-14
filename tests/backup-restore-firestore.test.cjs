@@ -55,7 +55,14 @@ test("restaura dados fictícios no Firestore Emulator e preserva documentos exis
     { path: "users/alice/preferences/appearance", data: { schemaVersion: 1, tema: "escuro" } },
     { path: "Expediente/alice_backup_teste", data: {
       ownerUid: "alice", date: "2026-11-05", status: "concluido",
-      assignment: { uid: "alice" },
+      sectorId: "setor-historico", sectorName: "Setor histórico",
+      contactId: "contato-historico", contactName: "Contato histórico",
+      login: "alice", agent: "Alice",
+      assignment: {
+        uid: "alice", sectorId: "setor-historico", sectorName: "Setor histórico",
+        contactId: "contato-historico", contactName: "Contato histórico",
+        login: "alice", agent: "Alice",
+      },
     } },
     { path: "sharedAttachments/anexo_teste", data: {
       targetType: "maintenance", targetId: "manutencao_teste",
