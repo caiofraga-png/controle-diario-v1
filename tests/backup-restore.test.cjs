@@ -60,3 +60,36 @@ test("valida proprietário e identidade dos caminhos privados antes de restaurar
   assert.doesNotThrow(() => assertRestoreDocumentIdentity("Expediente/alice_2026-11-10", { ownerUid: "alice", assignment: { uid: "alice" } }));
   assert.throws(() => assertRestoreDocumentIdentity("Expediente/alice_2026-11-10", { ownerUid: "alice", assignment: { uid: "bob" } }), /atribuição do expediente/);
 });
+
+
+test("valida vínculos entre publicações, notificações e histórico de manutenção", async () => {
+  const { assertBackupRelationships } = await import("../src/web/backupRestoreCore.ts");
+  const promotion = { path: "sharedPromotions/p1", data: { lastNotificationId: "n1" } };
+  const promotionNotice = { path: "sharedNotifications/n1", data: {
+    category: "promocoes", target: "promocoes", referenceId: "p1",
+  } };
+  const delinquency = { path: "delinquencyNotices/d1", data: { notificationId: "n2" } };
+  const delinquencyNotice = { path: "sharedNotifications/n2", data: {
+    category: "cobranca", target: "inadimplencia", noticeId: "d1",
+  } };
+  const maintenance = { path: "externalMaintenances/m1", data: {
+    title: "Manutenção", date: "2026-11-01", location: "Unidade",
+    description: "Teste", status: "ongoing", lastNotificationId: "n3", lastHistoryId: "h1",
+  } };
+  const maintenanceNotice = { path: "sharedNotifications/n3", data: {
+    category: "manutencoes", target: "manutencoes", maintenanceId: "m1",
+  } };
+  const history = { path: "externalMaintenances/m1/history/h1", data: {
+    maintenanceId: "m1", after: { title: "Manutenção", date: "2026-11-01",
+      location: "Unidade", description: "Teste", status: "ongoing" },
+  } };
+  const valid = [promotion, promotionNotice, delinquency, delinquencyNotice, maintenance, maintenanceNotice, history];
+  assert.doesNotThrow(() => assertBackupRelationships(valid));
+  assert.throws(() => assertBackupRelationships([promotion]), /não contém o registro vinculado/);
+  assert.throws(() => assertBackupRelationships([promotion, {
+    ...promotionNotice, data: { category: "cobranca", target: "inadimplencia", noticeId: "p1" },
+  }]), /não corresponde ao registro/);
+  assert.throws(() => assertBackupRelationships([maintenance, maintenanceNotice, {
+    ...history, data: { maintenanceId: "m1", after: { title: "Outro título" } },
+  }]), /diverge no campo title/);
+});
