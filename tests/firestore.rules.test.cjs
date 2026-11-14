@@ -1288,7 +1288,11 @@ test("anexos de manutenção e inadimplência respeitam as permissões específi
 
 test("colaborador aprovado pode visualizar anexos, mas não anexar ou remover", async () => {
   await env.withSecurityRulesDisabled(async (context) => {
-    await setDoc(doc(context.firestore(), "sharedAttachments/existing"), {
+    const db = context.firestore();
+    await setDoc(doc(db, "sharedPromotions/promo-1"), {
+      id: "promo-1", name: "Campanha publicada", status: "active", createdByUid: "admin",
+    });
+    await setDoc(doc(db, "sharedAttachments/existing"), {
       targetType: "promotion", targetId: "promo-1", name: "arquivo.pdf",
       mimeType: "application/pdf", size: 4, data: "JVBERg==",
       createdByUid: "admin", createdAt: new Date(),
@@ -1509,6 +1513,9 @@ test("administrador pode atualizar status de conta histórica sem vínculo organ
 test("bloqueio administrativo revoga imediatamente o acesso da sessão ativa", async () => {
   await env.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
+    await setDoc(doc(db, "sharedPromotions/promo-1"), {
+      id: "promo-1", name: "Campanha publicada", status: "active", createdByUid: "admin",
+    });
     await setDoc(doc(db, "sharedAttachments/anexo-sessao-ativa"), {
       targetType: "promotion", targetId: "promo-1", name: "arquivo.pdf",
       mimeType: "application/pdf", size: 4, data: "JVBERg==",
