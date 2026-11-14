@@ -881,7 +881,6 @@ service cloud.firestore {
             && (request.resource.data.before == null || request.resource.data.before is map)
             && request.resource.data.after is map;
         allow create: if (request.resource.data.before == null
-            ? canEditScopedRecord("maintenance",        allow create: if (request.resource.data.before == null
             ? canEditScopedRecord("maintenance",
               getAfter(/databases/$(database)/documents/externalMaintenances/$(maintenanceId)).data)
             : canEditScopedRecord("maintenance",
