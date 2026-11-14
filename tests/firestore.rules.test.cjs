@@ -1837,3 +1837,49 @@ test("transferência de colaborador exige setor e contato ativos e pertencentes 
   assert.equal(saved.data().sectorId, "financeiro");
   assert.equal(saved.data().contactId, "equipe-b");
 });
+
+test("administrador restaura setor, contato e colaborador com vínculos históricos inativos", async () => {
+  const admin = dbAs("admin");
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "organizationSectors/setor-antigo"), {
+      id: "setor-antigo", name: "Setor antigo", active: false,
+    });
+  });
+
+  await assertSucceeds(setDoc(doc(admin, "organizationContacts/contato-antigo"), {
+    id: "contato-antigo", name: "Contato antigo",
+    sectorId: "setor-antigo", active: false,
+  }));
+  await assertSucceeds(setDoc(doc(admin, "users/colaborador-antigo"), {
+    uid: "colaborador-antigo", email: "antigo@lestetelecom.net.br",
+    login: "antigo", agent: "Colaborador antigo",
+    sectorId: "setor-antigo", contactId: "contato-antigo",
+    role: "employee", status: "blocked", isSupervisor: false,
+  }));
+
+  const supervisor = dbAs("supervisor");
+  await assertFails(setDoc(doc(supervisor, "organizationContacts/contato-inativo-supervisor"), {
+    id: "contato-inativo-supervisor", name: "Não permitido",
+    sectorId: "setor-antigo", active: false,
+  }));
+});
+
+test("restauração administrativa de expediente valida consistência do snapshot histórico", async () => {
+  const admin = dbAs("admin");
+  const valid = expediente("alice", {
+    sectorId: "setor-antigo", sectorName: "Setor antigo",
+    contactId: "contato-antigo", contactName: "Contato antigo",
+    assignment: {
+      uid: "alice", login: "alice", agent: "Alice",
+      sectorId: "setor-antigo", sectorName: "Setor antigo",
+      contactId: "contato-antigo", contactName: "Contato antigo",
+    },
+  });
+  await assertSucceeds(setDoc(doc(admin, "Expediente/alice_2025-01-10"), valid));
+  await assertFails(setDoc(doc(admin, "Expediente/alice_2025-01-11"), {
+    ...valid, assignment: { ...valid.assignment, contactId: "outro-contato" },
+  }));
+  await assertFails(setDoc(doc(admin, "Expediente/alice_2025-01-12"), {
+    ...valid, date: "data-inválida",
+  }));
+});
