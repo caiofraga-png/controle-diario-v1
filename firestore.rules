@@ -821,6 +821,8 @@ service cloud.firestore {
         && request.resource.data.lastNotificationId is string
         && request.resource.data.ownerSectorId is string
         && request.resource.data.ownerContactId is string;
+    }
+
     match /externalMaintenances/{maintenanceId} {
       allow read: if approvedUser();
       allow create: if (activeManager() || maintenancePublisher())
