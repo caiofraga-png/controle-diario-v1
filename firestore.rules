@@ -550,8 +550,9 @@ service cloud.firestore {
         && request.resource.data.id == promotionId
         && request.resource.data.createdAt is timestamp
         && request.resource.data.updatedAt is timestamp
-        && request.resource.data.ownerSectorId is string
-        && request.resource.data.ownerContactId is string;
+        && ((!request.resource.data.keys().hasAny(["ownerSectorId", "ownerContactId"]))
+          || (request.resource.data.ownerSectorId is string
+            && request.resource.data.ownerContactId is string));
       allow create: if approvedUser()
         && (activeManager() || promotionsPublisher())
         && validPromotionFields(request.resource.data)
@@ -609,7 +610,6 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly([
           "type", "date", "title", "dueDate", "customerCount", "overdueDays",
           "validUntil", "status", "createdByUid", "createdAt", "updatedByUid", "updatedAt", "notificationId",
-          "ownerSectorId", "ownerContactId"
         ])
         && request.resource.data.type in ["reducao", "suspensao"]
         && request.resource.data.date is string
@@ -626,8 +626,9 @@ service cloud.firestore {
         && request.resource.data.createdAt is timestamp
         && request.resource.data.updatedAt is timestamp
         && request.resource.data.notificationId is string
-        && request.resource.data.ownerSectorId is string
-        && request.resource.data.ownerContactId is string
+        && ((!request.resource.data.keys().hasAny(["ownerSectorId", "ownerContactId"]))
+          || (request.resource.data.ownerSectorId is string
+            && request.resource.data.ownerContactId is string))
         && request.resource.data.validUntil >= request.resource.data.date;
       allow create: if approvedUser()
         && (activeManager() || delinquencyPublisher())
@@ -852,8 +853,9 @@ service cloud.firestore {
         && request.resource.data.updatedAt is timestamp
         && request.resource.data.lastHistoryId is string
         && request.resource.data.lastNotificationId is string
-        && request.resource.data.ownerSectorId is string
-        && request.resource.data.ownerContactId is string;
+        && ((!request.resource.data.keys().hasAny(["ownerSectorId", "ownerContactId"]))
+          || (request.resource.data.ownerSectorId is string
+            && request.resource.data.ownerContactId is string));
     }
 
     match /externalMaintenances/{maintenanceId} {
