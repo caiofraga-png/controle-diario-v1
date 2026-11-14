@@ -904,7 +904,19 @@ service cloud.firestore {
     // Attachments follow the scope of an existing record. A publisher may
     // also attach files to their own not-yet-saved draft.
     match /sharedAttachments/{attachmentId} {
-      allow read: if approvedUser();
+      // Published-record attachments are shared with approved collaborators.
+      // Files uploaded to an unsaved draft remain visible only to their author
+      // (or an administrator) until the target record exists.
+      allow read: if approvedUser()
+        && (activeAdmin()
+          || resource.data.targetType in ["task-creation", "task-roteiro"]
+          || resource.data.createdByUid == request.auth.uid
+          || (resource.data.targetType == "maintenance"
+            && exists(/databases/$(database)/documents/externalMaintenances/$(resource.data.targetId)))
+          || (resource.data.targetType == "promotion"
+            && exists(/databases/$(database)/documents/sharedPromotions/$(resource.data.targetId)))
+          || (resource.data.targetType == "delinquency"
+            && exists(/databases/$(database)/documents/delinquencyNotices/$(resource.data.targetId))));
       // Keep one create expression to avoid evaluating overlapping allow
       // statements twice. Admins may restore historical authorship; all
       // other uploads require current identity, timestamp and scoped rights.
