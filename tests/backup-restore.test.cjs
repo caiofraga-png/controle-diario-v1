@@ -48,3 +48,15 @@ test("interrupção mantém contagem do progresso já concluído", async () => {
   }, (value) => progress.push(value)), /Falha simulada/);
   assert.deepEqual(progress, [{ restoredCount: 1, skippedCount: 0 }]);
 });
+
+ 
+test("valida proprietário e identidade dos caminhos privados antes de restaurar", async () => {
+  const { assertRestoreDocumentIdentity } = await import("../src/web/backupRestoreCore.ts");
+  assert.doesNotThrow(() => assertRestoreDocumentIdentity("users/alice", { uid: "alice", role: "employee" }));
+  assert.throws(() => assertRestoreDocumentIdentity("users/alice", { uid: "bob" }), /identificador do usuário/);
+  assert.doesNotThrow(() => assertRestoreDocumentIdentity("users/alice/attendanceRows/ticket-1", { ownerUid: "alice" }));
+  assert.throws(() => assertRestoreDocumentIdentity("users/alice/attendanceRows/ticket-1", { ownerUid: "bob" }), /proprietário não corresponde/);
+  assert.throws(() => assertRestoreDocumentIdentity("users/alice/operational/currentState", { schemaVersion: 1 }), /proprietário não corresponde/);
+  assert.doesNotThrow(() => assertRestoreDocumentIdentity("Expediente/alice_2026-11-10", { ownerUid: "alice", assignment: { uid: "alice" } }));
+  assert.throws(() => assertRestoreDocumentIdentity("Expediente/alice_2026-11-10", { ownerUid: "alice", assignment: { uid: "bob" } }), /atribuição do expediente/);
+});
