@@ -715,6 +715,8 @@ service cloud.firestore {
             && request.resource.data.target == "manutencoes"
             && request.resource.data.maintenanceId is string
             && !request.resource.data.keys().hasAny(["referenceId", "noticeId"])));
+    }
+
     match /sharedNotifications/{notificationId} {
       allow read: if approvedUser();
       allow create: if (
@@ -1149,5 +1151,4 @@ service cloud.firestore {
       allow read, write: if false;
     }
   }
-}
 }
