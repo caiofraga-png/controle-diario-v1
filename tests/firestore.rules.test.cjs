@@ -1953,3 +1953,36 @@ test("restauração administrativa preserva catálogos, permissões e trilhas hi
     data: "JVBERg==", createdByUid: "usuario-antigo", createdAt: "data-inválida",
   }));
 });
+
+
+test("administrador restaura publicações históricas sem snapshots organizacionais", async () => {
+  const admin = dbAs("admin");
+  const historicalTime = new Date("2025-02-03T10:00:00.000Z");
+
+  await assertSucceeds(setDoc(doc(admin, "sharedPromotions/promocao-antiga"), {
+    id: "promocao-antiga", name: "Campanha antiga", category: "Fibra",
+    benefit: "Benefício histórico", eligible: "Clientes elegíveis",
+    conditions: "Condições antigas", startDate: "2025-01-01", endDate: "2025-02-01",
+    status: "closed", createdByUid: "usuario-antigo", createdByName: "Usuário antigo",
+    createdAt: historicalTime, updatedByUid: "usuario-antigo",
+    updatedByName: "Usuário antigo", updatedAt: historicalTime,
+  }));
+
+  await assertSucceeds(setDoc(doc(admin, "delinquencyNotices/aviso-antigo"), {
+    type: "reducao", date: "2025-01-01", title: "Aviso antigo",
+    dueDate: "2024-12-15", customerCount: 10, overdueDays: 15,
+    validUntil: "2025-01-31", status: "completed",
+    createdByUid: "usuario-antigo", createdAt: historicalTime,
+    updatedByUid: "usuario-antigo", updatedAt: historicalTime,
+    notificationId: "notificacao-antiga",
+  }));
+
+  await assertSucceeds(setDoc(doc(admin, "externalMaintenances/manutencao-antiga"), {
+    title: "Manutenção antiga", date: "2025-01-01", location: "Unidade antiga",
+    description: "Descrição histórica", status: "completed",
+    createdByUid: "usuario-antigo", createdAt: historicalTime,
+    createdByName: "Usuário antigo", updatedByUid: "usuario-antigo",
+    updatedAt: historicalTime, updatedByName: "Usuário antigo",
+    lastHistoryId: "historico-antigo", lastNotificationId: "notificacao-manutencao-antiga",
+  }));
+});
