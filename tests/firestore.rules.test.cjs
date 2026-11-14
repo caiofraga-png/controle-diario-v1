@@ -1183,6 +1183,44 @@ test("anexos de promoções respeitam o escopo do registro", async () => {
   await assertSucceeds(deleteDoc(doc(alice, "sharedAttachments/promo-dentro-escopo")));
 });
 
+test("anexos de rascunhos não publicados ficam visíveis apenas ao autor e à administração", async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    for (const targetType of ["maintenance", "promotion", "delinquency"]) {
+      await setDoc(doc(db, `sharedAttachments/rascunho-${targetType}-privado`), {
+        targetType, targetId: `id-ainda-nao-publicado-${targetType}`,
+        name: "rascunho.pdf", mimeType: "application/pdf", size: 4,
+        data: "JVBERg==", createdByUid: "alice", createdAt: new Date(),
+      });
+    }
+  });
+  const alice = dbAs("alice");
+  const bob = dbAs("bob");
+  const admin = dbAs("admin");
+  for (const targetType of ["maintenance", "promotion", "delinquency"]) {
+    const ref = doc(alice, `sharedAttachments/rascunho-${targetType}-privado`);
+    await assertSucceeds(getDoc(ref));
+    await assertFails(getDoc(doc(bob, `sharedAttachments/rascunho-${targetType}-privado`)));
+    await assertSucceeds(getDoc(doc(admin, `sharedAttachments/rascunho-${targetType}-privado`)));
+  }
+  // Once the corresponding record is published, its attachment becomes shared.
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await setDoc(doc(db, "externalMaintenances/id-ainda-nao-publicado-maintenance"), {
+      title: "Manutenção publicada", createdByUid: "alice",
+    });
+    await setDoc(doc(db, "sharedPromotions/id-ainda-nao-publicado-promotion"), {
+      name: "Promoção publicada", createdByUid: "alice",
+    });
+    await setDoc(doc(db, "delinquencyNotices/id-ainda-nao-publicado-delinquency"), {
+      title: "Aviso publicado", createdByUid: "alice",
+    });
+  });
+  for (const targetType of ["maintenance", "promotion", "delinquency"]) {
+    await assertSucceeds(getDoc(doc(bob, `sharedAttachments/rascunho-${targetType}-privado`)));
+  }
+});
+
 test("autor pode remover apenas os próprios anexos órfãos de rascunhos autorizados", async () => {
   await env.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
