@@ -17,7 +17,7 @@ export type BackupPayload = {
 const ROOT_COLLECTIONS = [
   "accessRequests", "adminAudit", "organizationContacts", "organizationSectors",
   "Expediente", "settings", "sharedPromotions", "sharedTaskCatalog", "featurePermissions",
-  "externalMaintenances", "delinquencyNotices", "sharedNotifications", "sharedAttachments",
+  "externalMaintenances", "delinquencyNotices", "sharedNotifications", "sharedAttachments", "attendanceSubtypes",
 ] as const;
 const INSTITUTIONAL_SUBCOLLECTIONS = ["externalMaintenances/*/history"] as const;
 
