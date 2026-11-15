@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState, type CSSProperties } from "react";
+import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
 import AvisosPanel from "./AvisosPanel";
 import OverviewNoticesPermissionPanel from "./OverviewNoticesPermissionPanel";
 import ExcelJS from "exceljs";
@@ -135,6 +135,7 @@ export default function SupervisaoPanel() {
 
   const attendancePageCount = Math.max(1, Math.ceil(atendimentos.length / attendancePageSize));
   const visibleAttendances = atendimentos.slice((attendancePage - 1) * attendancePageSize, attendancePage * attendancePageSize);
+  useEffect(() => { if (attendancePage > attendancePageCount) setAttendancePage(attendancePageCount); }, [attendancePage, attendancePageCount]);
   const setExp = (key: string, value: string) => setExpFilters(current => ({...current,[key]:value}));
   const setAtt = (key: string, value: string) => { setAttendancePage(1); setAttFilters(current => ({...current,[key]:value})); };
   const setHistory = (key: string, value: string) => setHistoryFilters(current => ({...current,[key]:value}));
@@ -179,11 +180,11 @@ export default function SupervisaoPanel() {
       <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><h3 style={{margin:0}}>Expedientes ({expedientes.length})</h3><button type="button" disabled={!expedientes.length} onClick={()=>exportXlsx("expedientes-controle-diario.xlsx",["Login","Setor","Contato","Agente","Perfil","Data","Situação"],expedientes,["colaborador","setor","contato","agente","perfil","data","situacao"])}>EXPORTAR PARA EXCEL (.XLSX)</button><button type="button" disabled={!expedientes.length} onClick={()=>void exportExpedientesDocx(expedientes)}>EXPORTAR RELATÓRIO DETALHADO (.DOCX)</button></div>
       <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"end"}}>
         <label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>Situação<select style={selectStyle} value={status} onChange={event=>setStatus(event.target.value)}><option value="TODOS">Ambos</option><option value="NAO_CONCLUIDO">Não concluídos</option><option value="CONCLUIDO">Concluídos</option></select></label>
-        {<label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>Login<input style={inputStyle} list="visao-logins" value={expFilters.colaborador} onChange={e=>setExp("colaborador",e.target.value)} placeholder="Pesquisar login"/><datalist id="visao-logins">{options("colaborador").map(item=><option key={item} value={item}/>)}</datalist></label>}
-        {select("Setor",expFilters.setor,options("setor"),v=>setExp("setor",v))}
-        {select("Contato",expFilters.contato,options("contato"),v=>setExp("contato",v))}
-        {<label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>Agente<input style={inputStyle} list="visao-agentes" value={expFilters.agente} onChange={e=>setExp("agente",e.target.value)} placeholder="Pesquisar agente"/><datalist id="visao-agentes">{options("agente").map(item=><option key={item} value={item}/>)}</datalist></label>}
-        {select("Perfil",expFilters.perfil,options("perfil"),v=>setExp("perfil",v))}
+        {<label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>Login<input style={inputStyle} list="visao-logins" value={expFilters.colaborador} onChange={e=>setExp("colaborador",e.target.value)} placeholder="Pesquisar login"/><datalist id="visao-logins">{cascadeOptions(data?.expedientes ?? [],{...expFilters,status:status==="TODOS"?"":status},"colaborador").map(item=><option key={item} value={item}/>)}</datalist></label>}
+        {select("Setor",expFilters.setor,cascadeOptions(data?.expedientes ?? [],{...expFilters,status:status==="TODOS"?"":status},"setor"),v=>setExp("setor",v))}
+        {select("Contato",expFilters.contato,cascadeOptions(data?.expedientes ?? [],{...expFilters,status:status==="TODOS"?"":status},"contato"),v=>setExp("contato",v))}
+        {<label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>Agente<input style={inputStyle} list="visao-agentes" value={expFilters.agente} onChange={e=>setExp("agente",e.target.value)} placeholder="Pesquisar agente"/><datalist id="visao-agentes">{cascadeOptions(data?.expedientes ?? [],{...expFilters,status:status==="TODOS"?"":status},"agente").map(item=><option key={item} value={item}/>)}</datalist></label>}
+        {select("Perfil",expFilters.perfil,cascadeOptions(data?.expedientes ?? [],{...expFilters,status:status==="TODOS"?"":status},"perfil"),v=>setExp("perfil",v))}
         <label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>Data<input style={inputStyle} type="date" value={expFilters.data} onChange={e=>setExp("data",e.target.value)}/></label>
       </div>
       <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><thead><tr>{["Colaborador","Setor","Contato","Agente","Perfil","Data","Situação"].map(x=><th key={x} style={{textAlign:"left",padding:9,borderBottom:"1px solid var(--border, #ccd8d0)"}}>{x}</th>)}</tr></thead><tbody>{expedientes.map(row=><Fragment key={row.id}><tr>{[row.colaborador,row.setor,row.contato,row.agente,row.perfil,row.data,row.situacao].map((value,i)=><td key={i} style={{padding:9,borderBottom:"1px solid var(--border, #e1e8e3)"}}>{String(value||"—")}</td>)}<td><button type="button" onClick={()=>setExpandedId(expandedId===row.id?null:row.id)}>{expandedId===row.id?"FECHAR":"DETALHES"}</button></td></tr>{expandedId===row.id&&<tr key={row.id+"-detail"}><td colSpan={8} style={{padding:12,background:"var(--surface-secondary, #f3f7f4)"}}><strong>Tarefas</strong><ul>{(row.tarefas??[]).map((task:Row)=><li key={task.id}>{task.nome} — {task.concluida?"Concluída":"Pendente"}</li>)}</ul><strong>Atendimentos registrados: {(row.atendimentos??[]).length}</strong>{(row.atendimentos??[]).length>0&&<ul>{(row.atendimentos??[]).map((item:Row)=><li key={item.id}>{item.ticket} · {item.canal} · {item.nome}</li>)}</ul>}<strong>Observação</strong><p>{row.observacao||"Sem observação."}</p>{row.concluidoEm&&<small>Concluído em: {new Date(row.concluidoEm).toLocaleString("pt-BR")}</small>}</td></tr>}</Fragment>)}</tbody></table></div>
@@ -202,6 +203,11 @@ export default function SupervisaoPanel() {
         <label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>Data do expediente<input style={inputStyle} type="date" value={attFilters.data} onChange={e=>setAtt("data",e.target.value)}/></label>
       </div>
       <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><thead><tr>{["Ticket","Canal","Código","Nome","Tipo","Resolvido","Subtipo","Colaborador","Setor","Contato","Data"].map(x=><th key={x} style={{textAlign:"left",padding:9,borderBottom:"1px solid var(--border, #ccd8d0)"}}>{x}</th>)}</tr></thead><tbody>{visibleAttendances.map((row,index)=><tr key={row.id||index}>{[row.ticket,row.canal,row.codigo,row.nome,row.tipo,row.resolvido,row.subtipo,row.colaborador,row.setor,row.contato,row.data].map((value,i)=><td key={i} style={{padding:9,borderBottom:"1px solid var(--border, #e1e8e3)"}}>{String(value||"—")}</td>)}</tr>)}</tbody></table></div>
+      {attendancePageCount>1&&<div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+        <button type="button" disabled={attendancePage===1} onClick={()=>setAttendancePage(page=>Math.max(1,page-1))}>ANTERIOR</button>
+        <span aria-live="polite">PÁGINA {attendancePage} DE {attendancePageCount} · {atendimentos.length} ATENDIMENTOS</span>
+        <button type="button" disabled={attendancePage===attendancePageCount} onClick={()=>setAttendancePage(page=>Math.min(attendancePageCount,page+1))}>PRÓXIMA</button>
+      </div>}
     </> : section==="estrutura" ? <>
       <h3>Estrutura organizacional</h3>
       <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"end"}}>
