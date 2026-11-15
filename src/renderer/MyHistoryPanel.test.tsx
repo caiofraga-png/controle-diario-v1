@@ -63,9 +63,13 @@ describe("Meu Histórico — interface", () => {
   it("permite selecionar um dia e abrir os detalhes do expediente", async () => {
     historicoMensal.mockResolvedValue([resumo]);
     render(<MyHistoryPanel onClose={vi.fn()} />);
-    fireEvent.click(screen.getByRole("button", { name: "Mês anterior" }));
+    const mesAnterior = screen.getByRole("button", { name: "Mês anterior" });
+    await waitFor(() => expect((mesAnterior as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(mesAnterior);
+    expect(await screen.findByText("outubro de 2026")).toBeTruthy();
 
     const dia = await screen.findByRole("button", { name: "14/10/2026, possui expediente concluído" });
+    await waitFor(() => expect((dia as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(dia);
     expect(await screen.findByText("EXPEDIENTES DE 14/10/2026")).toBeTruthy();
 
@@ -79,8 +83,13 @@ describe("Meu Histórico — interface", () => {
   it("não apresenta comandos ou campos de edição nos detalhes", async () => {
     historicoMensal.mockResolvedValue([resumo]);
     render(<MyHistoryPanel onClose={vi.fn()} />);
-    fireEvent.click(screen.getByRole("button", { name: "Mês anterior" }));
-    fireEvent.click(await screen.findByRole("button", { name: "14/10/2026, possui expediente concluído" }));
+    const mesAnterior = screen.getByRole("button", { name: "Mês anterior" });
+    await waitFor(() => expect((mesAnterior as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(mesAnterior);
+    expect(await screen.findByText("outubro de 2026")).toBeTruthy();
+    const dia = await screen.findByRole("button", { name: "14/10/2026, possui expediente concluído" });
+    await waitFor(() => expect((dia as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(dia);
     fireEvent.click(screen.getByRole("button", { name: "VER DETALHES" }));
 
     const dialog = await screen.findByRole("dialog", { name: "Meu histórico" });
