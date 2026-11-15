@@ -18,6 +18,13 @@ export default function AttendanceRowsList({ rows, editable = false, onChange }:
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [fieldOrder, setFieldOrder] = useState<string[]>(fields.map(field=>field.key));
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 30;
+  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+  const visibleRows = rows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  useEffect(() => {
+    if (currentPage > pageCount) setCurrentPage(pageCount);
+  }, [currentPage, pageCount]);
   useEffect(() => { let active=true; window.controleDiario.firebase.loadAttendancePreferences().then((value:{ ordemCampos:string[] })=>{if(active)setFieldOrder(value.ordemCampos);}).catch(()=>{/* Mantém a ordem padrão se a preferência não puder ser carregada. */}); return ()=>{active=false;}; }, []);
   async function commit(next: AttendanceRecord[]) {
     if (!onChange || busy) return;
@@ -35,7 +42,7 @@ export default function AttendanceRowsList({ rows, editable = false, onChange }:
     <div className="workspace-intro"><h2>Atendimentos do dia</h2><p>Tickets registrados até o momento.</p></div>
     {rows.length===0?<p>NENHUM TICKET REGISTRADO NESTE EXPEDIENTE.</p>:<>
       <div className="attendance-saved-list">
-        {rows.map((row,index)=><article className="attendance-saved-row" key={row.id}>
+        {visibleRows.map((row,pageIndex)=>{ const index=(currentPage-1)*pageSize+pageIndex; return <article className="attendance-saved-row" key={row.id}>
           {editingId===row.id && draft ? <div className="attendance-edit-grid">
             {fields.map(field=><label className="attendance-field" key={field.key}><span>{field.label}</span><input value={String(draft[field.key] ?? "")} onChange={e=>setDraft(current=>current?({...current,[field.key]:e.target.value}):current)}/></label>)}
             <div className="attendance-actions"><button disabled={busy||!draft.ticket.trim()||!draft.nome.trim()} onClick={()=>void commit(rows.map(item=>item.id===draft.id?draft:item))}>SALVAR</button><button disabled={busy} onClick={()=>{setEditingId(null);setDraft(null);}}>CANCELAR</button></div>
