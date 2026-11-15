@@ -63,6 +63,7 @@ describe("Meu Histórico — interface", () => {
   it("permite selecionar um dia e abrir os detalhes do expediente", async () => {
     historicoMensal.mockResolvedValue([resumo]);
     render(<MyHistoryPanel onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Mês anterior" }));
 
     const dia = await screen.findByRole("button", { name: "14/10/2026, possui expediente concluído" });
     fireEvent.click(dia);
@@ -78,6 +79,7 @@ describe("Meu Histórico — interface", () => {
   it("não apresenta comandos ou campos de edição nos detalhes", async () => {
     historicoMensal.mockResolvedValue([resumo]);
     render(<MyHistoryPanel onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Mês anterior" }));
     fireEvent.click(await screen.findByRole("button", { name: "14/10/2026, possui expediente concluído" }));
     fireEvent.click(screen.getByRole("button", { name: "VER DETALHES" }));
 
