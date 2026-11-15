@@ -57,8 +57,13 @@ export default function AttendanceRowsList({ rows, editable = false, onChange }:
               <button disabled={busy} title="Remover ticket" aria-label="Remover ticket" onClick={()=>{if(window.confirm("Deseja remover este ticket do expediente?"))void commit(rows.filter(item=>item.id!==row.id));}}>⌫</button>
             </div>}
           </>}
-        </article>)}
+        </article>;})}
       </div>
+      {pageCount>1&&<div className="attendance-actions" style={{justifyContent:"center",alignItems:"center",gap:12}}>
+        <button type="button" disabled={busy||currentPage===1} onClick={()=>setCurrentPage(page=>Math.max(1,page-1))}>ANTERIOR</button>
+        <span aria-live="polite">PÁGINA {currentPage} DE {pageCount} · {rows.length} ATENDIMENTOS</span>
+        <button type="button" disabled={busy||currentPage===pageCount} onClick={()=>setCurrentPage(page=>Math.min(pageCount,page+1))}>PRÓXIMA</button>
+      </div>}
       <div className="attendance-actions"><button className="attendance-primary" disabled={busy} onClick={()=>void copyList()}>COPIAR LISTA</button></div>
     </>}
     {message&&<p className="attendance-success" role="status">{message}</p>}
