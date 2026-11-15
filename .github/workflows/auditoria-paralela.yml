@@ -43,6 +43,8 @@ jobs:
           node-version: 22
       - name: Instalar dependências
         run: npm install --no-audit --no-fund
+      - name: Testar interface Meu Histórico
+        run: npm run test:ui
       - name: Compilar aplicação
         run: npm run build
 
