@@ -6,6 +6,8 @@ export interface EmailSnapshot extends Email {
 
 export interface TarefaSnapshot extends Omit<Tarefa, "emailsVinculados"> {
   concluida: boolean;
+  /** Exact completion time used by the supervisor's live operational feed. */
+  concluidaEm?: string;
   emailsVinculados: EmailSnapshot[];
 }
 
