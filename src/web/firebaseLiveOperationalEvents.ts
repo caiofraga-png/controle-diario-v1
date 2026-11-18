@@ -21,9 +21,11 @@ type State = {
 } | null;
 
 function eventTime(snapshot: any, state: State): string {
+  const serverTime = snapshot.updateTime?.toDate?.()?.toISOString?.();
+  if (serverTime) return serverTime;
   const value = state?.ultimaAlteracao || state?.criadoEm;
   if (typeof value === "string" && !Number.isNaN(Date.parse(value))) return value;
-  return snapshot.updateTime?.toDate?.()?.toISOString?.() ?? new Date().toISOString();
+  return new Date().toISOString();
 }
 
 export function subscribeLiveOperationalEvents(
@@ -39,10 +41,24 @@ export function subscribeLiveOperationalEvents(
   return onSnapshot(source, snapshot => {
     if (!initialized) {
       for (const item of snapshot.docs) {
-        if (item.id === "currentState") previous.set(item.ref.path, (item.data().estado ?? null) as State);
+        if (item.id !== "currentState") continue;
+        const state = (item.data().estado ?? null) as State;
+        previous.set(item.ref.path, state);
+        if (state) {
+          const uid = String(item.data().ownerUid ?? "");
+          if (uid) feed.push({
+            id: item.id + "-inicio-" + String(state.criadoEm ?? item.updateTime?.toMillis?.() ?? ""),
+            type: "EXPEDIENTE_INICIADO",
+            uid,
+            occurredAt: typeof state.criadoEm === "string" ? state.criadoEm : eventTime(item, state),
+            profile: String(state.perfil?.nome ?? "—"),
+            date: String(state.data ?? ""),
+          });
+        }
       }
       initialized = true;
-      callback([]);
+      feed.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+      callback(feed.slice(0, 100));
       return;
     }
 
