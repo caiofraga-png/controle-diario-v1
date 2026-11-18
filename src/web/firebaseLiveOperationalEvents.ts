@@ -17,7 +17,7 @@ type State = {
   perfil?: { nome?: string };
   criadoEm?: string;
   ultimaAlteracao?: string;
-  tarefas?: Array<{ id: string; nome: string; concluida: boolean }>;
+  tarefas?: Array<{ id: string; nome: string; concluida: boolean; concluidaEm?: string }>;
 } | null;
 
 function eventTime(state: State): string {
@@ -52,6 +52,17 @@ export function subscribeLiveOperationalEvents(
             profile: String(state.perfil?.nome ?? "—"),
             date: String(state.data ?? ""),
           });
+          for (const task of state.tarefas ?? []) {
+            if (uid && task.concluida && task.concluidaEm) feed.push({
+              id: item.ref.path + "-tarefa-" + task.id + "-" + task.concluidaEm,
+              type: "TAREFA_FINALIZADA",
+              uid,
+              occurredAt: task.concluidaEm,
+              profile: String(state.perfil?.nome ?? "—"),
+              date: String(state.data ?? ""),
+              task: task.nome,
+            });
+          }
         }
       }
       initialized = true;
@@ -78,10 +89,12 @@ export function subscribeLiveOperationalEvents(
       } else if (before && !next) {
         feed.push({ id: item.id + "-" + occurredAt, type: "EXPEDIENTE_FINALIZADO", uid, occurredAt, profile, date });
       } else if (before && next) {
-        const oldTasks = new Map((before.tarefas ?? []).map(task => [task.id, task.concluida]));
+        const oldTasks = new Map((before.tarefas ?? []).map(task => [task.id, task]));
         for (const task of next.tarefas ?? []) {
-          if (task.concluida && oldTasks.get(task.id) === false) {
-            feed.push({ id: item.id + "-" + task.id + "-" + occurredAt, type: "TAREFA_FINALIZADA", uid, occurredAt, profile, date, task: task.nome });
+          const previousTask = oldTasks.get(task.id);
+          if (task.concluida && previousTask?.concluida !== true) {
+            const taskTime = task.concluidaEm || occurredAt;
+            feed.push({ id: item.ref.path + "-tarefa-" + task.id + "-" + taskTime, type: "TAREFA_FINALIZADA", uid, occurredAt: taskTime, profile, date, task: task.nome });
           }
         }
       }
