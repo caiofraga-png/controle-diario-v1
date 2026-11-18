@@ -89,6 +89,10 @@ export default function SupervisaoPanel() {
   const [attendancePage, setAttendancePage] = useState(1);
   const attendancePageSize = 30;
 
+  useEffect(() => {
+    if (section === "acompanhamento" && !data && !busy) void refresh();
+  }, [section, data, busy]);
+
   async function refresh() {
     setBusy(true); setMessage("");
     try {
