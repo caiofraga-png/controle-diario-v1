@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
 import AvisosPanel from "./AvisosPanel";
 import OverviewNoticesPermissionPanel from "./OverviewNoticesPermissionPanel";
+import LiveOperationalPanel from "./LiveOperationalPanel";
 import ExcelJS from "exceljs";
 import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
 
@@ -78,7 +79,7 @@ export default function SupervisaoPanel() {
   const [data, setData] = useState<Overview | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const [section, setSection] = useState<"avisos" | "configuracaoAvisos" | "expedientes" | "atendimentos" | "estrutura" | "historico">("avisos");
+  const [section, setSection] = useState<"avisos" | "configuracaoAvisos" | "expedientes" | "atendimentos" | "estrutura" | "historico" | "acompanhamento">("avisos");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [status, setStatus] = useState("TODOS");
   const [expFilters, setExpFilters] = useState({ colaborador:"", setor:"", contato:"", agente:"", perfil:"", data:"" });
@@ -167,6 +168,7 @@ export default function SupervisaoPanel() {
         <button type="button" className={section==="atendimentos"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("atendimentos")}>ATENDIMENTOS</button>
         <button type="button" className={section==="estrutura"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("estrutura")}>ESTRUTURA</button>
         <button type="button" className={section==="historico"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("historico")}>HISTÓRICO</button>
+        <button type="button" className={section==="acompanhamento"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("acompanhamento")}>ACOMPANHAMENTO EM TEMPO REAL</button>
       </div>
       {section!=="avisos"&&section!=="configuracaoAvisos"&&<>
         <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
@@ -176,7 +178,7 @@ export default function SupervisaoPanel() {
         {message&&<p className="system-message" role="status">{message}</p>}
       </>}
     </section>
-    {section==="avisos" || section==="configuracaoAvisos" ? null : !data ? <p>Clique em ATUALIZAR DADOS para consultar os registros.</p> : section==="expedientes" ? <>
+    {section==="acompanhamento" ? <LiveOperationalPanel collaborators={data?.estrutura?.colaboradores ?? []}/> : section==="avisos" || section==="configuracaoAvisos" ? null : !data ? <p>Clique em ATUALIZAR DADOS para consultar os registros.</p> : section==="expedientes" ? <>
       <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><h3 style={{margin:0}}>Expedientes ({expedientes.length})</h3><button type="button" disabled={!expedientes.length} onClick={()=>exportXlsx("expedientes-controle-diario.xlsx",["Login","Setor","Contato","Agente","Perfil","Data","Situação"],expedientes,["colaborador","setor","contato","agente","perfil","data","situacao"])}>EXPORTAR PARA EXCEL (.XLSX)</button><button type="button" disabled={!expedientes.length} onClick={()=>void exportExpedientesDocx(expedientes)}>EXPORTAR RELATÓRIO DETALHADO (.DOCX)</button></div>
       <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"end"}}>
         <label style={{display:"grid",gap:4,fontSize:12,fontWeight:600}}>Situação<select style={selectStyle} value={status} onChange={event=>setStatus(event.target.value)}><option value="TODOS">Ambos</option><option value="NAO_CONCLUIDO">Não concluídos</option><option value="CONCLUIDO">Concluídos</option></select></label>
