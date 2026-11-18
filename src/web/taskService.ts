@@ -129,6 +129,7 @@ export function toggleTask(state: EstadoAtual, taskId: string, checked: boolean)
   const task = next.tarefas.find(t => t.id === taskId);
   if (!task) throw new Error("TAREFA NÃO ENCONTRADA.");
   task.concluida = checked;
+  task.concluidaEm = checked ? new Date().toISOString() : undefined;
   const linkedIds = new Set(task.emailsVinculados.map(e => e.id));
   for (const t of next.tarefas) for (const email of t.emailsVinculados) if (linkedIds.has(email.id)) email.concluido = checked;
   for (const email of next.emailsGlobais) if (linkedIds.has(email.id)) email.concluido = checked;
