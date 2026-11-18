@@ -20,9 +20,7 @@ type State = {
   tarefas?: Array<{ id: string; nome: string; concluida: boolean }>;
 } | null;
 
-function eventTime(snapshot: any, state: State): string {
-  const serverTime = snapshot.updateTime?.toDate?.()?.toISOString?.();
-  if (serverTime) return serverTime;
+function eventTime(state: State): string {
   const value = state?.ultimaAlteracao || state?.criadoEm;
   if (typeof value === "string" && !Number.isNaN(Date.parse(value))) return value;
   return new Date().toISOString();
@@ -47,10 +45,10 @@ export function subscribeLiveOperationalEvents(
         if (state) {
           const uid = String(item.data().ownerUid ?? "");
           if (uid) feed.push({
-            id: item.id + "-inicio-" + String(state.criadoEm ?? item.updateTime?.toMillis?.() ?? ""),
+            id: item.id + "-inicio-" + String(state.criadoEm ?? state.data ?? item.ref.path),
             type: "EXPEDIENTE_INICIADO",
             uid,
-            occurredAt: typeof state.criadoEm === "string" ? state.criadoEm : eventTime(item, state),
+            occurredAt: typeof state.criadoEm === "string" ? state.criadoEm : eventTime(state),
             profile: String(state.perfil?.nome ?? "—"),
             date: String(state.data ?? ""),
           });
@@ -69,7 +67,7 @@ export function subscribeLiveOperationalEvents(
       if (!uid) continue;
       const next = (item.data().estado ?? null) as State;
       const before = previous.get(item.ref.path);
-      const occurredAt = eventTime(item, next ?? before ?? null);
+      const occurredAt = eventTime(next ?? before ?? null);
       const profile = String(next?.perfil?.nome ?? before?.perfil?.nome ?? "—");
       const date = String(next?.data ?? before?.data ?? "");
 
