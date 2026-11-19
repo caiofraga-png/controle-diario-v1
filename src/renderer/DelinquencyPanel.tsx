@@ -37,7 +37,6 @@ export default function DelinquencyPanel(){
     stop=onSnapshot(q,snapshot=>{setItems(snapshot.docs.map(item=>({id:item.id,...item.data()} as Notice)));setLoading(false);},error=>{setMessage(error.message);setLoading(false);});
     return ()=>stop?.();
   },[]);
-  const today=new Date().toLocaleDateString("en-CA",{timeZone:"America/Sao_Paulo"});
   const classified=useMemo(()=>({
     ongoing:items.filter(item=>item.status!=="completed"),
     completed:items.filter(item=>item.status==="completed")
