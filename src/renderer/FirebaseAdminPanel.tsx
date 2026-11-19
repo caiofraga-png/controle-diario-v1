@@ -6,7 +6,6 @@ import {
   listOrganizationalUsers,
   listSectors,
   listContacts,
-  listRecentOperationalRecords,
   rejectAccessRequest,
   saveAllowedDomains,
   saveContact,
@@ -32,7 +31,6 @@ export default function FirebaseAdminPanel() {
   const [users, setUsers] = useState<OrganizationalUser[]>([]);
   const [sectors, setSectors] = useState<OrganizationalSector[]>([]);
   const [contacts, setContacts] = useState<OrganizationalContact[]>([]);
-  const [operationalRecords, setOperationalRecords] = useState<Record<string, unknown>[]>([]);
   const [domains, setDomains] = useState("");
   const [selected, setSelected] = useState("");
   const [login, setLogin] = useState("");
@@ -80,15 +78,14 @@ export default function FirebaseAdminPanel() {
     setBusy(true);
     setMessage("");
     try {
-      const [r, u, s, c, d, records, catalog] = await Promise.all([
-        listAccessRequests(), listOrganizationalUsers(), listSectors(), listContacts(), getAllowedDomains(), listRecentOperationalRecords(100), loadSharedTaskCatalog(),
+      const [r, u, s, c, d, catalog] = await Promise.all([
+        listAccessRequests(), listOrganizationalUsers(), listSectors(), listContacts(), getAllowedDomains(), loadSharedTaskCatalog(),
       ]);
       setRequests(r as RequestItem[]);
       setUsers(u);
       setSectors(s);
       setContacts(c);
       setDomains(d.join("\n"));
-      setOperationalRecords(records as Record<string, unknown>[]);
       setCatalogReady(Boolean(catalog));
       setCatalogProfiles((catalog?.perfis.perfis ?? []).filter((profile) => profile.ativo).map((profile) => ({ id: profile.id, nome: profile.nome, ativo: profile.ativo })));
     } catch (error) {
@@ -531,19 +528,6 @@ export default function FirebaseAdminPanel() {
           {!isAdministrator && <small>Bloqueio e reativação de contas são ações exclusivas de administradores.</small>}
         </div>
       </div> : <p>Nenhum colaborador selecionado.</p>; })()}
-    </section>
-
-    <section>
-      <h3>Expediente — visão geral</h3>
-      <p>Visualização somente para acompanhamento. A estrutura final dos registros será conectada após a migração do expediente para o Firestore; este painel não disponibiliza edição ou exclusão.</p>
-      {operationalRecords.length === 0
-        ? <p>A seção está criada. Quando a gravação dos expedientes no Firestore for integrada, esta área poderá listar os cards e permitir filtros por Setor e Contato. Nenhum expediente foi migrado ou criado nesta etapa.</p>
-        : <div style={{ display: "grid", gap: 8 }}>{operationalRecords.map((record, index) => <article key={String(record.id ?? index)} style={{ borderTop: "1px solid #ddd", padding: 12 }}>
-          <strong>{String(record.agent ?? record.agente ?? record.login ?? record.uid ?? "Expediente")}</strong>
-          <div>{String(record.date ?? record.data ?? record.completedAt ?? "Data não disponível")}</div>
-          <div>{String(record.sectorName ?? record.setor ?? "Setor não disponível")} / {String(record.contactName ?? record.contato ?? "Contato não disponível")}</div>
-          <small>{String(record.status ?? record.statusExpediente ?? "Registro histórico")}</small>
-        </article>)}</div>}
     </section>
 
     <section>
