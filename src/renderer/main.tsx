@@ -335,7 +335,6 @@ function App() {
         {showMenu("inadimplencia")&&<button className={`sidebar-item ${tab==="inadimplencia"?"active":""}`} onClick={()=>setTab("inadimplencia")}><span className="sidebar-icon">⚠</span><span>Inadimplência</span></button>}
         {showMenu("manutencoes")&&<button className={`sidebar-item ${tab==="manutencoes"?"active":""}`} onClick={()=>setTab("manutencoes")}><span className="sidebar-icon">⚒</span><span>Área Falha</span></button>}
         {showMenu("promocoes")&&<button className={`sidebar-item ${tab==="promocoes"?"active":""}`} onClick={()=>setTab("promocoes")}><span className="sidebar-icon">％</span><span>Promoções</span></button>}
-        {showMenu("meta")&&<button className="sidebar-item" disabled title="Funcionalidade planejada"><span className="sidebar-icon">◎</span><span>Meta</span><span className="sidebar-soon">EM BREVE</span></button>}
         <div className="sidebar-section-label">GERENCIAMENTO</div>
         {showMenu("configuracao")&&<button className={`sidebar-item ${tab==="configuracao"?"active":""}`} onClick={()=>setTab("configuracao")}><span className="sidebar-icon">⚙</span><span>Configuração</span></button>}
         {showMenu("administracao")&&<button className={`sidebar-item ${tab==="administracao"?"active":""}`} onClick={()=>setTab("administracao")}><span className="sidebar-icon">♙</span><span>Administração</span></button>}
