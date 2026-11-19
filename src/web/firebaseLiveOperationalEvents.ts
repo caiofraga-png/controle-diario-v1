@@ -10,6 +10,7 @@ export type LiveOperationalEvent = {
   date: string;
   task?: string;
   subtype?: string;
+  ticket?: string;
 };
 
 type State = {
@@ -19,7 +20,7 @@ type State = {
   criadoEm?: string;
   ultimaAlteracao?: string;
   tarefas?: Array<{ id: string; nome: string; concluida: boolean; concluidaEm?: string }>;
-  atendimentos?: Array<{ id: string; subtipo?: string; criadoEm?: string }>;
+  atendimentos?: Array<{ id: string; subtipo?: string; ticket?: string; criadoEm?: string }>;
 } | null;
 
 function eventTime(state: State): string {
@@ -105,6 +106,7 @@ export function subscribeLiveOperationalEvents(
             profile,
             date,
             subtype: String(attendance.subtipo ?? "").trim(),
+            ticket: String(attendance.ticket ?? "").trim(),
           });
         }
         const oldTasks = new Map((before.tarefas ?? []).map(task => [task.id, task]));
