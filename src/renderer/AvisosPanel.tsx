@@ -4,6 +4,7 @@ const cards:{id:OverviewNoticeId;title:string;description:string}[]=[
   {id:"longCalls",title:"LIGAÇÕES PROLONGADAS",description:"Acompanhamento de ligações longas e que exigem atenção."},
   {id:"googleChat",title:"SOLICITAÇÕES NO GOOGLE CHAT",description:"Acompanhamento de pedidos de urgência e análises de aparelhos."},
   {id:"otherHelp",title:"OUTROS PEDIDOS DE AJUDA",description:"Outras solicitações de apoio operacional."},
+  {id:"agorapulse",title:"CONFIGURAÇÃO DE AVISOS DO AGORAPULSE",description:"Futura integração para acompanhar novos comentários, mensagens diretas e marcações em publicações e Stories."},
 ];
 export default function AvisosPanel({allowed}:{allowed:OverviewNoticeId[]}){
   const visible=cards.filter(card=>allowed.includes(card.id));
