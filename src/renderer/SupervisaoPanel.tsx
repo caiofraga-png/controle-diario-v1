@@ -168,7 +168,7 @@ export default function SupervisaoPanel() {
         <button type="button" className={section==="avisos"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("avisos")}>AVISOS</button>
         <button type="button" className={section==="configuracaoAvisos"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("configuracaoAvisos")}>CONFIGURAÇÃO</button>
       </div>
-      {section==="avisos" ? <AvisosPanel allowed={["longCalls","googleChat","otherHelp"]}/> : section==="configuracaoAvisos" ? <OverviewNoticesPermissionPanel/> : null}
+      {section==="avisos" ? <AvisosPanel allowed={["longCalls","googleChat","otherHelp","agorapulse"]}/> : section==="configuracaoAvisos" ? <OverviewNoticesPermissionPanel/> : null}
     </section>
     <section style={{display:"grid",gap:10}}>
       <div className="workspace-intro"><h3 style={{margin:0}}>ANÁLISE DE DADOS</h3><p>Acompanhamento gerencial de expedientes e atendimentos de todos os colaboradores.</p></div>
