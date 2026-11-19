@@ -66,6 +66,24 @@ export function subscribeLiveOperationalEvents(
               task: task.nome,
             });
           }
+          // Reconstitui os atendimentos já existentes em expedientes ainda abertos
+          // para que a lista sobreviva à atualização da página, sem novas gravações.
+          for (const attendance of state.atendimentos ?? []) {
+            if (!uid || !attendance.id) continue;
+            const attendanceTime = typeof attendance.criadoEm === "string" && !Number.isNaN(Date.parse(attendance.criadoEm))
+              ? attendance.criadoEm
+              : eventTime(state);
+            feed.push({
+              id: item.ref.path + "-atendimento-" + attendance.id,
+              type: "ATENDIMENTO_REGISTRADO",
+              uid,
+              occurredAt: attendanceTime,
+              profile: String(state.perfil?.nome ?? "—"),
+              date: String(state.data ?? ""),
+              subtype: String(attendance.subtipo ?? "").trim(),
+              ticket: String(attendance.ticket ?? "").trim(),
+            });
+          }
         }
       }
       initialized = true;
