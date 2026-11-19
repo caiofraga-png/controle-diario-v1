@@ -3,12 +3,13 @@ import { requireFirebase } from "./firebaseClient";
 
 export type LiveOperationalEvent = {
   id: string;
-  type: "EXPEDIENTE_INICIADO" | "EXPEDIENTE_FINALIZADO" | "TAREFA_FINALIZADA";
+  type: "EXPEDIENTE_INICIADO" | "EXPEDIENTE_FINALIZADO" | "TAREFA_FINALIZADA" | "ATENDIMENTO_REGISTRADO";
   uid: string;
   occurredAt: string;
   profile: string;
   date: string;
   task?: string;
+  subtype?: string;
 };
 
 type State = {
@@ -18,6 +19,7 @@ type State = {
   criadoEm?: string;
   ultimaAlteracao?: string;
   tarefas?: Array<{ id: string; nome: string; concluida: boolean; concluidaEm?: string }>;
+  atendimentos?: Array<{ id: string; subtipo?: string; criadoEm?: string }>;
 } | null;
 
 function eventTime(state: State): string {
@@ -89,6 +91,22 @@ export function subscribeLiveOperationalEvents(
       } else if (before && !next) {
         feed.push({ id: item.id + "-" + occurredAt, type: "EXPEDIENTE_FINALIZADO", uid, occurredAt, profile, date });
       } else if (before && next) {
+        const oldAttendanceIds = new Set((before.atendimentos ?? []).map(item => item.id));
+        for (const attendance of next.atendimentos ?? []) {
+          if (!attendance.id || oldAttendanceIds.has(attendance.id)) continue;
+          const attendanceTime = typeof attendance.criadoEm === "string" && !Number.isNaN(Date.parse(attendance.criadoEm))
+            ? attendance.criadoEm
+            : occurredAt;
+          feed.push({
+            id: item.ref.path + "-atendimento-" + attendance.id,
+            type: "ATENDIMENTO_REGISTRADO",
+            uid,
+            occurredAt: attendanceTime,
+            profile,
+            date,
+            subtype: String(attendance.subtipo ?? "").trim(),
+          });
+        }
         const oldTasks = new Map((before.tarefas ?? []).map(task => [task.id, task]));
         for (const task of next.tarefas ?? []) {
           const previousTask = oldTasks.get(task.id);
