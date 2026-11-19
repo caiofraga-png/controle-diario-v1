@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { subscribeLiveOperationalEvents, type LiveOperationalEvent } from "../web/firebaseLiveOperationalEvents";
 
 type Collaborator = { uid?: string; colaborador?: string; login?: string; setor?: string; contato?: string };
@@ -12,6 +12,52 @@ const eventLabels: Record<LiveOperationalEvent["type"], string> = {
 export default function LiveOperationalPanel({ collaborators = [] }: { collaborators?: Collaborator[] }) {
   const [events, setEvents] = useState<LiveOperationalEvent[]>([]);
   const [error, setError] = useState("");
+  const [captureMessage, setCaptureMessage] = useState("A captura ainda não foi iniciada.");
+  const [capturing, setCapturing] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const captureStreamRef = useRef<MediaStream | null>(null);
+
+  function stopCapture() {
+    captureStreamRef.current?.getTracks().forEach(track => track.stop());
+    captureStreamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+    setCapturing(false);
+    setCaptureMessage("Captura encerrada. Nenhuma imagem foi armazenada.");
+  }
+
+  async function startCapture() {
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+      setCaptureMessage("Este navegador não disponibilizou a captura de tela para esta página.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      captureStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+      const [track] = stream.getVideoTracks();
+      track?.addEventListener("ended", () => {
+        if (captureStreamRef.current === stream) {
+          captureStreamRef.current = null;
+          setCapturing(false);
+          setCaptureMessage("O compartilhamento foi encerrado pelo navegador.");
+        }
+      }, { once: true });
+      setCapturing(true);
+      setCaptureMessage("Captura ativa somente nesta aba. As imagens não são gravadas nem enviadas ao Firebase.");
+    } catch (captureError) {
+      const name = captureError instanceof Error ? captureError.name : "";
+      setCaptureMessage(name === "NotAllowedError"
+        ? "O compartilhamento foi cancelado ou bloqueado pelo navegador."
+        : `Não foi possível iniciar a captura: ${captureError instanceof Error ? captureError.message : String(captureError)}`);
+    }
+  }
+
+  useEffect(() => () => {
+    captureStreamRef.current?.getTracks().forEach(track => track.stop());
+  }, []);
 
   useEffect(() => {
     return subscribeLiveOperationalEvents(setEvents, error => setError(error.message));
@@ -28,6 +74,18 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
       <span style={{display:"inline-flex",alignItems:"center",gap:7,fontSize:12,fontWeight:700,color:"#16834a"}}><span style={{width:8,height:8,borderRadius:99,background:"#16a34a"}}/> CONECTADO</span>
     </div>
     {error && <p className="system-message" role="alert">{error}</p>}
+    <section style={{display:"grid",gap:10,padding:14,border:"1px solid var(--border, #dce5de)",borderRadius:10,background:"var(--surface-secondary, #f4f7f5)"}}>
+      <div>
+        <strong>TESTE TEMPORÁRIO DE CAPTURA DO SOS BETA</strong>
+        <p style={{margin:"4px 0 0",fontSize:12,color:"var(--muted, #60746a)"}}>Autorize o compartilhamento da aba do SOS Beta para verificarmos se o Chrome permite a leitura visual. Este teste não grava imagens e não envia conteúdo ao Firebase.</p>
+      </div>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+        <button type="button" onClick={() => void startCapture()} disabled={capturing}>INICIAR TESTE DE CAPTURA</button>
+        <button type="button" onClick={stopCapture} disabled={!capturing}>ENCERRAR CAPTURA</button>
+      </div>
+      <p role="status" aria-live="polite" style={{margin:0,fontSize:12}}>{captureMessage}</p>
+      {capturing && <video ref={videoRef} autoPlay muted playsInline style={{width:"100%",maxHeight:360,objectFit:"contain",background:"#202020",borderRadius:8}} />}
+    </section>
     {!events.length && !error && <div style={{padding:20,border:"1px dashed var(--border, #cbd8ce)",borderRadius:10,textAlign:"center",color:"var(--muted, #60746a)"}}>Aguardando novos acontecimentos nos expedientes…</div>}
     <div style={{display:"grid",gap:8}}>
       {events.map(event => {
