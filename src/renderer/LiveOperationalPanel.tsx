@@ -7,6 +7,7 @@ const eventLabels: Record<LiveOperationalEvent["type"], string> = {
   EXPEDIENTE_INICIADO: "Expediente iniciado",
   EXPEDIENTE_FINALIZADO: "Expediente finalizado",
   TAREFA_FINALIZADA: "Tarefa finalizada",
+  ATENDIMENTO_REGISTRADO: "Atendimento registrado",
 };
 
 export default function LiveOperationalPanel({ collaborators = [] }: { collaborators?: Collaborator[] }) {
@@ -94,8 +95,12 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
     <div style={{display:"grid",gap:8}}>
       {events.map(event => {
         const person = collaborators.find(item => item.uid === event.uid);
-        const detail = event.type === "TAREFA_FINALIZADA" ? event.task : `Perfil: ${event.profile}`;
-        const icon = event.type === "EXPEDIENTE_INICIADO" ? "▶" : event.type === "EXPEDIENTE_FINALIZADO" ? "■" : "✓";
+        const detail = event.type === "TAREFA_FINALIZADA"
+          ? event.task
+          : event.type === "ATENDIMENTO_REGISTRADO"
+            ? `Subtipo: ${event.subtype || "Não informado"}`
+            : `Perfil: ${event.profile}`;
+        const icon = event.type === "EXPEDIENTE_INICIADO" ? "▶" : event.type === "EXPEDIENTE_FINALIZADO" ? "■" : event.type === "ATENDIMENTO_REGISTRADO" ? "▤" : "✓";
         return <article key={event.id} style={{display:"grid",gridTemplateColumns:"34px minmax(0,1fr) auto",alignItems:"center",gap:10,padding:12,border:"1px solid var(--border, #dce5de)",borderRadius:9,background:"var(--surface, #fff)"}}>
           <span style={{display:"grid",placeItems:"center",width:32,height:32,borderRadius:8,background:"var(--surface-secondary, #f0f5f1)",fontWeight:800,color:"var(--accent, #187747)"}}>{icon}</span>
           <div style={{minWidth:0}}><strong>{eventLabels[event.type]}</strong><div style={{fontSize:13}}>{nameFor(event.uid)}{person?.setor ? ` · ${person.setor}` : ""}{person?.contato ? ` · ${person.contato}` : ""}</div><div style={{fontSize:12,color:"var(--muted, #60746a)",overflowWrap:"anywhere"}}>{detail}</div></div>
