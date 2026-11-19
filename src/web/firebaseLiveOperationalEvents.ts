@@ -92,7 +92,11 @@ export function subscribeLiveOperationalEvents(
         const oldTasks = new Map((before.tarefas ?? []).map(task => [task.id, task]));
         for (const task of next.tarefas ?? []) {
           const previousTask = oldTasks.get(task.id);
-          if (task.concluida && previousTask?.concluida !== true) {
+          const completionTimestampChanged = Boolean(
+            task.concluidaEm && task.concluidaEm !== previousTask?.concluidaEm
+          );
+          const newlyCompletedWithoutTimestamp = task.concluida && previousTask?.concluida !== true && !task.concluidaEm;
+          if (task.concluida && (completionTimestampChanged || newlyCompletedWithoutTimestamp)) {
             const taskTime = task.concluidaEm || occurredAt;
             feed.push({ id: item.ref.path + "-tarefa-" + task.id + "-" + taskTime, type: "TAREFA_FINALIZADA", uid, occurredAt: taskTime, profile, date, task: task.nome });
           }
