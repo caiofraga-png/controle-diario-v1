@@ -604,7 +604,7 @@ service cloud.firestore {
       allow create: if activeAdmin()
         && request.resource.data.keys().hasAll([
           "type", "date", "title", "dueDate", "customerCount", "overdueDays",
-          "observation", "status", "createdByUid", "createdAt", "updatedByUid", "updatedAt", "notificationId"
+          "status", "createdByUid", "createdAt", "updatedByUid", "updatedAt", "notificationId"
         ])
         && request.resource.data.keys().hasOnly([
           "type", "date", "title", "dueDate", "customerCount", "overdueDays",
@@ -619,7 +619,6 @@ service cloud.firestore {
         && request.resource.data.customerCount >= 0
         && request.resource.data.overdueDays is int
         && request.resource.data.overdueDays >= 0
-        && request.resource.data.observation is string
         && request.resource.data.status in ["ongoing", "completed"]
         && request.resource.data.createdByUid is string
         && request.resource.data.updatedByUid is string
