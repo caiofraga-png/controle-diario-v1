@@ -671,7 +671,7 @@ service cloud.firestore {
         && request.resource.data.customerCount >= 0
         && request.resource.data.overdueDays is int
         && request.resource.data.overdueDays >= 0
-        && request.resource.data.observation is string
+        && (!request.resource.data.keys().hasAny(["observation"]) || request.resource.data.observation is string)
         && request.resource.data.status in ["ongoing", "completed"]
         && (!resource.data.keys().hasAny(["ownerSectorId"]) || request.resource.data.ownerSectorId == resource.data.ownerSectorId)
         && (!resource.data.keys().hasAny(["ownerContactId"]) || request.resource.data.ownerContactId == resource.data.ownerContactId)
