@@ -1,8 +1,8 @@
 import { doc, getDoc } from "firebase/firestore";
 import { requireFirebase } from "./firebaseClient";
 
-export type OverviewNoticeId = "longCalls" | "googleChat" | "otherHelp";
-const noticeIds:OverviewNoticeId[]=["longCalls","googleChat","otherHelp"];
+export type OverviewNoticeId = "longCalls" | "googleChat" | "otherHelp" | "agorapulse";
+const noticeIds:OverviewNoticeId[]=["longCalls","googleChat","otherHelp","agorapulse"];
 
 export async function loadOverviewNoticeAccess():Promise<OverviewNoticeId[]>{
   const {auth,db}=requireFirebase();const user=auth.currentUser;if(!user)return [];
