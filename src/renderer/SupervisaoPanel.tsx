@@ -157,6 +157,10 @@ export default function SupervisaoPanel() {
 
   return <section className="card" style={{display:"grid",gap:16}}>
     <div className="workspace-intro"><h2>Visão Geral</h2><p>Painel gerencial para controle diário da operação.</p></div>
+    <button type="button" onClick={()=>setSection("acompanhamento")} aria-current={section==="acompanhamento" ? "page" : undefined} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:"14px 16px",border:section==="acompanhamento"?"2px solid var(--accent, #187747)":"1px solid var(--border, #cbd8ce)",borderRadius:10,background:"var(--accent, #187747)",color:"#fff",fontWeight:800,textAlign:"left",cursor:"pointer"}}>
+      <span><span style={{display:"block",fontSize:14}}>ACOMPANHAMENTO EM TEMPO REAL</span><span style={{display:"block",fontSize:12,fontWeight:400,opacity:.9,marginTop:3}}>Visualize os acontecimentos dos expedientes conforme ocorrem.</span></span>
+      <span aria-hidden="true" style={{fontSize:20}}>›</span>
+    </button>
     <section style={{display:"grid",gap:10}}>
       <div className="workspace-intro"><h3 style={{margin:0}}>AVISOS</h3><p>Receba avisos de solicitações dos colaboradores.</p></div>
       <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -172,7 +176,6 @@ export default function SupervisaoPanel() {
         <button type="button" className={section==="atendimentos"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("atendimentos")}>ATENDIMENTOS</button>
         <button type="button" className={section==="estrutura"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("estrutura")}>ESTRUTURA</button>
         <button type="button" className={section==="historico"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("historico")}>HISTÓRICO</button>
-        <button type="button" className={section==="acompanhamento"?"primary-wide":""} style={{width:"auto"}} onClick={()=>setSection("acompanhamento")}>ACOMPANHAMENTO EM TEMPO REAL</button>
       </div>
       {section!=="avisos"&&section!=="configuracaoAvisos"&&<>
         <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
