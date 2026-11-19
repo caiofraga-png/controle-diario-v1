@@ -1016,7 +1016,7 @@ test("somente setor ou contato liberado pode publicar aviso de inadimplência co
     batch.set(noticeRef, {
       type: "reducao", date: "2026-11-04", title: "Aviso de redução",
       dueDate: "2026-10-20", customerCount: 12, overdueDays: 15,
-      validUntil: "2026-11-10", status: "ongoing",
+      observation: "", status: "ongoing",
       notificationId: notificationRef.id,
       ownerSectorId: ownerScope.ownerSectorId ?? (uid === "alice" ? "suporte" : "financeiro"),
       ownerContactId: ownerScope.ownerContactId ?? (uid === "alice" ? "equipe-a" : "equipe-b"),
