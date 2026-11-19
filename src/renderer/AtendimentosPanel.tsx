@@ -66,13 +66,21 @@ export default function AtendimentosPanel({ onSave, hasExpediente }: { onSave: (
 
   function processTicket() {
     setError(""); setCopied(false);
-    // Pré-cadastro não possui código de cliente; o nome aparece logo após esse rótulo.
+    // Pré-cadastro pode ser identificado pelo rótulo próprio ou pelo chatbot_leste.
     const preCadastroNome = valueAfterLabel(ticketText, "Pré Cadastro");
-    const isPreCadastro = Boolean(preCadastroNome);
-    const nome = isPreCadastro ? preCadastroNome : valueAfterLabel(ticketText, "Cliente");
-    const codigo = isPreCadastro ? "PRÉ-CADASTRO" : valueAfterLabel(ticketText, "Código do Cliente");
+    const nomeCliente = valueAfterLabel(ticketText, "Cliente");
+    const codigoCliente = valueAfterLabel(ticketText, "Código do Cliente");
+    const criadoPor = valueAfterLabel(ticketText, "Criado por");
+    const criadoPorChatbotLeste = criadoPor.trim().toLocaleLowerCase("pt-BR") === "chatbot_leste";
+    const isPreCadastroPeloChatbot = !preCadastroNome
+      && !nomeCliente
+      && !codigoCliente
+      && criadoPorChatbotLeste;
+    const isPreCadastro = Boolean(preCadastroNome) || isPreCadastroPeloChatbot;
+    const nome = preCadastroNome || (isPreCadastroPeloChatbot ? "" : nomeCliente);
+    const codigo = isPreCadastro ? "PRÉ-CADASTRO" : codigoCliente;
     if (!ticketLink.trim()) { setDraft(null); setError("INFORME O LINK DO TICKET."); return; }
-    if (!nome || nome === "Informações do Cliente") { setDraft(null); setError("NÃO FOI POSSÍVEL IDENTIFICAR O NOME DO CLIENTE. CONFIRA O TEXTO COPIADO."); return; }
+    if ((!nome || nome === "Informações do Cliente") && !isPreCadastroPeloChatbot) { setDraft(null); setError("NÃO FOI POSSÍVEL IDENTIFICAR O NOME DO CLIENTE. CONFIRA O TEXTO COPIADO."); return; }
     setDraft({ ...emptyDraft, ticket: ticketLink.trim(), codigo, nome, ...preferences });
   }
 
