@@ -33,10 +33,6 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
       captureStreamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
       const [track] = stream.getVideoTracks();
       track?.addEventListener("ended", () => {
         if (captureStreamRef.current === stream) {
@@ -54,6 +50,14 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
         : `Não foi possível iniciar a captura: ${captureError instanceof Error ? captureError.message : String(captureError)}`);
     }
   }
+
+  useEffect(() => {
+    if (!capturing || !videoRef.current || !captureStreamRef.current) return;
+    const video = videoRef.current;
+    video.srcObject = captureStreamRef.current;
+    void video.play().catch(() => setCaptureMessage("A captura foi autorizada, mas o navegador não conseguiu reproduzir a prévia."));
+    return () => { video.srcObject = null; };
+  }, [capturing]);
 
   useEffect(() => () => {
     captureStreamRef.current?.getTracks().forEach(track => track.stop());
