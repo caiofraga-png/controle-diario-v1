@@ -40,7 +40,7 @@ export default function DelinquencyPanel(){
   const classified=useMemo(()=>({
     ongoing:items.filter(item=>item.status!=="completed"),
     completed:items.filter(item=>item.status==="completed")
-  }),[items,today]);
+  }),[items]);
   const visible=tab==="ongoing"?classified.ongoing:classified.completed;
   function update<K extends keyof Draft>(key:K,value:Draft[K]){setDraft(current=>current?{...current,[key]:value}:current);}
   async function save(){
