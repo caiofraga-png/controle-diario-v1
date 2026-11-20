@@ -47,34 +47,39 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
       const mask = new Uint8Array(frame.width*frame.height);
       for (let i=0,p=0;i<pixels.length;i+=4,p++) {
         const r=pixels[i],g=pixels[i+1],b=pixels[i+2];
-        if (r>145 && g>105 && b<155 && r>g*1.05 && g>b*1.2) mask[p]=1;
+        // Faixa ampla de amarelo/âmbar, para tolerar variações entre temas.
+        if (r>125 && g>85 && b<190 && r>=g*0.92 && g>b*1.12 && r-b>45) mask[p]=1;
       }
-      // Diagnóstico sobre a captura original: pixels detectados são marcados em vermelho translúcido.
+      // Diagnóstico em magenta puro, para destacar claramente os pixels classificados.
       const diagnostic=document.createElement("canvas");diagnostic.width=frame.width;diagnostic.height=frame.height;
       const diagCtx=diagnostic.getContext("2d");if(diagCtx){diagCtx.drawImage(frame,0,0);let count=0;
         const img=diagCtx.getImageData(0,0,frame.width,frame.height);
-        for(let p=0;p<mask.length;p++){if(mask[p]){count++;const k=p*4;img.data[k]=255;img.data[k+1]=Math.min(255,img.data[k+1]+60);img.data[k+2]=Math.min(255,img.data[k+2]+60);}}
+        for(let p=0;p<mask.length;p++){if(mask[p]){count++;const k=p*4;img.data[k]=255;img.data[k+1]=0;img.data[k+2]=255;}}
         diagCtx.putImageData(img,0,0);setOcrDiagnostic(diagnostic.toDataURL("image/png"));setOcrPixelCount(count);}
-      // Segmentação robusta por componentes conectados (8 vizinhos).
+      // Localização geométrica: primeiro encontra faixas horizontais com concentração
+      // de pixels amarelos, depois delimita cada card por projeção vertical.
+      const rowCounts=new Int32Array(frame.height),colCounts=new Int32Array(frame.width);
+      for(let y=0;y<frame.height;y++)for(let x=0;x<frame.width;x++)if(mask[y*frame.width+x])rowCounts[y]++;
       const boxes:{x:number;y:number;w:number;h:number;area:number}[]=[];
-      const visited=new Uint8Array(mask.length);
-      for(let seed=0;seed<mask.length;seed++){
-        if(!mask[seed]||visited[seed])continue;
-        const stack=[seed];visited[seed]=1;let minX=frame.width,maxX=0,minY=frame.height,maxY=0,area=0;
-        while(stack.length){
-          const p=stack.pop()!,x=p%frame.width,y=Math.floor(p/frame.width);area++;
-          minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);
-          for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
-            if(!dx&&!dy)continue;const nx=x+dx,ny=y+dy;
-            if(nx<0||ny<0||nx>=frame.width||ny>=frame.height)continue;
-            const np=ny*frame.width+nx;if(mask[np]&&!visited[np]){visited[np]=1;stack.push(np);}
-          }
+      const bands:{start:number;end:number}[]=[];let bandStart=-1;
+      for(let y=0;y<frame.height;y++){
+        if(rowCounts[y]>=24){if(bandStart<0)bandStart=y;}
+        else if(bandStart>=0){if(y-bandStart>=5)bands.push({start:bandStart,end:y-1});bandStart=-1;}
+      }
+      if(bandStart>=0&&frame.height-bandStart>=5)bands.push({start:bandStart,end:frame.height-1});
+      for(const band of bands){
+        colCounts.fill(0);for(let y=band.start;y<=band.end;y++)for(let x=0;x<frame.width;x++)if(mask[y*frame.width+x])colCounts[x]++;
+        const spans:{start:number;end:number}[]=[];let spanStart=-1;
+        for(let x=0;x<frame.width;x++){
+          if(colCounts[x]>=Math.max(3,Math.floor((band.end-band.start+1)*0.18))){if(spanStart<0)spanStart=x;}
+          else if(spanStart>=0){if(x-spanStart>=28)spans.push({start:spanStart,end:x-1});spanStart=-1;}
         }
-        const w=maxX-minX+1,h=maxY-minY+1;
-        if(area>=100&&w>=28&&h>=6&&w/h>=1.2)boxes.push({x:minX,y:minY,w,h,area});
+        if(spanStart>=0&&frame.width-spanStart>=28)spans.push({start:spanStart,end:frame.width-1});
+        for(const span of spans){const w=span.end-span.start+1,h=band.end-band.start+1;
+          if(w>=28&&h>=6&&w/h>=1.2){let area=0;for(let y=band.start;y<=band.end;y++)for(let x=span.start;x<=span.end;x++)if(mask[y*frame.width+x])area++;boxes.push({x:span.start,y:band.start,w,h,area});}}
       }
       boxes.sort((a,b)=>a.y-b.y||a.x-b.x);
-      if(!boxes.length){setOcrText("Não foram localizadas regiões amarelas com tamanho suficiente. O experimento está focado nesta etapa em cards amarelos.");return;}
+      if(!boxes.length){setOcrText("Pixels amarelos detectados, mas ainda não foi possível delimitar cartões individuais. Confira o mapa magenta.");return;}
       const worker=await createWorker("por+eng");
       try {
         const found:string[]=[];
