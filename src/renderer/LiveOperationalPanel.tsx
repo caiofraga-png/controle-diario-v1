@@ -75,7 +75,7 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
           if(rowCounts[y]>=Math.max(10,Math.floor(region.w*0.12))){if(bandStart<0)bandStart=y;}
           else if(bandStart>=0){if(y-bandStart>=4)bands.push({start:bandStart,end:y-1});bandStart=-1;}
         }
-        if(bandStart>=0&&region.h-bandStart>=4)bands.push({start:bandStart,end:region.h-1);
+        if(bandStart>=0&&region.h-bandStart>=4)bands.push({start:bandStart,end:region.h-1});
         for(const band of bands){
           colCounts.fill(0);
           for(let y=band.start;y<=band.end;y++)for(let x=0;x<region.w;x++)
