@@ -23,6 +23,41 @@ type State = {
   atendimentos?: Array<{ id: string; subtipo?: string; ticket?: string; criadoEm?: string }>;
 } | null;
 
+type History = {
+  ownerUid?: string;
+  schemaVersion?: number;
+  status?: string;
+  data?: string;
+  criadoEm?: string;
+  concluidoEm?: string;
+  ultimaAlteracao?: string;
+  perfil?: { nome?: string };
+  tarefas?: Array<{ id: string; nome: string; concluida: boolean; concluidaEm?: string }>;
+  atendimentos?: Array<{ id: string; subtipo?: string; ticket?: string; criadoEm?: string }>;
+};
+
+function eventsFromHistory(record: History, id: string): LiveOperationalEvent[] {
+  if (record.schemaVersion !== 1 || record.status !== "CONCLUIDO" || !record.ownerUid) return [];
+  const uid = record.ownerUid;
+  const profile = String(record.perfil?.nome ?? "—");
+  const date = String(record.data ?? "");
+  const events: LiveOperationalEvent[] = [];
+  if (record.criadoEm) events.push({ id: id + "-inicio", type: "EXPEDIENTE_INICIADO", uid, occurredAt: record.criadoEm, profile, date });
+  for (const task of record.tarefas ?? []) {
+    if (task.concluida && task.concluidaEm) events.push({
+      id: id + "-tarefa-" + task.id + "-" + task.concluidaEm, type: "TAREFA_FINALIZADA",
+      uid, occurredAt: task.concluidaEm, profile, date, task: task.nome,
+    });
+  }
+  for (const attendance of record.atendimentos ?? []) {
+    if (!attendance.id) continue;
+    const time = typeof attendance.criadoEm === "string" && !Number.isNaN(Date.parse(attendance.criadoEm)) ? attendance.criadoEm : record.ultimaAlteracao ?? record.concluidoEm ?? record.criadoEm;
+    events.push({ id: id + "-atendimento-" + attendance.id, type: "ATENDIMENTO_REGISTRADO", uid, occurredAt: time, profile, date, subtype: String(attendance.subtipo ?? "").trim(), ticket: String(attendance.ticket ?? "").trim() });
+  }
+  if (record.concluidoEm) events.push({ id: id + "-fim", type: "EXPEDIENTE_FINALIZADO", uid, occurredAt: record.concluidoEm, profile, date });
+  return events;
+}
+
 function eventTime(state: State): string {
   const value = state?.ultimaAlteracao || state?.criadoEm;
   if (typeof value === "string" && !Number.isNaN(Date.parse(value))) return value;
@@ -42,8 +77,12 @@ export function subscribeLiveOperationalEvents(
   return onSnapshot(source, snapshot => {
     if (!initialized) {
       for (const item of snapshot.docs) {
-        if (item.id !== "currentState") continue;
-        const state = (item.data().estado ?? null) as State;
+        const envelope = item.data();
+        if (item.id !== "currentState") {
+          feed.push(...eventsFromHistory(envelope as History, item.ref.path));
+          continue;
+        }
+        const state = (envelope.estado ?? null) as State;
         previous.set(item.ref.path, state);
         if (state) {
           const uid = String(item.data().ownerUid ?? "");
@@ -94,7 +133,14 @@ export function subscribeLiveOperationalEvents(
 
     for (const change of snapshot.docChanges()) {
       const item = change.doc;
-      if (item.id !== "currentState") continue;
+      if (item.id !== "currentState") {
+        if (change.type === "added" || change.type === "modified") {
+          const historical = eventsFromHistory(item.data() as History, item.ref.path);
+          const ids = new Set(feed.map(event => event.id));
+          for (const event of historical) if (!ids.has(event.id)) feed.push(event);
+        }
+        continue;
+      }
       const uid = String(item.data().ownerUid ?? "");
       if (!uid) continue;
       const next = (item.data().estado ?? null) as State;
