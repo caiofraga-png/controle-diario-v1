@@ -47,15 +47,21 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
         const r=pixels[i],g=pixels[i+1],b=pixels[i+2];
         if (r>145 && g>105 && b<155 && r>g*1.05 && g>b*1.2) mask[p]=1;
       }
-      const visited=new Uint8Array(mask.length), boxes:{x:number;y:number;w:number;h:number;area:number}[]=[];
-      for(let s=0;s<mask.length;s++){
-        if(!mask[s]||visited[s])continue;
-        const q=[s];visited[s]=1;let head=0,minX=480,maxX=0,minY=270,maxY=0,area=0;
-        while(head<q.length){const idx=q[head++],x=idx%480,y=Math.floor(idx/480);area++;minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);
-          for(const n of [idx-1,idx+1,idx-480,idx+480]){if(n<0||n>=mask.length||visited[n]||!mask[n])continue;if((n===idx-1&&x===0)||(n===idx+1&&x===479))continue;visited[n]=1;q.push(n);}
-        }
-        const w=maxX-minX+1,h=maxY-minY+1;
-        if(area>35 && w>=35 && h>=9 && w/h>=1.3) boxes.push({x:minX,y:minY,w,h,area});
+      // Agrupa faixas horizontais com presença suficiente de amarelo; mais robusto que componentes conectados em cards finos.
+      const rowCounts=new Uint16Array(frame.height);
+      for(let y=0;y<frame.height;y++) for(let x=0;x<frame.width;x++) if(mask[y*frame.width+x]) rowCounts[y]++;
+      const bands:{y0:number;y1:number}[]=[]; let activeStart=-1,lastActive=-1;
+      for(let y=0;y<frame.height;y++){
+        if(rowCounts[y]>=7){if(activeStart<0)activeStart=y;lastActive=y;}
+        else if(activeStart>=0 && y-lastActive>3){bands.push({y0:activeStart,y1:lastActive});activeStart=-1;lastActive=-1;}
+      }
+      if(activeStart>=0)bands.push({y0:activeStart,y1:lastActive});
+      const boxes:{x:number;y:number;w:number;h:number;area:number}[]=[];
+      for(const band of bands){
+        let minX=frame.width,maxX=-1,area=0;
+        for(let y=band.y0;y<=band.y1;y++)for(let x=0;x<frame.width;x++)if(mask[y*frame.width+x]){minX=Math.min(minX,x);maxX=Math.max(maxX,x);area++;}
+        const w=maxX-minX+1,h=band.y1-band.y0+1;
+        if(area>=45 && w>=28 && h>=4 && w/h>=1.25)boxes.push({x:minX,y:band.y0,w,h,area});
       }
       boxes.sort((a,b)=>a.y-b.y||a.x-b.x);
       if(!boxes.length){setOcrText("Não foram localizadas regiões amarelas com tamanho suficiente. O experimento está focado nesta etapa em cards amarelos.");return;}
@@ -64,9 +70,9 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
         const found:string[]=[];
         for(let i=0;i<Math.min(boxes.length,30);i++){
           const b=boxes[i],pad=5,crop=document.createElement("canvas");
-          crop.width=Math.min(480,b.w+pad*2);crop.height=Math.min(270,b.h+pad*2);
+          crop.width=Math.min(960,(b.w+pad*2)*2);crop.height=Math.min(540,(b.h+pad*2)*2);
           const cropCtx=crop.getContext("2d");if(!cropCtx)continue;
-          cropCtx.drawImage(frame,Math.max(0,b.x-pad),Math.max(0,b.y-pad),crop.width,crop.height,0,0,crop.width,crop.height);
+          cropCtx.drawImage(frame,Math.max(0,b.x-pad),Math.max(0,b.y-pad),b.w+pad*2,b.h+pad*2,0,0,crop.width,crop.height);
           const result=await worker.recognize(crop),txt=result.data.text.trim().replace(/\s+/g," ");
           if(txt)found.push("Card "+(found.length+1)+": "+txt);
         }
