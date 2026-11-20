@@ -19,6 +19,7 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
   const [callName, setCallName] = useState("");
   const [callElapsed, setCallElapsed] = useState(0);
   const callStartedAtRef = useRef<number | null>(null);
+  const purpleFramesRef = useRef(0);
   const [eventPage, setEventPage] = useState(0);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const captureStreamRef = useRef<MediaStream | null>(null);
@@ -30,6 +31,7 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
     setCapturing(false);
     setPurpleDetected(false);
     callStartedAtRef.current = null;
+    purpleFramesRef.current = 0;
     setCallElapsed(0);
     setCaptureMessage("Captura encerrada. Nenhuma imagem foi armazenada.");
   }
@@ -78,7 +80,7 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
       const video = videoRef.current;
       if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return;
       const canvas = document.createElement("canvas");
-      canvas.width = 80; canvas.height = 45;
+      canvas.width = 160; canvas.height = 90;
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
       if (!ctx) return;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -88,9 +90,12 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
         const r = pixels[i], g = pixels[i + 1], b = pixels[i + 2];
         if (r > 105 && b > 105 && g < 105 && r > g * 1.35 && b > g * 1.35) purple++;
       }
-      const detected = purple >= 28;
-      setPurpleDetected(detected);
-      if (detected) {
+      // Usa proporção dos pixels para tolerar diferentes resoluções e tamanhos da captura.
+      const detected = purple / (canvas.width * canvas.height) >= 0.003;
+      purpleFramesRef.current = detected ? purpleFramesRef.current + 1 : 0;
+      const stableDetected = purpleFramesRef.current >= 2;
+      setPurpleDetected(stableDetected);
+      if (stableDetected) {
         if (callStartedAtRef.current === null) callStartedAtRef.current = Date.now();
         setCallElapsed(Math.floor((Date.now() - callStartedAtRef.current) / 1000));
       } else {
@@ -140,7 +145,7 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
         <strong>MONITOR EXPERIMENTAL DE LIGAÇÃO (DETECTOR VISUAL ROXO)</strong>
         <label style={{fontSize:12}}>Identificação manual do colaborador: <input value={callName} onChange={e=>setCallName(e.target.value)} placeholder="Nome do colaborador" style={{marginLeft:6}} /></label>
         <div style={{fontWeight:800,color:purpleDetected?"#9b27b0":"var(--muted, #60746a)"}}>{purpleDetected ? "CARTÃO ROXO DETECTADO" : "NENHUM CARTÃO ROXO DETECTADO"} · {formatElapsed(callElapsed)}</div>
-        <p style={{margin:0,fontSize:12}}>Experimento visual local. Ainda não gera alertas nem reconhece nomes automaticamente. Uma mudança de cor encerra a contagem.</p>
+        <p style={{margin:0,fontSize:12}}>Experimento visual local. Ainda não gera alertas nem reconhece nomes automaticamente. A detecção exige dois quadros consecutivos e uma mudança de cor encerra a contagem.</p>
       </div>}
       {capturing && <video ref={videoRef} autoPlay muted playsInline style={{width:"100%",maxHeight:360,objectFit:"contain",background:"#202020",borderRadius:8}} />}
     </section>
