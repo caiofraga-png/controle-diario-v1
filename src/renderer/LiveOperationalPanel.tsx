@@ -72,7 +72,7 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
         }
         setOcrCards(found);setOcrText(found.length?"Leitura individual experimental de "+boxes.length+" regiões (até 30 processadas).":"Cards localizados, mas o texto não foi reconhecido.");
       }finally{await worker.terminate();}
-    }catch(err){setOcrText("Falha na leitura individual: "+(err instanceof Error?err.message:String(err));}
+    }catch(err){setOcrText("Falha na leitura individual: "+(err instanceof Error?err.message:String(err)));}
     finally{setOcrBusy(false);}
   }
 
