@@ -52,8 +52,8 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
       for(let y=0;y<frame.height;y++) for(let x=0;x<frame.width;x++) if(mask[y*frame.width+x]) rowCounts[y]++;
       const bands:{y0:number;y1:number}[]=[]; let activeStart=-1,lastActive=-1;
       for(let y=0;y<frame.height;y++){
-        if(rowCounts[y]>=7){if(activeStart<0)activeStart=y;lastActive=y;}
-        else if(activeStart>=0 && y-lastActive>3){bands.push({y0:activeStart,y1:lastActive});activeStart=-1;lastActive=-1;}
+        if(rowCounts[y]>=4){if(activeStart<0)activeStart=y;lastActive=y;}
+        else if(activeStart>=0 && y-lastActive>1){bands.push({y0:activeStart,y1:lastActive});activeStart=-1;lastActive=-1;}
       }
       if(activeStart>=0)bands.push({y0:activeStart,y1:lastActive});
       const boxes:{x:number;y:number;w:number;h:number;area:number}[]=[];
@@ -61,7 +61,7 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
         let minX=frame.width,maxX=-1,area=0;
         for(let y=band.y0;y<=band.y1;y++)for(let x=0;x<frame.width;x++)if(mask[y*frame.width+x]){minX=Math.min(minX,x);maxX=Math.max(maxX,x);area++;}
         const w=maxX-minX+1,h=band.y1-band.y0+1;
-        if(area>=45 && w>=28 && h>=4 && w/h>=1.25)boxes.push({x:minX,y:band.y0,w,h,area});
+        if(area>=18 && w>=24 && h>=3 && w/h>=1.2)boxes.push({x:minX,y:band.y0,w,h,area});
       }
       boxes.sort((a,b)=>a.y-b.y||a.x-b.x);
       if(!boxes.length){setOcrText("Não foram localizadas regiões amarelas com tamanho suficiente. O experimento está focado nesta etapa em cards amarelos.");return;}
