@@ -24,6 +24,8 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
   const [ocrBusy, setOcrBusy] = useState(false);
   const [ocrText, setOcrText] = useState("");
   const [ocrCards, setOcrCards] = useState<string[]>([]);
+  const [ocrDiagnostic, setOcrDiagnostic] = useState<string>("");
+  const [ocrPixelCount, setOcrPixelCount] = useState(0);
   const tracksRef = useRef<PurpleCardTrack[]>([]);
   const nextTrackIdRef = useRef(1);
   const callStartedAtRef = useRef<number | null>(null);
@@ -47,6 +49,11 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
         const r=pixels[i],g=pixels[i+1],b=pixels[i+2];
         if (r>145 && g>105 && b<155 && r>g*1.05 && g>b*1.2) mask[p]=1;
       }
+      // Diagnóstico visual: branco representa pixels classificados como amarelos.
+      const diagnostic=document.createElement("canvas");diagnostic.width=frame.width;diagnostic.height=frame.height;
+      const diagCtx=diagnostic.getContext("2d");if(diagCtx){const img=diagCtx.createImageData(frame.width,frame.height);let count=0;
+        for(let p=0;p<mask.length;p++){const k=p*4;if(mask[p]){count++;img.data[k]=255;img.data[k+1]=255;img.data[k+2]=255;img.data[k+3]=255;}else{img.data[k]=18;img.data[k+1]=18;img.data[k+2]=18;img.data[k+3]=255;}}
+        diagCtx.putImageData(img,0,0);setOcrDiagnostic(diagnostic.toDataURL("image/png"));setOcrPixelCount(count);}
       // Segmentação por linhas de pixels amarelos e agrupamento por continuidade vertical, evitando que amarelos de outras áreas da tela se juntem.
       const boxes:{x:number;y:number;w:number;h:number;area:number}[]=[];
       const rowSpans:{x0:number;x1:number;y:number}[][]=[];
@@ -234,7 +241,7 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
       <p role="status" aria-live="polite" style={{margin:0,fontSize:12}}>{captureMessage}</p>
       {capturing && <div style={{display:"grid",gap:8,padding:10,border:"1px solid var(--border, #dce5de)",borderRadius:8}}>
         <strong>TESTE EXPERIMENTAL DE RECONHECIMENTO DE NOMES (OCR)</strong>
-        <button type="button" onClick={() => void readCardNames()} disabled={ocrBusy}>{ocrBusy ? "LENDO TEXTO…" : "LER NOMES DOS CARDS VISÍVEIS"}</button>
+        <button type="button" onClick={() => void readCardNames()} disabled={ocrBusy}>{ocrBusy ? "LENDO TEXTO…" : "LER NOMES DOS CARDS VISÍVEIS"}</button><div style={{fontSize:12}}>Pixels classificados como amarelo: {ocrPixelCount}</div>{ocrDiagnostic && <div style={{display:"grid",gap:4}}><strong>MAPA DE DETECÇÃO (BRANCO = PIXEL IDENTIFICADO)</strong><img src={ocrDiagnostic} alt="Mapa de diagnóstico de pixels amarelos" style={{width:"100%",maxWidth:480,imageRendering:"pixelated",background:"#111",borderRadius:6}} /></div>
         <div style={{padding:8,border:"1px solid var(--border, #dce5de)",borderRadius:6,whiteSpace:"pre-wrap",fontSize:13}}>{ocrText || "Clique em LER NOMES para localizar e ler regiões amarelas individualmente. O processamento é local."}{ocrCards.length > 0 && <div style={{marginTop:8,display:"grid",gap:6}}>{ocrCards.map((card,i)=><div key={i} style={{padding:8,border:"1px solid var(--border, #dce5de)",borderRadius:6}}>{card}</div>)}</div>}</div>
         <strong>MONITOR EXPERIMENTAL DE LIGAÇÃO (DETECTOR VISUAL ROXO)</strong>
         <label style={{fontSize:12}}>Identificação manual do colaborador: <input value={callName} onChange={e=>setCallName(e.target.value)} placeholder="Nome do colaborador" style={{marginLeft:6}} /></label>
