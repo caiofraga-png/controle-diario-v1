@@ -55,30 +55,23 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
         const img=diagCtx.getImageData(0,0,frame.width,frame.height);
         for(let p=0;p<mask.length;p++){if(mask[p]){count++;const k=p*4;img.data[k]=255;img.data[k+1]=Math.min(255,img.data[k+1]+60);img.data[k+2]=Math.min(255,img.data[k+2]+60);}}
         diagCtx.putImageData(img,0,0);setOcrDiagnostic(diagnostic.toDataURL("image/png"));setOcrPixelCount(count);}
-      // Segmentação por linhas de pixels amarelos e agrupamento por continuidade vertical, evitando que amarelos de outras áreas da tela se juntem.
+      // Segmentação robusta por componentes conectados (8 vizinhos).
       const boxes:{x:number;y:number;w:number;h:number;area:number}[]=[];
-      const rowSpans:{x0:number;x1:number;y:number}[][]=[];
-      for(let y=0;y<frame.height;y++){
-        const spans:{x0:number;x1:number;y:number}[]=[];let run=-1;
-        for(let x=0;x<frame.width;x++){
-          const on=mask[y*frame.width+x]===1;
-          if(on&&run<0)run=x;
-          if(!on&&run>=0){if(x-run>=3)spans.push({x0:run,x1:x-1,y});run=-1;}
+      const visited=new Uint8Array(mask.length);
+      for(let seed=0;seed<mask.length;seed++){
+        if(!mask[seed]||visited[seed])continue;
+        const stack=[seed];visited[seed]=1;let minX=frame.width,maxX=0,minY=frame.height,maxY=0,area=0;
+        while(stack.length){
+          const p=stack.pop()!,x=p%frame.width,y=Math.floor(p/frame.width);area++;
+          minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);
+          for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+            if(!dx&&!dy)continue;const nx=x+dx,ny=y+dy;
+            if(nx<0||ny<0||nx>=frame.width||ny>=frame.height)continue;
+            const np=ny*frame.width+nx;if(mask[np]&&!visited[np]){visited[np]=1;stack.push(np);}
+          }
         }
-        if(run>=0&&frame.width-run>=3)spans.push({x0:run,x1:frame.width-1,y});
-        rowSpans.push(spans);
-      }
-      const groups:{x0:number;x1:number;y0:number;y1:number;area:number}[]=[];
-      for(const spans of rowSpans){
-        for(const s of spans){
-          let g=groups.find(v=>s.y-v.y1<=2 && s.x1>=v.x0-5 && s.x0<=v.x1+5);
-          if(g){g.x0=Math.min(g.x0,s.x0);g.x1=Math.max(g.x1,s.x1);g.y1=s.y;g.area+=s.x1-s.x0+1;}
-          else groups.push({x0:s.x0,x1:s.x1,y0:s.y,y1:s.y,area:s.x1-s.x0+1});
-        }
-      }
-      for(const g of groups){
-        const w=g.x1-g.x0+1,h=g.y1-g.y0+1;
-        if(g.area>=35 && w>=35 && h>=5 && w/h>=1.3)boxes.push({x:g.x0,y:g.y0,w,h,area:g.area});
+        const w=maxX-minX+1,h=maxY-minY+1;
+        if(area>=100&&w>=28&&h>=6&&w/h>=1.2)boxes.push({x:minX,y:minY,w,h,area});
       }
       boxes.sort((a,b)=>a.y-b.y||a.x-b.x);
       if(!boxes.length){setOcrText("Não foram localizadas regiões amarelas com tamanho suficiente. O experimento está focado nesta etapa em cards amarelos.");return;}
