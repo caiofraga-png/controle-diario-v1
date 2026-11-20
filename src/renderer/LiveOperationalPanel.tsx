@@ -56,29 +56,47 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
         const img=diagCtx.getImageData(0,0,frame.width,frame.height);
         for(let p=0;p<mask.length;p++){if(mask[p]){count++;const k=p*4;img.data[k]=255;img.data[k+1]=0;img.data[k+2]=255;}}
         diagCtx.putImageData(img,0,0);setOcrDiagnostic(diagnostic.toDataURL("image/png"));setOcrPixelCount(count);}
-      // Localização geométrica: primeiro encontra faixas horizontais com concentração
-      // de pixels amarelos, depois delimita cada card por projeção vertical.
-      const rowCounts=new Int32Array(frame.height),colCounts=new Int32Array(frame.width);
-      for(let y=0;y<frame.height;y++)for(let x=0;x<frame.width;x++)if(mask[y*frame.width+x])rowCounts[y]++;
-      const boxes:{x:number;y:number;w:number;h:number;area:number}[]=[];
-      const bands:{start:number;end:number}[]=[];let bandStart=-1;
-      for(let y=0;y<frame.height;y++){
-        if(rowCounts[y]>=24){if(bandStart<0)bandStart=y;}
-        else if(bandStart>=0){if(y-bandStart>=5)bands.push({start:bandStart,end:y-1});bandStart=-1;}
-      }
-      if(bandStart>=0&&frame.height-bandStart>=5)bands.push({start:bandStart,end:frame.height-1});
-      for(const band of bands){
-        colCounts.fill(0);for(let y=band.start;y<=band.end;y++)for(let x=0;x<frame.width;x++)if(mask[y*frame.width+x])colCounts[x]++;
-        const spans:{start:number;end:number}[]=[];let spanStart=-1;
-        for(let x=0;x<frame.width;x++){
-          if(colCounts[x]>=Math.max(3,Math.floor((band.end-band.start+1)*0.18))){if(spanStart<0)spanStart=x;}
-          else if(spanStart>=0){if(x-spanStart>=28)spans.push({start:spanStart,end:x-1});spanStart=-1;}
+      // Divide a tela em cinco regiões fixas do SOS Beta. As coordenadas
+      // são aproximadas e relativas à captura; cada setor é analisado separadamente.
+      const regions=[
+        {name:"FINANCEIRO - LESTE",x:0,y:55,w:160,h:115},
+        {name:"SUPORTE - LESTE",x:160,y:55,w:160,h:115},
+        {name:"COMERCIAL - LESTE",x:320,y:55,w:160,h:115},
+        {name:"CANCELAMENTO - LESTE",x:0,y:145,w:240,h:125},
+        {name:"ATENDIMENTO - LESTE",x:240,y:145,w:240,h:125},
+      ];
+      const boxes:{x:number;y:number;w:number;h:number;area:number;region:string}[]=[];
+      for(const region of regions){
+        const rowCounts=new Int32Array(region.h),colCounts=new Int32Array(region.w);
+        for(let y=0;y<region.h;y++)for(let x=0;x<region.w;x++)
+          if(mask[(region.y+y)*frame.width+region.x+x])rowCounts[y]++;
+        const bands:{start:number;end:number}[]=[];let bandStart=-1;
+        for(let y=0;y<region.h;y++){
+          if(rowCounts[y]>=Math.max(10,Math.floor(region.w*0.12))){if(bandStart<0)bandStart=y;}
+          else if(bandStart>=0){if(y-bandStart>=4)bands.push({start:bandStart,end:y-1});bandStart=-1;}
         }
-        if(spanStart>=0&&frame.width-spanStart>=28)spans.push({start:spanStart,end:frame.width-1});
-        for(const span of spans){const w=span.end-span.start+1,h=band.end-band.start+1;
-          if(w>=28&&h>=6&&w/h>=1.2){let area=0;for(let y=band.start;y<=band.end;y++)for(let x=span.start;x<=span.end;x++)if(mask[y*frame.width+x])area++;boxes.push({x:span.start,y:band.start,w,h,area});}}
+        if(bandStart>=0&&region.h-bandStart>=4)bands.push({start:bandStart,end:region.h-1);
+        for(const band of bands){
+          colCounts.fill(0);
+          for(let y=band.start;y<=band.end;y++)for(let x=0;x<region.w;x++)
+            if(mask[(region.y+y)*frame.width+region.x+x])colCounts[x]++;
+          const spans:{start:number;end:number}[]=[];let spanStart=-1;
+          for(let x=0;x<region.w;x++){
+            if(colCounts[x]>=Math.max(2,Math.floor((band.end-band.start+1)*0.16))){if(spanStart<0)spanStart=x;}
+            else if(spanStart>=0){if(x-spanStart>=18)spans.push({start:spanStart,end:x-1});spanStart=-1;}
+          }
+          if(spanStart>=0&&region.w-spanStart>=18)spans.push({start:spanStart,end:region.w-1});
+          for(const span of spans){
+            const w=span.end-span.start+1,h=band.end-band.start+1;
+            if(w>=18&&h>=5&&w/h>=1.1){
+              let area=0;for(let y=band.start;y<=band.end;y++)for(let x=span.start;x<=span.end;x++)
+                if(mask[(region.y+y)*frame.width+region.x+x])area++;
+              boxes.push({x:region.x+span.start,y:region.y+band.start,w,h,area,region:region.name});
+            }
+          }
+        }
       }
-      boxes.sort((a,b)=>a.y-b.y||a.x-b.x);
+      boxes.sort((a,b)=>regions.findIndex(r=>r.name===a.region)-regions.findIndex(r=>r.name===b.region)||a.y-b.y||a.x-b.x);
       if(!boxes.length){setOcrText("Pixels amarelos detectados, mas ainda não foi possível delimitar cartões individuais. Confira o mapa magenta.");return;}
       const worker=await createWorker("por+eng");
       try {
@@ -89,9 +107,9 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
           const cropCtx=crop.getContext("2d");if(!cropCtx)continue;
           cropCtx.drawImage(frame,Math.max(0,b.x-pad),Math.max(0,b.y-pad),b.w+pad*2,b.h+pad*2,0,0,crop.width,crop.height);
           const result=await worker.recognize(crop),txt=result.data.text.trim().replace(/\s+/g," ");
-          if(txt)found.push("Card "+(found.length+1)+": "+txt);
+          if(txt)found.push(b.region+" · Card "+(found.length+1)+": "+txt);
         }
-        setOcrCards(found);setOcrText(found.length?"Leitura individual experimental de "+boxes.length+" regiões (até 30 processadas).":"Cards localizados, mas o texto não foi reconhecido.");
+        setOcrCards(found);setOcrText(found.length?"Leitura individual experimental por setor: "+boxes.length+" regiões (até 30 processadas).":"Cards localizados, mas o texto não foi reconhecido.");
       }finally{await worker.terminate();}
     }catch(err){setOcrText("Falha na leitura individual: "+(err instanceof Error?err.message:String(err)));}
     finally{setOcrBusy(false);}
