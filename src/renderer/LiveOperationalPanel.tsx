@@ -47,21 +47,30 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
         const r=pixels[i],g=pixels[i+1],b=pixels[i+2];
         if (r>145 && g>105 && b<155 && r>g*1.05 && g>b*1.2) mask[p]=1;
       }
-      // Agrupa faixas horizontais com presença suficiente de amarelo; mais robusto que componentes conectados em cards finos.
-      const rowCounts=new Uint16Array(frame.height);
-      for(let y=0;y<frame.height;y++) for(let x=0;x<frame.width;x++) if(mask[y*frame.width+x]) rowCounts[y]++;
-      const bands:{y0:number;y1:number}[]=[]; let activeStart=-1,lastActive=-1;
-      for(let y=0;y<frame.height;y++){
-        if(rowCounts[y]>=4){if(activeStart<0)activeStart=y;lastActive=y;}
-        else if(activeStart>=0 && y-lastActive>1){bands.push({y0:activeStart,y1:lastActive});activeStart=-1;lastActive=-1;}
-      }
-      if(activeStart>=0)bands.push({y0:activeStart,y1:lastActive});
+      // Segmentação por linhas de pixels amarelos e agrupamento por continuidade vertical, evitando que amarelos de outras áreas da tela se juntem.
       const boxes:{x:number;y:number;w:number;h:number;area:number}[]=[];
-      for(const band of bands){
-        let minX=frame.width,maxX=-1,area=0;
-        for(let y=band.y0;y<=band.y1;y++)for(let x=0;x<frame.width;x++)if(mask[y*frame.width+x]){minX=Math.min(minX,x);maxX=Math.max(maxX,x);area++;}
-        const w=maxX-minX+1,h=band.y1-band.y0+1;
-        if(area>=18 && w>=24 && h>=3 && w/h>=1.2)boxes.push({x:minX,y:band.y0,w,h,area});
+      const rowSpans:{x0:number;x1:number;y:number}[][]=[];
+      for(let y=0;y<frame.height;y++){
+        const spans:{x0:number;x1:number;y:number}[]=[];let run=-1;
+        for(let x=0;x<frame.width;x++){
+          const on=mask[y*frame.width+x]===1;
+          if(on&&run<0)run=x;
+          if(!on&&run>=0){if(x-run>=3)spans.push({x0:run,x1:x-1,y});run=-1;}
+        }
+        if(run>=0&&frame.width-run>=3)spans.push({x0:run,x1:frame.width-1,y});
+        rowSpans.push(spans);
+      }
+      const groups:{x0:number;x1:number;y0:number;y1:number;area:number}[]=[];
+      for(const spans of rowSpans){
+        for(const s of spans){
+          let g=groups.find(v=>s.y-v.y1<=2 && s.x1>=v.x0-5 && s.x0<=v.x1+5);
+          if(g){g.x0=Math.min(g.x0,s.x0);g.x1=Math.max(g.x1,s.x1);g.y1=s.y;g.area+=s.x1-s.x0+1;}
+          else groups.push({x0:s.x0,x1:s.x1,y0:s.y,y1:s.y,area:s.x1-s.x0+1});
+        }
+      }
+      for(const g of groups){
+        const w=g.x1-g.x0+1,h=g.y1-g.y0+1;
+        if(g.area>=35 && w>=35 && h>=5 && w/h>=1.3)boxes.push({x:g.x0,y:g.y0,w,h,area:g.area});
       }
       boxes.sort((a,b)=>a.y-b.y||a.x-b.x);
       if(!boxes.length){setOcrText("Não foram localizadas regiões amarelas com tamanho suficiente. O experimento está focado nesta etapa em cards amarelos.");return;}
