@@ -251,6 +251,16 @@ function App() {
   useEffect(() => () => { if (observationTimer.current) clearTimeout(observationTimer.current); }, []);
 
   const config = data?.configuracao, state = data?.estado;
+  // Aviso nativo do navegador quando há expediente aberto e a pessoa tenta sair/fechar a aba.
+  useEffect(() => {
+    if (firebaseAccess?.status !== "approved" || !state) return;
+    const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnBeforeLeaving);
+    return () => window.removeEventListener("beforeunload", warnBeforeLeaving);
+  }, [firebaseAccess?.status, state?.id, state?.data]);
   const allowedProfileIds: string[] = firebaseAccess?.status === "approved" ? (firebaseAccess.user.allowedProfileIds ?? []) : [];
   const profiles = useMemo(() => { if (!config) return []; const frozen=state?.catalogSnapshot; const sourceProfiles=frozen?.perfis?.perfis ?? config.perfis.perfis; const order=frozen?.layout?.ordemPerfis ?? config.layout?.ordemPerfis ?? []; const allowed=new Set(allowedProfileIds); return order.map((id:string)=>sourceProfiles.find((p:any)=>p.id===id)).filter((p:any)=>p?.ativo && allowed.has(p.id)); }, [config,state,firebaseAccess]);
   const geralHasTasks = Boolean(config && profiles.some((profile: any) => { return (profile.tarefas ?? []).some((taskId: string) => config.tarefas.tarefas.some((task: any) => task.id === taskId && task.ativo)); }));
