@@ -31,7 +31,21 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const captureStreamRef = useRef<MediaStream | null>(null);
 
-  async function readCardNames() {\n    const video = videoRef.current;\n    if (!video || video.readyState < 2) { setOcrText("A captura ainda não está pronta."); return; }\n    setOcrBusy(true); setOcrText("Preparando reconhecimento de texto local…");\n    try {\n      const canvas = document.createElement("canvas"); canvas.width = video.videoWidth; canvas.height = video.videoHeight;\n      const ctx = canvas.getContext("2d"); if (!ctx) throw new Error("Não foi possível preparar a imagem.");\n      ctx.drawImage(video,0,0,canvas.width,canvas.height);\n      const worker = await createWorker("por+eng");\n      try { const result = await worker.recognize(canvas); setOcrText(result.data.text.trim() || "Nenhum texto reconhecido. Tente aproximar ou ampliar a captura."); } finally { await worker.terminate(); }\n    } catch (err) { setOcrText("Falha no OCR: " + (err instanceof Error ? err.message : String(err))); }\n    finally { setOcrBusy(false); }\n  }\n\n  function stopCapture() {
+  async function readCardNames() {
+    const video = videoRef.current;
+    if (!video || video.readyState < 2) { setOcrText("A captura ainda não está pronta."); return; }
+    setOcrBusy(true); setOcrText("Preparando reconhecimento de texto local…");
+    try {
+      const canvas = document.createElement("canvas"); canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d"); if (!ctx) throw new Error("Não foi possível preparar a imagem.");
+      ctx.drawImage(video,0,0,canvas.width,canvas.height);
+      const worker = await createWorker("por+eng");
+      try { const result = await worker.recognize(canvas); setOcrText(result.data.text.trim() || "Nenhum texto reconhecido. Tente aproximar ou ampliar a captura."); } finally { await worker.terminate(); }
+    } catch (err) { setOcrText("Falha no OCR: " + (err instanceof Error ? err.message : String(err))); }
+    finally { setOcrBusy(false); }
+  }
+
+  function stopCapture() {
     captureStreamRef.current?.getTracks().forEach(track => track.stop());
     captureStreamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
@@ -173,7 +187,10 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
       </div>
       <p role="status" aria-live="polite" style={{margin:0,fontSize:12}}>{captureMessage}</p>
       {capturing && <div style={{display:"grid",gap:8,padding:10,border:"1px solid var(--border, #dce5de)",borderRadius:8}}>
-        <strong>TESTE EXPERIMENTAL DE RECONHECIMENTO DE NOMES (OCR)</strong>\n        <button type="button" onClick={() => void readCardNames()} disabled={ocrBusy}>{ocrBusy ? "LENDO TEXTO…" : "LER NOMES DOS CARDS VISÍVEIS"}</button>\n        <div style={{padding:8,border:"1px solid var(--border, #dce5de)",borderRadius:6,whiteSpace:"pre-wrap",fontSize:13}}>{ocrText || "Clique em LER NOMES para testar cartões amarelos, brancos ou roxos. O processamento é local."}</div>\n        <strong>MONITOR EXPERIMENTAL DE LIGAÇÃO (DETECTOR VISUAL ROXO)</strong>
+        <strong>TESTE EXPERIMENTAL DE RECONHECIMENTO DE NOMES (OCR)</strong>
+        <button type="button" onClick={() => void readCardNames()} disabled={ocrBusy}>{ocrBusy ? "LENDO TEXTO…" : "LER NOMES DOS CARDS VISÍVEIS"}</button>
+        <div style={{padding:8,border:"1px solid var(--border, #dce5de)",borderRadius:6,whiteSpace:"pre-wrap",fontSize:13}}>{ocrText || "Clique em LER NOMES para testar cartões amarelos, brancos ou roxos. O processamento é local."}</div>
+        <strong>MONITOR EXPERIMENTAL DE LIGAÇÃO (DETECTOR VISUAL ROXO)</strong>
         <label style={{fontSize:12}}>Identificação manual do colaborador: <input value={callName} onChange={e=>setCallName(e.target.value)} placeholder="Nome do colaborador" style={{marginLeft:6}} /></label>
         <div style={{fontWeight:800,color:purpleDetected?"#9b27b0":"var(--muted, #60746a)"}}>{purpleDetected ? "CARTÃO ROXO DETECTADO" : "NENHUM CARTÃO ROXO DETECTADO"} · {formatElapsed(callElapsed)}</div>
         <p style={{margin:0,fontSize:12}}>Experimento local: separa áreas roxas em cartões aproximados e acompanha cada um individualmente. Ainda não gera alertas nem identifica nomes automaticamente; pode confundir ou perder cartões.</p>
