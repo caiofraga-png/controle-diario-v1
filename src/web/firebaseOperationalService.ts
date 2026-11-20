@@ -22,18 +22,6 @@ function assertCurrentState(value: unknown): EstadoAtual | null {
   return state as EstadoAtual;
 }
 
-function progress(state: EstadoAtual) {
-  const emailIds = new Set<string>();
-  for (const email of state.emailsGlobais) emailIds.add(email.id);
-  for (const task of state.tarefas) for (const email of task.emailsVinculados) emailIds.add(email.id);
-  let done = state.tarefas.filter(task => task.concluida).length;
-  for (const id of emailIds) {
-    const email = state.emailsGlobais.find(item => item.id === id) ??
-      state.tarefas.flatMap(task => task.emailsVinculados).find(item => item.id === id);
-    if (email?.concluido) done++;
-  }
-  return { done, total: state.tarefas.length + emailIds.size };
-}
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
