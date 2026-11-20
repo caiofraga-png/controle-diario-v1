@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { subscribeLiveOperationalEvents, type LiveOperationalEvent } from "../web/firebaseLiveOperationalEvents";
 
 type Collaborator = { uid?: string; colaborador?: string; login?: string; setor?: string; contato?: string };
+type PurpleCardTrack = { id: number; x: number; y: number; area: number; startedAt: number; missing: number };
 
 const eventLabels: Record<LiveOperationalEvent["type"], string> = {
   EXPEDIENTE_INICIADO: "Expediente iniciado",
@@ -18,6 +19,9 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
   const [purpleDetected, setPurpleDetected] = useState(false);
   const [callName, setCallName] = useState("");
   const [callElapsed, setCallElapsed] = useState(0);
+  const [purpleCards, setPurpleCards] = useState<PurpleCardTrack[]>([]);
+  const tracksRef = useRef<PurpleCardTrack[]>([]);
+  const nextTrackIdRef = useRef(1);
   const callStartedAtRef = useRef<number | null>(null);
   const purpleFramesRef = useRef(0);
   const [eventPage, setEventPage] = useState(0);
@@ -33,6 +37,7 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
     callStartedAtRef.current = null;
     purpleFramesRef.current = 0;
     setCallElapsed(0);
+    tracksRef.current = []; setPurpleCards([]);
     setCaptureMessage("Captura encerrada. Nenhuma imagem foi armazenada.");
   }
 
@@ -52,6 +57,7 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
           setPurpleDetected(false);
           callStartedAtRef.current = null;
           setCallElapsed(0);
+          tracksRef.current = []; setPurpleCards([]);
           setCaptureMessage("O compartilhamento foi encerrado pelo navegador.");
         }
       }, { once: true });
@@ -73,35 +79,57 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
     return () => { video.srcObject = null; };
   }, [capturing]);
 
-  // Detector experimental de cartão roxo, processa quadros localmente e não os armazena.
+  // Detector experimental de cartões roxos separados por componentes conectados; processamento local.
   useEffect(() => {
     if (!capturing) return;
     const interval = window.setInterval(() => {
       const video = videoRef.current;
       if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return;
       const canvas = document.createElement("canvas");
-      canvas.width = 160; canvas.height = 90;
+      canvas.width = 320; canvas.height = 180;
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
       if (!ctx) return;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-      let purple = 0;
-      for (let i = 0; i < pixels.length; i += 4) {
+      const mask = new Uint8Array(canvas.width * canvas.height);
+      for (let i = 0, p = 0; i < pixels.length; i += 4, p++) {
         const r = pixels[i], g = pixels[i + 1], b = pixels[i + 2];
-        if (r > 105 && b > 105 && g < 105 && r > g * 1.35 && b > g * 1.35) purple++;
+        if (r > 105 && b > 105 && g < 105 && r > g * 1.35 && b > g * 1.35) mask[p] = 1;
       }
-      // Usa proporção dos pixels para tolerar diferentes resoluções e tamanhos da captura.
-      const detected = purple / (canvas.width * canvas.height) >= 0.003;
-      purpleFramesRef.current = detected ? purpleFramesRef.current + 1 : 0;
-      const stableDetected = purpleFramesRef.current >= 2;
-      setPurpleDetected(stableDetected);
-      if (stableDetected) {
-        if (callStartedAtRef.current === null) callStartedAtRef.current = Date.now();
-        setCallElapsed(Math.floor((Date.now() - callStartedAtRef.current) / 1000));
-      } else {
-        callStartedAtRef.current = null;
-        setCallElapsed(0);
+      const visited = new Uint8Array(mask.length), components: {x:number;y:number;area:number}[] = [];
+      for (let start = 0; start < mask.length; start++) {
+        if (!mask[start] || visited[start]) continue;
+        const queue = [start]; visited[start] = 1; let head = 0, area = 0, sx = 0, sy = 0;
+        while (head < queue.length) {
+          const idx = queue[head++], x = idx % canvas.width, y = Math.floor(idx / canvas.width);
+          area++; sx += x; sy += y;
+          const neighbors = [idx-1,idx+1,idx-canvas.width,idx+canvas.width];
+          for (const n of neighbors) {
+            if (n < 0 || n >= mask.length || visited[n] || !mask[n]) continue;
+            if ((n === idx-1 && x === 0) || (n === idx+1 && x === canvas.width-1)) continue;
+            visited[n] = 1; queue.push(n);
+          }
+        }
+        if (area >= 22) components.push({x:sx/area,y:sy/area,area});
       }
+      const now = Date.now(), previous = tracksRef.current, used = new Set<number>();
+      const next: PurpleCardTrack[] = [];
+      for (const comp of components) {
+        let best: PurpleCardTrack | undefined, bestDist = 36*36;
+        for (const old of previous) {
+          if (used.has(old.id)) continue;
+          const d = (old.x-comp.x)**2 + (old.y-comp.y)**2;
+          if (d < bestDist) { bestDist = d; best = old; }
+        }
+        if (best) { used.add(best.id); next.push({...best,x:comp.x,y:comp.y,area:comp.area,missing:0}); }
+        else next.push({id:nextTrackIdRef.current++,x:comp.x,y:comp.y,area:comp.area,startedAt:now,missing:0});
+      }
+      for (const old of previous) if (!used.has(old.id) && !components.some(comp => (old.x-comp.x)**2+(old.y-comp.y)**2 < 36*36)) {
+        if (old.missing < 2) next.push({...old,missing:old.missing+1});
+      }
+      tracksRef.current = next; setPurpleCards(next);
+      setPurpleDetected(next.some(card=>card.missing===0));
+      setCallElapsed(next.length ? Math.floor((now - Math.min(...next.map(card=>card.startedAt)))/1000) : 0);
     }, 1000);
     return () => window.clearInterval(interval);
   }, [capturing]);
@@ -145,9 +173,9 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
         <strong>MONITOR EXPERIMENTAL DE LIGAÇÃO (DETECTOR VISUAL ROXO)</strong>
         <label style={{fontSize:12}}>Identificação manual do colaborador: <input value={callName} onChange={e=>setCallName(e.target.value)} placeholder="Nome do colaborador" style={{marginLeft:6}} /></label>
         <div style={{fontWeight:800,color:purpleDetected?"#9b27b0":"var(--muted, #60746a)"}}>{purpleDetected ? "CARTÃO ROXO DETECTADO" : "NENHUM CARTÃO ROXO DETECTADO"} · {formatElapsed(callElapsed)}</div>
-        <p style={{margin:0,fontSize:12}}>Experimento visual local. Ainda não gera alertas nem reconhece nomes automaticamente. A detecção exige dois quadros consecutivos e uma mudança de cor encerra a contagem.</p>
+        <p style={{margin:0,fontSize:12}}>Experimento local: separa áreas roxas em cartões aproximados e acompanha cada um individualmente. Ainda não gera alertas nem identifica nomes automaticamente; pode confundir ou perder cartões.</p>
       </div>}
-      {capturing && <video ref={videoRef} autoPlay muted playsInline style={{width:"100%",maxHeight:360,objectFit:"contain",background:"#202020",borderRadius:8}} />}
+      {capturing && <div style={{display:"grid",gap:6}}><strong>Cartões roxos acompanhados: {purpleCards.filter(card=>card.missing===0).length}</strong>{purpleCards.map(card=><div key={card.id} style={{padding:8,border:"1px solid var(--border, #dce5de)",borderRadius:6,display:"flex",justifyContent:"space-between",gap:8}}><span>Cartão experimental #{card.id}{card.missing ? " (confirmando ausência)" : ""}</span><strong>{formatElapsed(Math.floor((Date.now()-card.startedAt)/1000))}</strong></div>)}{!purpleCards.length && <span style={{fontSize:12}}>Nenhum cartão individual localizado ainda.</span>}</div>}{capturing && <video ref={videoRef} autoPlay muted playsInline style={{width:"100%",maxHeight:360,objectFit:"contain",background:"#202020",borderRadius:8}} />}
     </section>
     {!events.length && !error && <div style={{padding:20,border:"1px dashed var(--border, #cbd8ce)",borderRadius:10,textAlign:"center",color:"var(--muted, #60746a)"}}>Aguardando novos acontecimentos nos expedientes…</div>}
     <div style={{display:"grid",gap:8}}>
