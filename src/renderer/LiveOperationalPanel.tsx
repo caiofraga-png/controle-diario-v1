@@ -15,6 +15,11 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
   const [error, setError] = useState("");
   const [captureMessage, setCaptureMessage] = useState("A captura ainda não foi iniciada.");
   const [capturing, setCapturing] = useState(false);
+  const [purpleDetected, setPurpleDetected] = useState(false);
+  const [callName, setCallName] = useState("");
+  const [callElapsed, setCallElapsed] = useState(0);
+  const callStartedAtRef = useRef<number | null>(null);
+  const [eventPage, setEventPage] = useState(0);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const captureStreamRef = useRef<MediaStream | null>(null);
 
@@ -23,6 +28,9 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
     captureStreamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
     setCapturing(false);
+    setPurpleDetected(false);
+    callStartedAtRef.current = null;
+    setCallElapsed(0);
     setCaptureMessage("Captura encerrada. Nenhuma imagem foi armazenada.");
   }
 
@@ -39,6 +47,9 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
         if (captureStreamRef.current === stream) {
           captureStreamRef.current = null;
           setCapturing(false);
+          setPurpleDetected(false);
+          callStartedAtRef.current = null;
+          setCallElapsed(0);
           setCaptureMessage("O compartilhamento foi encerrado pelo navegador.");
         }
       }, { once: true });
@@ -60,6 +71,36 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
     return () => { video.srcObject = null; };
   }, [capturing]);
 
+  // Detector experimental de cartão roxo, processa quadros localmente e não os armazena.
+  useEffect(() => {
+    if (!capturing) return;
+    const interval = window.setInterval(() => {
+      const video = videoRef.current;
+      if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return;
+      const canvas = document.createElement("canvas");
+      canvas.width = 80; canvas.height = 45;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) return;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      let purple = 0;
+      for (let i = 0; i < pixels.length; i += 4) {
+        const r = pixels[i], g = pixels[i + 1], b = pixels[i + 2];
+        if (r > 105 && b > 105 && g < 105 && r > g * 1.35 && b > g * 1.35) purple++;
+      }
+      const detected = purple >= 28;
+      setPurpleDetected(detected);
+      if (detected) {
+        if (callStartedAtRef.current === null) callStartedAtRef.current = Date.now();
+        setCallElapsed(Math.floor((Date.now() - callStartedAtRef.current) / 1000));
+      } else {
+        callStartedAtRef.current = null;
+        setCallElapsed(0);
+      }
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [capturing]);
+
   useEffect(() => () => {
     captureStreamRef.current?.getTracks().forEach(track => track.stop());
   }, []);
@@ -67,6 +108,12 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
   useEffect(() => {
     return subscribeLiveOperationalEvents(setEvents, error => setError(error.message));
   }, []);
+
+  const formatElapsed = (seconds: number) => `${String(Math.floor(seconds / 3600)).padStart(2,"0")}:${String(Math.floor((seconds % 3600) / 60)).padStart(2,"0")}:${String(seconds % 60).padStart(2,"0")}`;
+
+  const pageSize = 15;
+  const pageCount = Math.max(1, Math.ceil(events.length / pageSize));
+  const visibleEvents = events.slice(eventPage * pageSize, (eventPage + 1) * pageSize);
 
   const nameFor = (uid: string) => {
     const person = collaborators.find(item => item.uid === uid);
@@ -89,11 +136,17 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
         <button type="button" onClick={stopCapture} disabled={!capturing}>ENCERRAR CAPTURA</button>
       </div>
       <p role="status" aria-live="polite" style={{margin:0,fontSize:12}}>{captureMessage}</p>
+      {capturing && <div style={{display:"grid",gap:8,padding:10,border:"1px solid var(--border, #dce5de)",borderRadius:8}}>
+        <strong>MONITOR EXPERIMENTAL DE LIGAÇÃO (DETECTOR VISUAL ROXO)</strong>
+        <label style={{fontSize:12}}>Identificação manual do colaborador: <input value={callName} onChange={e=>setCallName(e.target.value)} placeholder="Nome do colaborador" style={{marginLeft:6}} /></label>
+        <div style={{fontWeight:800,color:purpleDetected?"#9b27b0":"var(--muted, #60746a)"}}>{purpleDetected ? "CARTÃO ROXO DETECTADO" : "NENHUM CARTÃO ROXO DETECTADO"} · {formatElapsed(callElapsed)}</div>
+        <p style={{margin:0,fontSize:12}}>Experimento visual local. Ainda não gera alertas nem reconhece nomes automaticamente. Uma mudança de cor encerra a contagem.</p>
+      </div>}
       {capturing && <video ref={videoRef} autoPlay muted playsInline style={{width:"100%",maxHeight:360,objectFit:"contain",background:"#202020",borderRadius:8}} />}
     </section>
     {!events.length && !error && <div style={{padding:20,border:"1px dashed var(--border, #cbd8ce)",borderRadius:10,textAlign:"center",color:"var(--muted, #60746a)"}}>Aguardando novos acontecimentos nos expedientes…</div>}
     <div style={{display:"grid",gap:8}}>
-      {events.map(event => {
+      {visibleEvents.map(event => {
         const person = collaborators.find(item => item.uid === event.uid);
         const detail = event.type === "TAREFA_FINALIZADA"
           ? event.task
@@ -108,5 +161,9 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
         </article>;
       })}
     </div>
+    {events.length > pageSize && <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap",paddingTop:8}}>
+      <span style={{fontSize:12,color:"var(--muted, #60746a)"}}>Página {eventPage+1} de {pageCount} · {events.length} avisos carregados</span>
+      <div style={{display:"flex",gap:8}}><button type="button" onClick={()=>setEventPage(p=>Math.max(0,p-1))} disabled={eventPage===0}>ANTERIOR</button><button type="button" onClick={()=>setEventPage(p=>Math.min(pageCount-1,p+1))} disabled={eventPage>=pageCount-1}>PRÓXIMA</button></div>
+    </div>}
   </section>;
 }
