@@ -209,10 +209,6 @@ export class FirebaseOperationalService {
 
   async completeState(state: EstadoAtual, concluidoEm = new Date().toISOString()): Promise<RegistroHistorico> {
     const uid = this.uid();
-    const tally = progress(state);
-    if (tally.total === 0 || tally.done !== tally.total) {
-      throw new Error("O EXPEDIENTE AINDA NÃO ESTÁ 100% CONCLUÍDO.");
-    }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(state.data)) throw new Error("A DATA DO EXPEDIENTE É INVÁLIDA.");
 
     const { db } = requireFirebase();
@@ -248,10 +244,6 @@ export class FirebaseOperationalService {
       const persistedState = currentData ? assertCurrentState(currentData) : null;
       if (!persistedState || persistedState.id !== state.id || persistedState.criadoEm !== state.criadoEm) {
         throw new Error("O EXPEDIENTE MUDOU OU NÃO ESTÁ MAIS EM PRODUÇÃO. RECARREGUE ANTES DE CONCLUIR.");
-      }
-      const persistedProgress = progress(persistedState);
-      if (persistedProgress.total === 0 || persistedProgress.done !== persistedProgress.total) {
-        throw new Error("O EXPEDIENTE AINDA NÃO ESTÁ 100% CONCLUÍDO.");
       }
       if (!sectorSnapshot.exists() || sectorSnapshot.data().active !== true ||
           !contactSnapshot.exists() || contactSnapshot.data().active !== true ||
