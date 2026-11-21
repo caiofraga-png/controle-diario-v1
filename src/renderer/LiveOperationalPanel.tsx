@@ -254,7 +254,7 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
     return person?.colaborador || person?.login || uid;
   };
 
-  return <section style={{display:"grid",gap:12}}>
+  return <section className="live-operational-panel" style={{display:"grid",gap:12}}>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
       <div><h3 style={{margin:0}}>ACOMPANHAMENTO EM TEMPO REAL</h3><p style={{margin:"4px 0 0",fontSize:12,color:"var(--muted, #60746a)"}}>Eventos recebidos enquanto este painel estiver aberto.</p></div>
       <span style={{display:"inline-flex",alignItems:"center",gap:7,fontSize:12,fontWeight:700,color:"#16834a"}}><span style={{width:8,height:8,borderRadius:99,background:"#16a34a"}}/> CONECTADO</span>
