@@ -59,11 +59,13 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
       // Divide a tela em cinco regiões fixas do SOS Beta. As coordenadas
       // são aproximadas e relativas à captura; cada setor é analisado separadamente.
       const regions=[
-        {name:"FINANCEIRO - LESTE",x:0,y:55,w:160,h:115},
-        {name:"SUPORTE - LESTE",x:160,y:55,w:160,h:115},
-        {name:"COMERCIAL - LESTE",x:320,y:55,w:160,h:115},
-        {name:"CANCELAMENTO - LESTE",x:0,y:145,w:240,h:125},
-        {name:"ATENDIMENTO - LESTE",x:240,y:145,w:240,h:125},
+        // Layout aproximado do painel: três setores na faixa superior e dois na inferior.
+        // Evita sobreposição entre as regiões, que duplicava/fragmentava cartões.
+        {name:"FINANCEIRO - LESTE",x:0,y:55,w:160,h:88},
+        {name:"SUPORTE - LESTE",x:160,y:55,w:160,h:88},
+        {name:"COMERCIAL - LESTE",x:320,y:55,w:160,h:88},
+        {name:"CANCELAMENTO - LESTE",x:0,y:143,w:240,h:127},
+        {name:"ATENDIMENTO - LESTE",x:240,y:143,w:240,h:127},
       ];
       const boxes:{x:number;y:number;w:number;h:number;area:number;region:string}[]=[];
       for(const region of regions){
