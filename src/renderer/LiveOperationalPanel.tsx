@@ -123,7 +123,6 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
           sectorCounters[b.region]=(sectorCounters[b.region]||0)+1;
           found.push(b.region+" · Card "+sectorCounters[b.region]+": "+(txt||"(texto não reconhecido)"));
         }
-        }
         setOcrCards(found);setOcrText("Leitura individual experimental por setor: "+boxes.length+" cartões delimitados (até 30 processados).");
       }finally{await worker.terminate();}
     }catch(err){setOcrText("Falha na leitura individual: "+(err instanceof Error?err.message:String(err)));}
