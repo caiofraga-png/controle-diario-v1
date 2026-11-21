@@ -105,21 +105,24 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
         await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_BLOCK });
         const found:string[]=[]; const sectorCounters:Record<string,number>={};
         for(let i=0;i<Math.min(boxes.length,30);i++){
-          const b=boxes[i],pad=6,scale=5,crop=document.createElement("canvas");
-          crop.width=Math.min(1200,(b.w+pad*2)*scale);crop.height=Math.min(600,(b.h+pad*2)*scale);
+          const b=boxes[i],pad=3,scale=8,crop=document.createElement("canvas");
+          // Ampliação maior e limite de tamanho para evitar sobrecarga do navegador.
+          crop.width=Math.min(1600,(b.w+pad*2)*scale);crop.height=Math.min(800,(b.h+pad*2)*scale);
           const cropCtx=crop.getContext("2d",{willReadFrequently:true});if(!cropCtx)continue;
+          cropCtx.imageSmoothingEnabled=false;
           cropCtx.drawImage(frame,Math.max(0,b.x-pad),Math.max(0,b.y-pad),b.w+pad*2,b.h+pad*2,0,0,crop.width,crop.height);
-          // Normaliza o fundo colorido do card para preto/branco e amplia as letras.
+          // Converte o fundo colorido em contraste alto para destacar o texto escuro.
           const image=cropCtx.getImageData(0,0,crop.width,crop.height);
           for(let p=0;p<image.data.length;p+=4){
             const gray=Math.round(image.data[p]*0.299+image.data[p+1]*0.587+image.data[p+2]*0.114);
-            const value=gray>155?255:0;
+            const value=gray>145?255:0;
             image.data[p]=image.data[p+1]=image.data[p+2]=value;
           }
           cropCtx.putImageData(image,0,0);
-          const result=await worker.recognize(crop),txt=result.data.text.trim().replace(/\s+/g," ");
+          const result=await worker.recognize(crop),txt=result.data.text.trim().replace(/\\s+/g," ");
           sectorCounters[b.region]=(sectorCounters[b.region]||0)+1;
           found.push(b.region+" · Card "+sectorCounters[b.region]+": "+(txt||"(texto não reconhecido)"));
+        }
         }
         setOcrCards(found);setOcrText("Leitura individual experimental por setor: "+boxes.length+" cartões delimitados (até 30 processados).");
       }finally{await worker.terminate();}
