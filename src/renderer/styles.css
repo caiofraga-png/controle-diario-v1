@@ -2011,3 +2011,8 @@ html[data-theme="midnight-violet"] .config-embedded .config-tabs button.active {
 
 /* Confirmacao amigavel de encerramento incompleto */
 .incomplete-close-modal{border:1px solid #cfe2d5;box-shadow:0 18px 48px rgba(24,68,44,.18);width:min(560px,calc(100vw - 32px));padding:24px;border-radius:16px}.incomplete-close-modal .modal-head h2{color:#205d3c;margin:0;font-size:21px}.incomplete-close-message{margin:16px 0;padding:14px 16px;background:#f1f7f3;border:1px solid #d9e9de;border-radius:10px;color:#355746;line-height:1.55}.incomplete-close-message p{margin:5px 0}.incomplete-close-observation{display:block;margin:18px 0}.incomplete-close-observation span{display:block;font-size:12px;font-weight:700;letter-spacing:.4px;color:#547260;margin-bottom:8px}.incomplete-close-observation textarea{width:100%;box-sizing:border-box;border:1px solid #cbd9cf;border-radius:9px;padding:12px;font:inherit;resize:vertical;min-height:100px;background:var(--surface,#fff);color:inherit}.incomplete-close-modal .modal-actions{flex-wrap:wrap}.incomplete-close-modal .modal-actions button{border-radius:8px;padding:10px 14px}
+
+
+/* Atalhos do cabeçalho: favicon sem texto */
+.app-main > .header .quick-links a { width:38px; height:38px; padding:5px; box-sizing:border-box; }
+.app-main > .header .quick-links a img { display:block; width:24px; height:24px; object-fit:contain; border-radius:4px; }
