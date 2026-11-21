@@ -102,9 +102,10 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
       if(!boxes.length){setOcrText("Pixels amarelos detectados, mas ainda não foi possível delimitar cartões individuais. Confira o mapa magenta.");return;}
       const worker=await createWorker("por+eng");
       try {
-        const found:string[]=[];
+        await worker.setParameters({ tessedit_pageseg_mode: "6" });
+        const found:string[]=[]; const sectorCounters:Record<string,number>={};
         for(let i=0;i<Math.min(boxes.length,30);i++){
-          const b=boxes[i],pad=4,scale=4,crop=document.createElement("canvas");
+          const b=boxes[i],pad=6,scale=5,crop=document.createElement("canvas");
           crop.width=Math.min(1200,(b.w+pad*2)*scale);crop.height=Math.min(600,(b.h+pad*2)*scale);
           const cropCtx=crop.getContext("2d",{willReadFrequently:true});if(!cropCtx)continue;
           cropCtx.drawImage(frame,Math.max(0,b.x-pad),Math.max(0,b.y-pad),b.w+pad*2,b.h+pad*2,0,0,crop.width,crop.height);
@@ -117,9 +118,10 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
           }
           cropCtx.putImageData(image,0,0);
           const result=await worker.recognize(crop),txt=result.data.text.trim().replace(/\s+/g," ");
-          if(txt)found.push(b.region+" · Card "+(found.length+1)+": "+txt);
+          sectorCounters[b.region]=(sectorCounters[b.region]||0)+1;
+          found.push(b.region+" · Card "+sectorCounters[b.region]+": "+(txt||"(texto não reconhecido)"));
         }
-        setOcrCards(found);setOcrText(found.length?"Leitura individual experimental por setor: "+boxes.length+" regiões (até 30 processadas).":"Cards localizados, mas o texto não foi reconhecido.");
+        setOcrCards(found);setOcrText("Leitura individual experimental por setor: "+boxes.length+" cartões delimitados (até 30 processados).");
       }finally{await worker.terminate();}
     }catch(err){setOcrText("Falha na leitura individual: "+(err instanceof Error?err.message:String(err)));}
     finally{setOcrBusy(false);}
