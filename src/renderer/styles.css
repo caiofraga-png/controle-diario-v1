@@ -2017,3 +2017,25 @@ html[data-theme="midnight-violet"] .config-embedded .config-tabs button.active {
 .app-main > .header .quick-links a { width:38px; height:38px; padding:5px; box-sizing:border-box; }
 .app-main > .header .quick-links a img { display:block; width:24px; height:24px; object-fit:contain; border-radius:4px; }
 
+
+/* Correção de contraste para Visão Geral / Acompanhamento em Tempo Real nos temas escuros */
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .live-operational-panel {
+  color:var(--text,#e7eee9); font-family:inherit;
+}
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .live-operational-panel p,
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .live-operational-panel span,
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .live-operational-panel time,
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .live-operational-panel label { color:inherit!important; }
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .live-operational-panel article,
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .live-operational-panel [style*="background: var(--surface, #fff)"] {
+  background:var(--surface,#202d27)!important; color:var(--text,#e7eee9)!important; border-color:var(--border,#42564b)!important;
+}
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .live-operational-panel [style*="background: var(--surface-secondary"],
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .live-operational-panel [style*="background: var(--surface-secondary, #f4"],
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .live-operational-panel [style*="background: var(--surface-secondary, #f0"] {
+  background:var(--surface-secondary,#263831)!important; color:var(--text,#e7eee9)!important; border-color:var(--border,#42564b)!important;
+}
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .live-operational-panel [style*="border: 1px dashed"] { color:var(--text,#e7eee9)!important; }
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .live-operational-panel button,
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .live-operational-panel input { font-family:inherit; color:var(--text,#e7eee9); }
+:is(html[data-theme="corporate-dark"],html[data-theme="midnight-blue"],html[data-theme="midnight-violet"]) .live-operational-panel input { background:var(--surface,#202d27)!important; border-color:var(--border,#42564b)!important; }
