@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { createWorker } from "tesseract.js";
+import { createWorker, PSM } from "tesseract.js";
 import { subscribeLiveOperationalEvents, type LiveOperationalEvent } from "../web/firebaseLiveOperationalEvents";
 
 type Collaborator = { uid?: string; colaborador?: string; login?: string; setor?: string; contato?: string };
@@ -102,7 +102,7 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
       if(!boxes.length){setOcrText("Pixels amarelos detectados, mas ainda não foi possível delimitar cartões individuais. Confira o mapa magenta.");return;}
       const worker=await createWorker("por+eng");
       try {
-        await worker.setParameters({ tessedit_pageseg_mode: "6" });
+        await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_BLOCK });
         const found:string[]=[]; const sectorCounters:Record<string,number>={};
         for(let i=0;i<Math.min(boxes.length,30);i++){
           const b=boxes[i],pad=6,scale=5,crop=document.createElement("canvas");
