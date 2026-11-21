@@ -101,11 +101,20 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
       const worker=await createWorker("por+eng");
       try {
         const found:string[]=[];
+        await worker.setParameters({ tessedit_pageseg_mode: "7", preserve_interword_spaces: "1" });
         for(let i=0;i<Math.min(boxes.length,30);i++){
-          const b=boxes[i],pad=5,crop=document.createElement("canvas");
-          crop.width=Math.min(960,(b.w+pad*2)*2);crop.height=Math.min(540,(b.h+pad*2)*2);
-          const cropCtx=crop.getContext("2d");if(!cropCtx)continue;
+          const b=boxes[i],pad=4,scale=4,crop=document.createElement("canvas");
+          crop.width=Math.min(1200,(b.w+pad*2)*scale);crop.height=Math.min(600,(b.h+pad*2)*scale);
+          const cropCtx=crop.getContext("2d",{willReadFrequently:true});if(!cropCtx)continue;
           cropCtx.drawImage(frame,Math.max(0,b.x-pad),Math.max(0,b.y-pad),b.w+pad*2,b.h+pad*2,0,0,crop.width,crop.height);
+          // Normaliza o fundo colorido do card para preto/branco e amplia as letras.
+          const image=cropCtx.getImageData(0,0,crop.width,crop.height);
+          for(let p=0;p<image.data.length;p+=4){
+            const gray=Math.round(image.data[p]*0.299+image.data[p+1]*0.587+image.data[p+2]*0.114);
+            const value=gray>155?255:0;
+            image.data[p]=image.data[p+1]=image.data[p+2]=value;
+          }
+          cropCtx.putImageData(image,0,0);
           const result=await worker.recognize(crop),txt=result.data.text.trim().replace(/\s+/g," ");
           if(txt)found.push(b.region+" · Card "+(found.length+1)+": "+txt);
         }
