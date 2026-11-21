@@ -101,7 +101,6 @@ export default function LiveOperationalPanel({ collaborators = [] }: { collabora
       const worker=await createWorker("por+eng");
       try {
         const found:string[]=[];
-        await worker.setParameters({ tessedit_pageseg_mode: 7, preserve_interword_spaces: "1" });
         for(let i=0;i<Math.min(boxes.length,30);i++){
           const b=boxes[i],pad=4,scale=4,crop=document.createElement("canvas");
           crop.width=Math.min(1200,(b.w+pad*2)*scale);crop.height=Math.min(600,(b.h+pad*2)*scale);
