@@ -33,7 +33,7 @@ type History = {
   concluidoEm?: string;
   ultimaAlteracao?: string;
   perfil?: { nome?: string };
-  tarefas?: Array<{ id: string; nome: string; concluida: boolean; concluidaEm?: string }>;
+  tarefas?: Array<{ id: string; nome: string; link?: string; concluida: boolean; concluidaEm?: string }>;
   atendimentos?: Array<{ id: string; subtipo?: string; ticket?: string; criadoEm?: string }>;
 };
 
