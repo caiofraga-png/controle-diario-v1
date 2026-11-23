@@ -9,6 +9,7 @@ export type LiveOperationalEvent = {
   profile: string;
   date: string;
   task?: string;
+  taskLink?: string;
   subtype?: string;
   ticket?: string;
 };
@@ -19,7 +20,7 @@ type State = {
   perfil?: { nome?: string };
   criadoEm?: string;
   ultimaAlteracao?: string;
-  tarefas?: Array<{ id: string; nome: string; concluida: boolean; concluidaEm?: string }>;
+  tarefas?: Array<{ id: string; nome: string; link?: string; concluida: boolean; concluidaEm?: string }>;
   atendimentos?: Array<{ id: string; subtipo?: string; ticket?: string; criadoEm?: string }>;
 } | null;
 
@@ -49,7 +50,7 @@ function eventsFromHistory(record: History, id: string): LiveOperationalEvent[] 
   if (record.criadoEm) events.push({ id: id + "-inicio", type: "EXPEDIENTE_INICIADO", uid, occurredAt: record.criadoEm, profile, date });
   for (const task of record.tarefas ?? []) if (task.concluida && task.concluidaEm) events.push({
     id: id + "-tarefa-" + task.id + "-" + task.concluidaEm, type: "TAREFA_FINALIZADA", uid,
-    occurredAt: task.concluidaEm, profile, date, task: task.nome,
+    occurredAt: task.concluidaEm, profile, date, task: task.nome, taskLink: String(task.link ?? "").trim(),
   });
   for (const attendance of record.atendimentos ?? []) if (attendance.id) {
     const time = typeof attendance.criadoEm === "string" && !Number.isNaN(Date.parse(attendance.criadoEm))
@@ -91,7 +92,7 @@ export function subscribeLiveOperationalEvents(
         if (uid) currentFeed.push({ id: item.ref.path + "-inicio-" + String(state.criadoEm ?? state.data ?? ""), type: "EXPEDIENTE_INICIADO", uid, occurredAt: typeof state.criadoEm === "string" ? state.criadoEm : eventTime(state), profile: String(state.perfil?.nome ?? "—"), date: String(state.data ?? "") });
         for (const task of state.tarefas ?? []) if (uid && task.concluida && task.concluidaEm) currentFeed.push({
           id: item.ref.path + "-tarefa-" + task.id + "-" + task.concluidaEm, type: "TAREFA_FINALIZADA", uid,
-          occurredAt: task.concluidaEm, profile: String(state.perfil?.nome ?? "—"), date: String(state.data ?? ""), task: task.nome,
+          occurredAt: task.concluidaEm, profile: String(state.perfil?.nome ?? "—"), date: String(state.data ?? ""), task: task.nome, taskLink: String(task.link ?? "").trim(),
         });
         for (const attendance of state.atendimentos ?? []) if (uid && attendance.id) {
           const attendanceTime = typeof attendance.criadoEm === "string" && !Number.isNaN(Date.parse(attendance.criadoEm)) ? attendance.criadoEm : eventTime(state);
@@ -121,7 +122,7 @@ export function subscribeLiveOperationalEvents(
         const oldTasks = new Map((before.tarefas ?? []).map(t => [t.id, t]));
         for (const task of next.tarefas ?? []) {
           const prior = oldTasks.get(task.id), changed = Boolean(task.concluidaEm && task.concluidaEm !== prior?.concluidaEm), newlyDone = task.concluida && prior?.concluida !== true && !task.concluidaEm;
-          if (task.concluida && (changed || newlyDone)) currentFeed.push({ id: item.ref.path + "-tarefa-" + task.id + "-" + (task.concluidaEm || occurredAt), type: "TAREFA_FINALIZADA", uid, occurredAt: task.concluidaEm || occurredAt, profile, date, task: task.nome });
+          if (task.concluida && (changed || newlyDone)) currentFeed.push({ id: item.ref.path + "-tarefa-" + task.id + "-" + (task.concluidaEm || occurredAt), type: "TAREFA_FINALIZADA", uid, occurredAt: task.concluidaEm || occurredAt, profile, date, task: task.nome, taskLink: String(task.link ?? "").trim() });
         }
       }
       previous.set(item.ref.path, next);
